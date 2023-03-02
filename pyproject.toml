@@ -5,7 +5,7 @@ description = "A package for detecting performance drifts in process models by a
 license = "Apache-2.0"
 authors = ["Victor Gallego-Fontenla <victorjose.gallego@usc.gal>"]
 readme = "README.md"
-repository = "https://github.com"
+repository = "https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git"
 packages = [{ include = "epd" }]
 
 [tool.poetry.scripts]
@@ -30,7 +30,7 @@ use_vars = true
 [tool.taskipy.variables]
 docs_format = "markdown"
 docs_footer = "\"Explainable Performance Drift - v0.1.0\""
-docs_repository = "https://github.com"
+docs_repository = "\"https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git\""
 docs_logo = "https://pixy.org/src/233/thumbs350/2335017.jpg"
 
 [tool.taskipy.tasks.lint]
@@ -38,7 +38,7 @@ cmd = "ruff check ."
 help = "lint the code using ruff"
 
 [tool.taskipy.tasks.docs]
-cmd = "pdoc epd -o docs -d {docs_format} --footer-text {docs_footer} -e edp={docs_repository} --logo {docs_logo} --math --no-show-source"
+cmd = "pdoc epd -o docs -d {docs_format} --footer-text {docs_footer} -e epd={docs_repository} --logo {docs_logo} --math --no-show-source"
 help = "generate documentation"
 
 [tool.taskipy.tasks.live-docs]
@@ -51,7 +51,7 @@ select = [
     "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
     "PLE", "PLR", "PLW", "NPY", "RUF"
 ]
-ignore = ["D203", "D212", "PLE1205", "B008"]
+ignore = ["D203", "D212", "PLE1205", "B008", "D417"]
 line-length = 120
 target-version = "py310"
 

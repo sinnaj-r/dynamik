@@ -5,23 +5,31 @@ import pandas as pd
 from river.stream import iter_pandas
 
 from epd.input import Mapping
-from epd.input.csv import DEFAULT_APROMORE_CSV_MAPPING
+from epd.input.csv import DEFAULT_CSV_MAPPING
 from epd.model import Event
 
 
-def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_APROMORE_CSV_MAPPING,
-                 filter_events_without_resources: bool = True) -> Iterator[Event]:
+def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPPING) -> Iterator[Event]:
     """
     Read an event log from a CSV file.
 
-    Reads an event log from a CSV file given the column IDs in [log_ids]. Set the start_time and
-    end_time columns to date, filter events without a resource assigned and sort by [end, start].
+    The file is expected to contain a header row and an event per row.
+    Events will be mapped to `epd.model.Event` instances by applying the provided `epd.input.Mapping` object.
+    The functon returns a Generator that yields the events from the log file one by one to optimize memory usage.
 
-    :param log_path: path to the CSV log file.
-    :param attribute_mapping: an object defining a mapping between CSV columns and event attributes.
-    :param filter_events_without_resources: a flag indicating if events without a resource should be removed
+    Parameters
+    ----------
+    * `log_path`:           *the path to the CSV log file*
+    * `attribute_mapping`:  *an instance of `epd.input.Mapping` defining a mapping between CSV columns and event attributes*.
 
-    :return: an iterator with the events from the read file
+    Yields
+    ------
+    * the parsed events sorted by the `epd.model.Event.end`and `epd.model.Event.start` timestamps and transformed to
+      instances of `epd.model.Event`
+
+    Returns
+    -------
+    * a `collections.abc.Generator[epd.model.Event, None, None]` containing the events from the read file
     """
     # Read log
     event_log = pd.read_csv(log_path, skipinitialspace=True)
@@ -32,12 +40,6 @@ def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_APROMORE
     # Convert timestamp value to pd.Timestamp, setting timezone to UTC
     event_log[attribute_mapping.start] = pd.to_datetime(event_log[attribute_mapping.start], utc=True)
     event_log[attribute_mapping.end] = pd.to_datetime(event_log[attribute_mapping.end], utc=True)
-
-    # Filter out the events without a resource
-    if filter_events_without_resources:
-        event_log = event_log.dropna(subset=[attribute_mapping.resource])
-    else:
-        event_log[attribute_mapping.resource] = event_log[attribute_mapping.resource].fillna('UNKNOWN')
 
     # Sort events
     event_log = event_log.sort_values([attribute_mapping.end, attribute_mapping.start])

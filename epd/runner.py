@@ -89,7 +89,6 @@ def run() -> None:
     log = parser(
         args.log_file,
         attribute_mapping=mapping,
-        filter_events_without_resources=False,
     )
 
     drifts = detect_drift(

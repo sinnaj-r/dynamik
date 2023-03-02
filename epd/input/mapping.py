@@ -1,21 +1,27 @@
 from __future__ import annotations
 
+import collections.abc
 import logging
+import typing
 from dataclasses import dataclass
-from typing import Any
 
 from epd.model import Event
 
 
 @dataclass
 class Mapping:
-    """Define the mapping between a dict and Event attributes."""
+    """Define the mapping between a dictionary-like object and Event attributes."""
 
     start: str
+    """The attribute from the log file containing the event start timestamp"""
     end: str
+    """The attribute from the log file containing the event finish timestamp"""
     case: str
+    """The attribute from the log file containing the case ID"""
     activity: str
+    """The attribute from the log file containing the activity name"""
     resource: str
+    """The attribute from the log file containing the resource name"""
 
     __slots__ = ["start", "end", "case", "activity", "resource"]
 
@@ -26,13 +32,15 @@ class Mapping:
                  activity: str,
                  resource: str) -> None:
         """
-        Create a dict <-> Event mapping.
+        Create a new mapping for transforming dictionary-like objects to `Event` objects.
 
-        :param start: the name of the dict field containing the start timestamp for the event
-        :param end: the name of the dict field containing the end timestamp for the event
-        :param case: the name of the dict field containing the case for the event
-        :param activity: the name of the dict field containing the activity for the event
-        :param resource: the name of the dict field containing the resource for the event
+        Parameters
+        ----------
+        * `start`:      *the name of the dict field containing the start timestamp for the events*
+        * `end`:        *the name of the dict field containing the end timestamp for the events*
+        * `case`:       *the name of the dict field containing the case for the events*
+        * `activity`:   *the name of the dict field containing the activity for the events*
+        * `resource`:   *the name of the dict field containing the resource for the events*
         """
         self.start = start
         self.end = end
@@ -40,12 +48,17 @@ class Mapping:
         self.activity = activity
         self.resource = resource
 
-    def dict_to_event(self: Mapping, source: dict[str, Any]) -> Event:
+    def dict_to_event(self: Mapping, source: dict[str, typing.Any] | collections.abc.Mapping[str, typing.Any]) -> Event:
         """
-        Create an Event instance from a source dictionary.
+        Create an `epd.model.Event` instance from a source *dictionary-like* object applying the current mapping.
 
-        :param source: a dictionary with the attributes of the event
-        :return: an Event instance with the attributes initialized to the corresponding values in the source dictionary
+        Parameters
+        ----------
+        * `source`: *a dictionary-like object with the attributes of the event*
+
+        Returns
+        -------
+        * the `epd.model.Event` instance resulting from applying this mapping to the *dictionary-like* source
         """
         instance = Event(
             case=source[self.case],

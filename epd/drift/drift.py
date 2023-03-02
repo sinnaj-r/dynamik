@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import timedelta
 from math import ceil
 
@@ -23,26 +23,32 @@ def detect_drift(
         initial_activity: str = "START",
         final_activity: str = "END",
         alpha: float = 0.005,
+        filters: Iterable[Callable[[Event], bool]] = (),
 ) -> Iterable[Event]:
     """
-    Find and explain drifts in the performance of a process.
+    Find and explain drifts in the performance of a process execution by monitoring its cycle time.
 
-    This detection follows the next steps:
-        1. A reference model is built using the first events from the log. This model will be used later as the ground
-         truth to check for the change causes.
-        2. A running model is defined, using the last events from the log. This is the model that will be checked for
-           changes.
-        3. Events are read one by one, and the running model is updated, computing the cycle time for each completed
-           case. This cycle time is monitored using a traditional concept drift algorithm, namely an ADWIN.
-        4. If a change in the process cycle time is detected by the ADWIN, we analyze the causes leading to that change
+    The detection follows these steps:
+    1. A reference model is built using the first events from the log. This model will be used later as the ground
+       truth to check for the change causes.
+    2. A running model is defined, using the last events from the log. This is the model that will be checked for
+       changes.
+    3. Events are read one by one, and the running model is updated, computing the cycle time for each completed
+       case. This cycle time is monitored using a traditional concept drift algorithm, namely an *ADWIN*.
+    4. If a change in the process cycle time is detected by the *ADWIN*, the causes leading to that change are analyzed
 
-    :param log: the input event log containing start and finish timestamps for each event
-    :param timeframe_size: the size of the timeframe for the reference and drifting models
-    :param initial_activity: the first activity of the process/process fragment to be monitored
-    :param final_activity: the last activity of the process/process fragment to be monitored
-    :param alpha: the sensitivity for the statistical scripts
+    Parameters
+    ----------
+    * `log`:                *the input event log*
+    * `timeframe_size`:     *the size of the timeframe for the reference and drifting models*
+    * `initial_activity`:   *the first activity of the process/process fragment to be monitored*
+    * `final_activity`:     *the last activity of the process/process fragment to be monitored*
+    * `alpha`:              *the sensitivity for the statistical scripts*
+    * `filters`:            *a collection of filters that will be applied to the events before processing them*
 
-    :return: a list of events causing drift.
+    Returns
+    -------
+    * a list of events causing drift.
     """
     drifts = []
     drift_detector = ADWIN(delta=alpha)
@@ -56,6 +62,10 @@ def detect_drift(
 
     # Iterate over the events in the log
     for index, event in enumerate(log):
+        # Discard the event if it does not satisfy any of the conditions defined in the filters
+        if any(not flt(event) for flt in filters):
+            continue
+
         # Update the model with the new event
         case_duration_in_seconds = model.update(event=event)
 

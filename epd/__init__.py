@@ -151,13 +151,29 @@ epd is licensed under the Apache License, Version 2.0
 
 ## \N{snake} Using `epd` as a Python package
 Aside of providing an executable command, `epd` can be fully customized by using it as a Python package.
-If you use poetry you can install `edp` directly from GitHub:
+If you use poetry you can install `edp` directly from git:
 
 ```shell
-$> poetry
+$> poetry add "https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git"
 
 ```
 
+When using it as a package, the drift detection algorithm can be located at `epd.drift.detect_drift`.
+
+# How can I...?
+## ...read a log from different source than CSV or JSON?
+`epd` provides you with all the utilities needed to read CSV and JSON files in a performant way.
+However, we are aware that your logs may be in a different format. You may even want to read your logs from a database
+or message queue! Don't worry, we've got you covered. The representation we use for logs in epd is a simple `Iterator`
+object, so you can implement any data source you need, and as long as it returns an `Iterator` of `epd.model.Event`
+objects you shouldn't have any problems. As a reference, you can check the implementations from `epd.input.csv.read_csv_log`
+and `epd.input.json.read_json_log`, which are implemented using generators so the memory consumption is reduced.
+
+## ...check the performance for only a part of my process?
+In `epd` you can specify exactly which activities mark the start and the end of the subprocess that you want to monitor.
+To do that, you just have to specify your initial and final activities when calling `epd.drift.detect_drift`, and the
+algorithm will deal with the rest!
 """
 
 __all__ = ["drift", "input", "model"]
+__docformat__ = "markdown"

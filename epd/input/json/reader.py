@@ -10,13 +10,22 @@ def read_json_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_JSON_MA
     """
     Read an event log from a JSON file.
 
-    Reads an event log from a JSON file with an array of events, filter events without a resource assigned and sort
-    by end.
+    The file is expected to contain an array of events that will be mapped to `epd.model.Event` instances by applying
+    the provided `epd.input.Mapping` object.
+    The functon returns a Generator that yields the events from the log file one by one to optimize memory usage.
 
-    :param log_path: path to the CSV log file.
-    :param attribute_mapping: an object defining a mapping between CSV columns and event attributes.
+    Parameters
+    ----------
+    * `log_path`:           *the path to the JSON log file*
+    * `attribute_mapping`:  *an instance of `Mapping` defining a mapping between JSON fields and event attributes*.
 
-    :return: an iterator containing the events from the read file
+    Yields
+    ------
+    * the parsed events sorted by the `epd.model.Event.end` timestamp and transformed to instances of `epd.model.Event`
+
+    Returns
+    -------
+    * a collections.abc.Generator[epd.model.Event, None, None]` containing the events from the read file
     """
     # Read log
     with open(log_path) as file:
