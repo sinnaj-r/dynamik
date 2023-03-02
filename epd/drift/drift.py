@@ -12,8 +12,8 @@ from intervaltree import Interval, IntervalTree
 from river.drift import ADWIN
 from scipy.stats import cramervonmises_2samp as cramer_von_mises_test
 
+from epd.drift import Model
 from epd.model import Event
-from .model import Model
 
 
 def detect_drift(
