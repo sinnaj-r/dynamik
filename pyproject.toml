@@ -1,0 +1,67 @@
+[tool.poetry]
+name = "explainable-performance-drift"
+version = "0.1.0"
+description = "A package for detecting performance drifts in process models by analyzing event logs"
+license = "Apache-2.0"
+authors = ["Victor Gallego-Fontenla <victorjose.gallego@usc.gal>"]
+readme = "README.md"
+repository = "https://github.com"
+packages = [{ include = "epd" }]
+
+[tool.poetry.scripts]
+epd = "epd.runner:run"
+
+[tool.poetry.dependencies]
+python = "~3.10"
+pandas = "^1.5.3"
+numpy = "^1.24.2"
+river = "^0.15.0"
+scipy = "^1.10.1"
+intervaltree = "^3.1.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.253"
+taskipy = "^1.10.3"
+pdoc = "^13.0.0"
+
+[tool.taskipy.settings]
+use_vars = true
+
+[tool.taskipy.variables]
+docs_format = "markdown"
+docs_footer = "\"Explainable Performance Drift - v0.1.0\""
+docs_repository = "https://github.com"
+docs_logo = "https://pixy.org/src/233/thumbs350/2335017.jpg"
+
+[tool.taskipy.tasks.lint]
+cmd = "ruff check ."
+help = "lint the code using ruff"
+
+[tool.taskipy.tasks.docs]
+cmd = "pdoc epd -o docs -d {docs_format} --footer-text {docs_footer} -e edp={docs_repository} --logo {docs_logo} --math --no-show-source"
+help = "generate documentation"
+
+[tool.taskipy.tasks.live-docs]
+cmd = "pdoc epd -d {docs_format} --footer-text {docs_footer} -e edp={docs_repository} --logo {docs_logo} --math --no-show-source"
+help = "serve documentation in a live server and recompile it if a change is detected"
+
+[tool.ruff]
+select = [
+    "F", "E", "W", "C90", "I", "N", "D", "UP", "ANN", "FBT", "B", "A", "COM", "C4", "DTZ", "EXE",
+    "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
+    "PLE", "PLR", "PLW", "NPY", "RUF"
+]
+ignore = ["D203", "D212", "PLE1205", "B008"]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401", "D400", "D404", "D205", "E501"]
+"runner.py" = ["D103", "N811"]
+
+[tool.ruff.pylint]
+max-args = 6
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
