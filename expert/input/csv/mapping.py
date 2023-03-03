@@ -1,4 +1,4 @@
-from epd.input.mapping import Mapping
+from expert.input.mapping import Mapping
 
 DEFAULT_CSV_MAPPING: Mapping = Mapping(start="start", end="end", case="case", activity="activity", resource="resource")
 

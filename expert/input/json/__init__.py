@@ -1,6 +1,6 @@
 """
 This module contains everything needed for reading an event log from a JSON file and produce a
-`collections.abc.Generator[epd.model.Event, None, None]` that yields events one by one in order
+`collections.abc.Generator[expert.model.Event, None, None]` that yields events one by one in order
 to simulate an event stream.
 """
 

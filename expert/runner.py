@@ -4,8 +4,8 @@ import logging
 import sys
 from datetime import timedelta
 
-from epd.drift import detect_drift
-from epd.input import Mapping
+from expert.drift import detect_drift
+from expert.input import Mapping
 
 
 def __parse_arg() -> argparse.Namespace:
@@ -14,7 +14,7 @@ def __parse_arg() -> argparse.Namespace:
                        performance of a process execution. For this, the cycle time of the process is monitored, and, if
                        a change is detected in the process performance, the algorithm finds the actionable causes for
                        the change.""",
-        epilog="epd is licensed under the Apache License, Version 2.0",
+        epilog="expert is licensed under the Apache License, Version 2.0",
     )
 
     parser.add_argument("log_file", metavar="LOG_FILE", type=str, nargs=1, help="The event log, in CSV or JSON format")
@@ -27,7 +27,7 @@ def __parse_arg() -> argparse.Namespace:
     parser.add_argument("-a", "--alpha", metavar="ALPHA", type=float, nargs=1, default=0.05,
                         help="specify the confidence for the statistical tests")
     parser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="enable verbose output. High verbosity level can drastically decrease edp performance")
+                        help="enable verbose output. High verbosity level can drastically decrease expert performance")
 
     return parser.parse_args()
 
@@ -69,22 +69,22 @@ def run() -> None:
         __config_logger(logging.ERROR)
 
     if args.format == "csv":
-        from epd.input.csv import read_csv_log as parser
+        from expert.input.csv import read_csv_log as parser
         if args.mapping is None:
-            from epd.input.csv import DEFAULT_CSV_MAPPING as mapping
+            from expert.input.csv import DEFAULT_CSV_MAPPING as mapping
         else:
             mapping = __parse_mapping(args.mapping)
     elif args.format == "json":
-        from epd.input.json import read_json_log as parser
+        from expert.input.json import read_json_log as parser
         if args.mapping is None:
-            from epd.input.json import DEFAULT_JSON_MAPPING as mapping
+            from expert.input.json import DEFAULT_JSON_MAPPING as mapping
         else:
             mapping = __parse_mapping(args.mapping)
     else:
         logging.critical("Log file format is not supported!")
         sys.exit(-1)
 
-    print(f"applying epd drift detector to file {args.log_file}...")
+    print(f"applying expert drift detector to file {args.log_file}...")
 
     log = parser(
         args.log_file,

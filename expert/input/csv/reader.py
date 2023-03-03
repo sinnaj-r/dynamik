@@ -4,9 +4,9 @@ from collections.abc import Iterator
 import pandas as pd
 from river.stream import iter_pandas
 
-from epd.input import Mapping
-from epd.input.csv import DEFAULT_CSV_MAPPING
-from epd.model import Event
+from expert.input import Mapping
+from expert.model import Event
+from .mapping import DEFAULT_CSV_MAPPING
 
 
 def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPPING) -> Iterator[Event]:
@@ -14,22 +14,22 @@ def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPP
     Read an event log from a CSV file.
 
     The file is expected to contain a header row and an event per row.
-    Events will be mapped to `epd.model.Event` instances by applying the provided `epd.input.Mapping` object.
+    Events will be mapped to `expert.model.Event` instances by applying the provided `expert.input.Mapping` object.
     The functon returns a Generator that yields the events from the log file one by one to optimize memory usage.
 
     Parameters
     ----------
     * `log_path`:           *the path to the CSV log file*
-    * `attribute_mapping`:  *an instance of `epd.input.Mapping` defining a mapping between CSV columns and event attributes*.
+    * `attribute_mapping`:  *an instance of `expert.input.Mapping` defining a mapping between CSV columns and event attributes*.
 
     Yields
     ------
-    * the parsed events sorted by the `epd.model.Event.end`and `epd.model.Event.start` timestamps and transformed to
-      instances of `epd.model.Event`
+    * the parsed events sorted by the `expert.model.Event.end`and `expert.model.Event.start` timestamps and transformed to
+      instances of `expert.model.Event`
 
     Returns
     -------
-    * a `collections.abc.Generator[epd.model.Event, None, None]` containing the events from the read file
+    * a `collections.abc.Generator[expert.model.Event, None, None]` containing the events from the read file
     """
     # Read log
     event_log = pd.read_csv(log_path, skipinitialspace=True)

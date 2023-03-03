@@ -1,4 +1,4 @@
-from epd.model import Event
+from expert.model import Event
 
 
 def always_true(_: Event) -> bool:
@@ -9,7 +9,7 @@ def always_false(_: Event) -> bool:
     return False
 
 
-def has_resource(evt: Event) -> bool:
+def has_any_resource(evt: Event) -> bool:
     return evt.resource is not None
 
 

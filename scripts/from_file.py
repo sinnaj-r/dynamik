@@ -4,8 +4,8 @@ import itertools
 from datetime import timedelta
 
 import scripts.logger_config as logger
-from epd import drift
-from epd.input.csv import DEFAULT_APROMORE_CSV_MAPPING, read_csv_log
+from expert import drift
+from expert.input.csv import DEFAULT_APROMORE_CSV_MAPPING, read_csv_log
 
 if __name__ == '__main__':
     logger.config_console()

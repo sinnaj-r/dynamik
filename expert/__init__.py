@@ -1,7 +1,7 @@
 u"""
-# What is `epd`?
+# What is `expert`?
 
-```epd``` stands for ***Explainable Performance Drift***, an algorithm for detecting changes in the cycle time of a
+```expert``` stands for ***explainable performance drift***, an algorithm for detecting changes in the cycle time of a
 process execution and, if present, to provide insights about the actionable causes of the change.
 
 You can find more details about the algorithm in the following article \N{notebook}:
@@ -58,10 +58,10 @@ You can find more details about the algorithm in the following article \N{notebo
 
 
 # Quickstart
-`epd` is designed to be executed using an event log as it's input, processing it sequentially, event by event, mimicking
+`expert` is designed to be executed using an event log as it's input, processing it sequentially, event by event, mimicking
 an online environment where events are consumed from an event stream.
 
-## \N{Old Personal Computer} Running `epd` from the CLI
+## \N{Old Personal Computer} Running `expert` from the CLI
 To run the algorithm in your command line, you need an event log in CSV or JSON format.
 
 If in CSV, the file is expected to have a headers row which is followed by a row per event:
@@ -100,11 +100,11 @@ In the case of a JSON file, an array of objects is expected, where each object c
 
 If your log files have any of these formats you can run `edm` specifying the log format via the option `--format`:
 ```shell
-$> edp ./log.csv --format csv
+$> expert ./log.csv --format csv
 ```
 or
 ```shell
-$> edp ./log.json --format json
+$> expert ./log.json --format json
 ```
 
 If you need a different mapping for processing your log files, you can specify it using a JSON file:
@@ -117,15 +117,15 @@ If you need a different mapping for processing your log files, you can specify i
     "end": <your end time attribute name>
 }
 ```
-Then, you can then run `epd` with the option `--mapping MAPPING_FILE` to use your custom mapping:
+Then, you can then run `expert` with the option `--mapping MAPPING_FILE` to use your custom mapping:
 ```shell
-$> edp ./log.csv --format csv --mapping ./my_custom_mapping.json
+$> expert ./log.csv --format csv --mapping ./my_custom_mapping.json
 ```
-Run `epd --help` to check the additional options:
+Run `expert --help` to check the additional options:
 ```
-edp --help
+expert --help
 
-usage: epd [-h] [-f FORMAT] [-m MAPPING_FILE] [-t TIMEFRAME] [-a ALPHA] [-v] LOG_FILE
+usage: expert [-h] [-f FORMAT] [-m MAPPING_FILE] [-t TIMEFRAME] [-a ALPHA] [-v] LOG_FILE
 
 Explainable Performance Drift is an algorithm for finding actionable causes for drifts in the
 performance of a process execution. For this, the cycle time of the process is monitored, and,
@@ -143,35 +143,35 @@ options:
                                               to define the reference and running models.
   -a ALPHA, --alpha ALPHA                     specify the confidence for the statistical tests
   -v, --verbose                               enable verbose output. High verbosity level can
-                                              drastically decrease edp performance
+                                              drastically decrease expert performance
 
-epd is licensed under the Apache License, Version 2.0
+expert is licensed under the Apache License, Version 2.0
 
 ```
 
-## \N{snake} Using `epd` as a Python package
-Aside of providing an executable command, `epd` can be fully customized by using it as a Python package.
-If you use poetry you can install `edp` directly from git:
+## \N{snake} Using `expert` as a Python package
+Aside of providing an executable command, `expert` can be fully customized by using it as a Python package.
+If you use poetry you can install `expert` directly from git:
 
 ```shell
 $> poetry add "https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git"
 
 ```
 
-When using it as a package, the drift detection algorithm can be located at `epd.drift.detect_drift`.
+When using it as a package, the drift detection algorithm can be located at `expert.drift.detect_drift`.
 
 # How can I...?
 ## ...read a log from different source than CSV or JSON?
-`epd` provides you with all the utilities needed to read CSV and JSON files in a performant way.
+`expert` provides you with all the utilities needed to read CSV and JSON files in a performant way.
 However, we are aware that your logs may be in a different format. You may even want to read your logs from a database
-or message queue! Don't worry, we've got you covered. The representation we use for logs in epd is a simple `Iterator`
-object, so you can implement any data source you need, and as long as it returns an `Iterator` of `epd.model.Event`
-objects you shouldn't have any problems. As a reference, you can check the implementations from `epd.input.csv.read_csv_log`
-and `epd.input.json.read_json_log`, which are implemented using generators so the memory consumption is reduced.
+or message queue! Don't worry, we've got you covered. The representation we use for logs in expert is a simple `Iterator`
+object, so you can implement any data source you need, and as long as it returns an `Iterator` of `expert.model.Event`
+objects you shouldn't have any problems. As a reference, you can check the implementations from `expert.input.csv.read_csv_log`
+and `expert.input.json.read_json_log`, which are implemented using generators so the memory consumption is reduced.
 
 ## ...check the performance for only a part of my process?
-In `epd` you can specify exactly which activities mark the start and the end of the subprocess that you want to monitor.
-To do that, you just have to specify your initial and final activities when calling `epd.drift.detect_drift`, and the
+In `expert` you can specify exactly which activities mark the start and the end of the subprocess that you want to monitor.
+To do that, you just have to specify your initial and final activities when calling `expert.drift.detect_drift`, and the
 algorithm will deal with the rest!
 """
 

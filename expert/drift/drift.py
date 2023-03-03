@@ -12,8 +12,8 @@ from intervaltree import Interval, IntervalTree
 from river.drift import ADWIN
 from scipy.stats import cramervonmises_2samp as cramer_von_mises_test
 
-from epd.drift import Model
-from epd.model import Event
+from expert.model import Event
+from .model import DriftModel
 
 
 def detect_drift(
@@ -54,7 +54,7 @@ def detect_drift(
     drift_detector = ADWIN(delta=alpha)
 
     # Create the model with the given parameters
-    model = Model(
+    model = DriftModel(
         timeframe_size=timeframe_size,
         initial_activity=initial_activity,
         final_activity=final_activity,
@@ -78,7 +78,7 @@ def detect_drift(
             drifts.append(event)
             logging.info("drift detected at event %(index)d: %(event)r", {"index": index, "event": event})
             # Find causality for the change in the cycle time
-            find_causality(model, timeframe_size, alpha=alpha)
+            explain_drift(model, timeframe_size, alpha=alpha)
             # Reset models
             return drifts
 
@@ -89,13 +89,18 @@ def compute_arrival_rate(log: Iterable[Event], timeunit: timedelta = timedelta(m
     """
     Compute the arrival rate for each activity in the log.
 
-    Computes the arrival rate for each activity in the given log. To compute the arrival rate the events are grouped by
-    its activity name and then the count of events per activity are divided by the complete log timeframe and the
-    timeunit, so the result is a dictionary with pairs (activity, mean arrivals per time unit)
+    To compute the arrival rate the events are grouped by its activity name and then the count of events per activity
+    are divided by the complete log timeframe and the given timeunit, so the result is a dictionary with pairs
+    (activity, mean arrivals per time unit).
 
-    :param log: an event log
-    :param timeunit: the granularity used to compute the arrival rates
-    :return: a dictionary with pairs (activity, arrival rate)
+    Parameters
+    ----------
+    * `log`:        *an event log*
+    * `timeunit`:   *the granularity used to compute the arrival rate*
+
+    Returns
+    -------
+    * a dictionary with pairs (`activity`, `arrival rate`)
     """
     # Transform the event insatances to dictionaries and build a new dataframe with them
     df_events = pd.DataFrame(evt.__dict__ for evt in log)
@@ -116,19 +121,24 @@ def compute_arrival_rate(log: Iterable[Event], timeunit: timedelta = timedelta(m
     return activity_rates
 
 
-def compute_resources_usage(log: Iterable[Event], timeunit: timedelta) -> dict[str, float]:
+def compute_resources_utilization_rate(log: Iterable[Event],
+                                       timeunit: timedelta = timedelta(minutes=1)) -> dict[str, float]:
     """
-    Compute the mean resource usage for each resource in the event log.
+    Compute the mean resource utilization for each resource in the event log.
 
-    Computes the resources utilization rate for each resource present in the given event log. To perform this
-    computation, the log timeframe is split in slots of size `timeunit` and, for each of these slots, the percentage of
-    occupation is computed by intersecting it with the events executed by each resource. Finally, the utilization rate
-    for each resource is computed with the mean of the resource utilization for every time slot.
+    To perform this computation, the log timeframe is split in slots of size `timeunit` and, for each of these slots,
+    the rate of occupation is computed by intersecting it with the events executed by each resource. Finally, the mean
+    utilization rate for each resource is computed with the mean of the resource utilization for every time slot.
 
-    :param log: an event log with resources information
-    :param timeunit: the granularity used to compute resources usage
-    :return: a dictionary with pairs resource->usage, where usage is in the range [0.0, 1.0], being 0.0 no activity at
-             all and 1.0 a fully used resource
+    Parameters
+    ----------
+    * `log`:        *an event log*
+    * `timeunit`:   *the granularity used to compute the resources utilization rate
+
+    Returns
+    -------
+    * a dictionary with pairs (`resource`, `utilization`) where usage is in the range [0.0, 1.0], being 0.0 no activity
+      at all and 1.0 a fully used resource
     """
     timeunit = timeunit if timeunit is not None else timedelta(minutes=1)
 
@@ -176,19 +186,23 @@ def compute_resources_usage(log: Iterable[Event], timeunit: timedelta) -> dict[s
     return resources_occupancy
 
 
-def check_arrival_rate(model: Model, timeframe: timedelta, *, alpha: float = 0.05) -> bool:
+def check_arrival_rate(model: DriftModel, timeframe: timedelta, *, alpha: float = 0.05) -> bool:
     """
     Check whether the arrival rate for the activities did change between the reference and the running model.
 
-    Checks if there has been a change in the arrival rate per activity between two snapshots of
-    the log in two different moments. To check if there is a change, the distribution of arrival
-    rates are compared using a Cramer von Mises statistical test. A change is detected if the
-    p-value for comparing if the two distributions are the same falls below alpha.
+    To check if there is a statistically significant change, the distribution of arrival rates are compared using a
+    Cramer von Mises statistical test. A change is detected if the p-value for comparing if the two distributions are
+    the same falls below the `alpha` value.
 
-    :param model: the model containing the two snapshots of the process log
-    :param timeframe: the granularity for checking the arrival rate of the activities
-    :param alpha: the threshold for the statistical test
-    :return: a boolean indicating whether the model contains a change or not
+    Parameters
+    ----------
+    * `model`:      *a drift model containing the sublogs being compared*
+    * `timeunit`:   *the granularity for checking the arrival rate of the activities*
+    * `alpha`:      *the significance value for the statistical test*
+
+    Returns
+    -------
+    * a boolean indicating whether the model presents a change in the arrival rates
     """
     # Compute the arrival rate for the reference and the running models
     reference_arrival_rate = compute_arrival_rate(model.reference_model, timeframe)
@@ -208,41 +222,46 @@ def check_arrival_rate(model: Model, timeframe: timedelta, *, alpha: float = 0.0
     return test_result.pvalue <= alpha
 
 
-def check_resources_usage(model: Model, timeframe: timedelta, *, alpha: float = 0.05) -> bool:
+def check_resources_utilization(model: DriftModel, timeframe: timedelta, *, alpha: float = 0.05) -> bool:
     """
-    Check whether the resource usage did change between the reference and the running model.
+    Check whether the resource utilization rates did change between the reference and the running model.
 
-    Checks if there has been any change in the resources utilization between two snapshots of the log.
     To perform this checking, the average utilization rate per resource is computed for both the reference and
-    the running models, and the distributions of utilization rates are compared using a Cramer von Mises test.
-    A change in the distributions is detected when the p-value for the test falls below the given threshold alpha.
+    the running models, and the distributions of utilization rates are compared using a statistical test.
+    A change in the distributions is detected when the p-value for the test falls below the given threshold `alpha`.
 
-    :param model: the model containing the two snapshots of the process log
-    :param timeframe: the granularity for computing the resource usage rate
-    :param alpha: the threshold for the statistical test
-    :return: a boolean indicating whether the model contains a change or not
+    Parameters
+    ----------
+    * `model`:      *a drift model containing the sublogs being compared*
+    * `timeunit`:   *the granularity for computing the resource utilization rate*
+    * `alpha`:      *the significance value for the statistical test*
+
+    Returns
+    -------
+    * a boolean indicating whether the model presents a change in the resources utilization rates or not
     """
-    # Compute the resource usage for the reference and the running models
-    reference_resources_usage = compute_resources_usage(model.reference_model, timeframe)
-    running_resources_usage = compute_resources_usage(model.running_model, timeframe)
+    # Compute the resource utilization for the reference and the running models
+    reference_resources_utilization = compute_resources_utilization_rate(model.reference_model, timeframe)
+    running_resources_utilization = compute_resources_utilization_rate(model.running_model, timeframe)
 
     # Perform the statistical test to look for changes
-    test_result = cramer_von_mises_test(list(running_resources_usage.values()),
-                                        list(reference_resources_usage.values()))
+    test_result = cramer_von_mises_test(list(reference_resources_utilization.values()),
+                                        list(running_resources_utilization.values()))
 
-    logging.debug("reference resource utilization: %(reference_usage)r", {"reference_usage": reference_resources_usage})
-    logging.debug("running resource utilization: %(running_usage)r", {"running_usage": running_resources_usage})
+    logging.debug("reference resource utilization: %(reference_usage)r",
+                  {"reference_usage": reference_resources_utilization})
+    logging.debug("running resource utilization: %(running_usage)r", {"running_usage": running_resources_utilization})
     logging.debug("test result for resources utilization rates: %(pvalue)f", {"pvalue": test_result.pvalue})
 
-    print(f"Reference resource usage: {reference_resources_usage!r}")
-    print(f"Running resource usage: {running_resources_usage!r}")
+    print(f"Reference resource usage: {reference_resources_utilization!r}")
+    print(f"Running resource usage: {running_resources_utilization!r}")
 
     return test_result.pvalue < alpha
 
 
-def find_causality(model: Model, timeframe: timedelta, *, alpha: float = 0.005) -> None:
+def explain_drift(model: DriftModel, timeframe: timedelta, *, alpha: float = 0.005) -> None:
     arrival_rate_changed = check_arrival_rate(model, timeframe, alpha=alpha)
-    resources_usage_changed = check_resources_usage(model, timedelta(days=5), alpha=alpha)
+    resources_usage_changed = check_resources_utilization(model, timedelta(days=5), alpha=alpha)
 
     print(f"Arrival rate changed: {arrival_rate_changed}")
     print(f"Resources usage changed: {resources_usage_changed}")

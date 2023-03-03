@@ -5,12 +5,12 @@ import logging
 import typing
 from dataclasses import dataclass
 
-from epd.model import Event
+from expert.model import Event
 
 
 @dataclass
 class Mapping:
-    """Define the mapping between a dictionary-like object and Event attributes."""
+    """Defines the mapping between a dictionary-like object and Event attributes."""
 
     start: str
     """The attribute from the log file containing the event start timestamp"""
@@ -50,7 +50,7 @@ class Mapping:
 
     def dict_to_event(self: Mapping, source: dict[str, typing.Any] | collections.abc.Mapping[str, typing.Any]) -> Event:
         """
-        Create an `epd.model.Event` instance from a source *dictionary-like* object applying the current mapping.
+        Create an `expert.model.Event` instance from a source *dictionary-like* object applying the current mapping.
 
         Parameters
         ----------
@@ -58,7 +58,7 @@ class Mapping:
 
         Returns
         -------
-        * the `epd.model.Event` instance resulting from applying this mapping to the *dictionary-like* source
+        * the `expert.model.Event` instance resulting from applying this mapping to the *dictionary-like* source
         """
         instance = Event(
             case=source[self.case],
