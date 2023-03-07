@@ -56,7 +56,7 @@ case,                   start,                     end,   activity,        resou
 7897, 2023-03-01T08:53:41.167, 2023-03-01T08:56:46.299, Activity 2, resource-000007
 7897, 2023-03-01T08:56:46.299, 2023-03-01T09:12:49.468, Activity 3, resource-000018
 7897, 2023-03-01T09:12:49.468, 2023-03-01T09:12:49.468,        END, resource-000001
-  ...                      ...                      ...         ...             ...
+ ...                      ...                      ...         ...             ...
 ```
 
 In the case of a JSON file, an array of objects is expected, where each object contains an event:
@@ -65,16 +65,16 @@ In the case of a JSON file, an array of objects is expected, where each object c
 [
     {
         "case": "2182", "activity": "Activity 3", "resource": "resource-000001",
-        "start: "2023-02-24T05:28:00.843", "end": "2023-02-24T05:28:00.843"
+        "start": "2023-02-24T05:28:00.843", "end": "2023-02-24T05:28:00.843"
     },
     {
         "case": "2182", "activity": "Activity 1", "resource": "resource-000044",
-        "start: "2023-02-24T05:28:00.843", "end": "2023-02-24T05:34:31.219"
+        "start": "2023-02-24T05:28:00.843", "end": "2023-02-24T05:34:31.219"
     },
     {
         "case": "2182", "activity": "Activity 2", "resource": "resource-000024",
-        "start: "2023-02-24T05:34:31.219", "end": "2023-02-24T05:47:25.817"
-    }
+        "start": "2023-02-24T05:34:31.219", "end": "2023-02-24T05:47:25.817"
+    },
     ...
 ]
 ```
@@ -95,11 +95,11 @@ If you need a different mapping for processing your log files, you can specify i
 
 ```json
 {
-    "case": <your case attribute name>,
-    "activity": <your activity attribute name>,
-    "resource": <your resource attribute name>,
-    "start": <your start time attribute name>,
-    "end": <your end time attribute name>
+    "case": "<your case attribute name>",
+    "activity": "<your activity attribute name>",
+    "resource": "<your resource attribute name>",
+    "start": "<your start time attribute name>",
+    "end": "<your end time attribute name>"
 }
 ```
 
