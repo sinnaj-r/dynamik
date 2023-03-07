@@ -1,3 +1,3 @@
-from runner import run
+from .__runner import run
 
 run()

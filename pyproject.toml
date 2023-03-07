@@ -9,7 +9,7 @@ repository = "https://gitlab.citius.usc.es/ProcessMining/explainable-performance
 packages = [{ include = "expert" }]
 
 [tool.poetry.scripts]
-expert = "expert.runner:run"
+expert = "expert.__runner:run"
 
 [tool.poetry.dependencies]
 python = "~3.10"
@@ -22,27 +22,18 @@ intervaltree = "^3.1.0"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.253"
 taskipy = "^1.10.3"
-pdoc = "^13.0.0"
-
-[tool.taskipy.settings]
-use_vars = true
-
-[tool.taskipy.variables]
-docs_format = "markdown"
-docs_footer = "\"Explainable Performance Drift - v0.1.0\""
-docs_repository = "\"https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git\""
-docs_logo = "https://pixy.org/src/233/thumbs350/2335017.jpg"
+pdoc3 = "^0.10.0"
 
 [tool.taskipy.tasks.lint]
 cmd = "ruff check ."
 help = "lint the code using ruff"
 
 [tool.taskipy.tasks.docs]
-cmd = "pdoc expert -o docs -d {docs_format} --footer-text {docs_footer} -e expert={docs_repository} --logo {docs_logo} --math --no-show-source"
-help = "generate documentation"
+cmd = "pdoc --html --output-dir html expert --config show_source_code=False --force"
+help = "generate documentation in HTML format"
 
 [tool.taskipy.tasks.live-docs]
-cmd = "pdoc expert -d {docs_format} --footer-text {docs_footer} -e expert={docs_repository} --logo {docs_logo} --math --no-show-source"
+cmd = "pdoc --http : expert --config show_source_code=False"
 help = "serve documentation in a live server and recompile it if a change is detected"
 
 [tool.ruff]
@@ -51,13 +42,13 @@ select = [
     "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
     "PLE", "PLR", "PLW", "NPY", "RUF"
 ]
-ignore = ["D203", "D212", "PLE1205", "B008", "D400", "D403", "D415", "D417"]
+ignore = ["D203", "D212", "PLE1205", "B008", "D400", "D403", "D415", "D417", "D404", "D205"]
 line-length = 120
 target-version = "py310"
 
 [tool.ruff.per-file-ignores]
-"__init__.py" = ["F401", "D400", "D404", "D205", "E501"]
-"runner.py" = ["D103", "N811"]
+"__init__.py" = ["F401", "D400",  "E501"]
+"__runner.py" = ["D103", "N811"]
 
 [tool.ruff.pylint]
 max-args = 6

@@ -1,15 +1,28 @@
+"""
+This module contains everything needed for reading an event log from a CSV file and produce a
+`collections.abc.Generator[expert.model.Event, None, None]` that yields events one by one in order
+to simulate an event stream.
+"""
+from __future__ import annotations
+
 import logging
 from collections.abc import Iterator
 
+import numpy as np
 import pandas as pd
 from river.stream import iter_pandas
 
 from expert.input import Mapping
 from expert.model import Event
-from .mapping import DEFAULT_CSV_MAPPING
 
+DEFAULT_CSV_MAPPING: Mapping = Mapping(start="start", end="end", case="case", activity="activity", resource="resource")
 
-def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPPING) -> Iterator[Event]:
+DEFAULT_APROMORE_CSV_MAPPING: Mapping = Mapping(start="start_time", end="end_time", case="case_id",
+                                                activity="Activity", resource="Resource")
+
+def read_csv_log(log_path: str, *,
+                 attribute_mapping: Mapping = DEFAULT_CSV_MAPPING,
+                 case_prefix: str = "") -> Iterator[Event]:
     """
     Read an event log from a CSV file.
 
@@ -21,6 +34,7 @@ def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPP
     ----------
     * `log_path`:           *the path to the CSV log file*
     * `attribute_mapping`:  *an instance of `expert.input.Mapping` defining a mapping between CSV columns and event attributes*.
+    * `case_prefix`:        *a prefix that will be prepended to every case ID on the log*
 
     Yields
     ------
@@ -34,8 +48,8 @@ def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPP
     # Read log
     event_log = pd.read_csv(log_path, skipinitialspace=True)
 
-    # Force case identifier to be a string
-    event_log[attribute_mapping.case] = event_log[attribute_mapping.case].astype(str)
+    # Force case identifier to be a string and add prefix
+    event_log[attribute_mapping.case] = str(case_prefix) + event_log[attribute_mapping.case].astype(str)
 
     # Convert timestamp value to pd.Timestamp, setting timezone to UTC
     event_log[attribute_mapping.start] = pd.to_datetime(event_log[attribute_mapping.start], utc=True)
@@ -43,6 +57,9 @@ def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPP
 
     # Sort events
     event_log = event_log.sort_values([attribute_mapping.end, attribute_mapping.start])
+
+    # Replace missing values with None
+    event_log = event_log.replace(np.nan, None)
 
     # Print some debugging information about the parsed log
     logging.debug('parsed log from %(log_path)s:', {'log_path': log_path})
@@ -59,4 +76,4 @@ def read_csv_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_CSV_MAPP
                    'end': event_log[attribute_mapping.end].max()})
 
     # Yield parsed events
-    yield from (attribute_mapping.dict_to_event(event_dict) for event_dict, _ in iter_pandas(event_log))
+    yield from (attribute_mapping.dict_to_event(evt) for evt, _ in iter_pandas(event_log))

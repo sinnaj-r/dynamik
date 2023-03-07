@@ -44,7 +44,7 @@ To run the algorithm in your command line, you need an event log in CSV or JSON 
 
 If in CSV, the file is expected to have a headers row which is followed by a row per event:
 
-```
+```csv
 case,                   start,                     end,   activity,        resource
 2182, 2023-02-24T05:28:00.843, 2023-02-24T05:28:00.843,      START, resource-000001
 2182, 2023-02-24T05:28:00.843, 2023-02-24T05:34:31.219, Activity 1, resource-000044
@@ -61,7 +61,7 @@ case,                   start,                     end,   activity,        resou
 
 In the case of a JSON file, an array of objects is expected, where each object contains an event:
 
-```
+```json
 [
     {
         "case": "2182", "activity": "Activity 3", "resource": "resource-000001",
@@ -93,7 +93,7 @@ $> expert ./log.json --format json
 
 If you need a different mapping for processing your log files, you can specify it using a JSON file:
 
-```
+```json
 {
     "case": <your case attribute name>,
     "activity": <your activity attribute name>,
@@ -111,8 +111,8 @@ $> expert ./log.csv --format csv --mapping ./my_custom_mapping.json
 
 Run `expert --help` to check the additional options:
 
-```
-expert --help
+```shell
+$> expert --help
 
 usage: expert [-h] [-f FORMAT] [-m MAPPING_FILE] [-t TIMEFRAME] [-a ALPHA] [-v] LOG_FILE
 
@@ -169,3 +169,12 @@ In `expert` you can specify exactly which activities mark the start and the end 
 monitor.
 To do that, you just have to specify your initial and final activities when calling `expert.drift.detect_drift`, and the
 algorithm will deal with the rest!
+
+## ...filter some of my events?
+
+When using `expert` as a Python package, you can provide some filters to the `expert.drift.detect_drift` method.
+By default, `expert` provides you some filters that can be used, like filtering all events without an assigned resource
+or those whose duration is 0.
+You can extend this and implement any filter you need. The signature for the filtering functions receives an event
+instance and must return a boolean indicating if that event should be kept or discarded.
+In CLI mode the filters are not available, so you will have to preprocess your log files before using `expert`.

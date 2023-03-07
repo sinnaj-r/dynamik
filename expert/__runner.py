@@ -10,10 +10,10 @@ from expert.input import Mapping
 
 def __parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="""Explainable Performance Drift is an algorithm for finding actionable causes for drifts in the
-                       performance of a process execution. For this, the cycle time of the process is monitored, and, if
-                       a change is detected in the process performance, the algorithm finds the actionable causes for
-                       the change.""",
+        description="""expert (Explainable Performance Drift) is an algorithm for finding actionable causes for drifts
+                       in the performance of a process execution. For this, the cycle time of the process is monitored,
+                       and, if a change is detected in the process performance, the algorithm finds the actionable
+                       causes for the change.""",
         epilog="expert is licensed under the Apache License, Version 2.0",
     )
 
@@ -59,9 +59,7 @@ __INFO = 1
 def run() -> None:
     args = __parse_arg()
 
-    print(args.verbose)
-
-    if args.verbose == __DEBUG:
+    if args.verbose >= __DEBUG:
         __config_logger(logging.DEBUG)
     elif args.verbose == __INFO:
         __config_logger(logging.INFO)
@@ -91,13 +89,10 @@ def run() -> None:
         attribute_mapping=mapping,
     )
 
-    drifts = detect_drift(
+    detect_drift(
         log=log,
         timeframe_size=timedelta(days=args.timeframe),
         alpha=args.alpha,
     )
 
     print("drift detection finished!")
-    print("detection result:")
-    for drift in drifts:
-        print(f"\t-{drift}")
