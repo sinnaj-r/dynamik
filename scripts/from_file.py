@@ -14,11 +14,11 @@ if __name__ == '__main__':
 
     logger.config_console()
     files = ["../data/Sequence - Normal times 1.csv", "../data/Sequence - Normal times 2.csv"]
-    log = itertools.chain(*(read_csv_log(
+    log = (event for event in  itertools.chain(*(read_csv_log(
         file,
         attribute_mapping=DEFAULT_APROMORE_CSV_MAPPING,
         case_prefix=file,
-    ) for file in files))
+    ) for file in files)))
 
     drifts = drift.detect_drift(
         log=log,

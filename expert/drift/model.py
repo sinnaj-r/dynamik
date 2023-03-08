@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Mapping
+import typing
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import dropwhile
-from typing import Generic, TypeVar
 
 from expert.model import Event
 from expert.utils import compute_case_duration, compute_enablement_timestamps
@@ -24,7 +23,7 @@ class Model:
     __running_model: list[Event] = []
 
     def __init__(
-            self: Model,
+            self: typing.Self,
             timeframe_size: timedelta | None = None,
             *,
             initial_activity: str = 'START',
@@ -44,20 +43,20 @@ class Model:
         self.__final_activity = final_activity
 
     @property
-    def reference_model(self: Model) -> Iterable[Event]:
-        """the list of events that are used as a reference model against which changes are checked"""
+    def reference_model(self: typing.Self) -> typing.Iterable[Event]:
+        """The list of events that are used as a reference model against which changes are checked"""
         return compute_enablement_timestamps(list(self.__reference_model))
 
     @property
-    def running_model(self: Model) -> Iterable[Event]:
-        """the list of events used as the running model being checked for changes"""
+    def running_model(self: typing.Self) -> typing.Iterable[Event]:
+        """The list of events used as the running model being checked for changes"""
         return compute_enablement_timestamps(list(self.__running_model))
 
-    def __is_case_complete(self: Model, case: str) -> bool:
+    def __is_case_complete(self: typing.Self, case: str) -> bool:
         # Check if the case is complete by looking at its last activity
         return self.__cases[case][-1].activity == self.__final_activity
 
-    def __update_cases(self: Model, event: Event) -> None:
+    def __update_cases(self: typing.Self, event: Event) -> None:
         # Add the event to the collection of running cases if the case exists...
         if (event.case in self.__cases) and (self.__cases[event.case][-1].activity != self.__final_activity):
             logging.debug('event %(event)r added to case %(case)s',
@@ -71,7 +70,7 @@ class Model:
         else:
             logging.debug('event %(event)r ignored', {'event': event})
 
-    def __update_reference_model(self: Model, event: Event) -> None:
+    def __update_reference_model(self: typing.Self, event: Event) -> None:
         # Initialize the reference model time limits if they are not initialized
         if self.__reference_model_start is None:
             self.__reference_model_start = event.start
@@ -80,7 +79,7 @@ class Model:
         if self.__reference_model_start <= event.start and event.end <= self.__reference_model_end:
             self.__reference_model.append(event)
 
-    def __update_running_model(self: Model, event: Event) -> None:
+    def __update_running_model(self: typing.Self, event: Event) -> None:
         # Add the new event to the running model
         self.__running_model.append(event)
         # Remove the events that are out of the reference model time limits
@@ -88,7 +87,7 @@ class Model:
             dropwhile(lambda evt: evt.start < (event.end - self.__timeframe_size), self.__running_model),
         )
 
-    def update(self: Model, event: Event) -> float | None:
+    def update(self: typing.Self, event: Event) -> float | None:
         """
         Update the model with a new event.
 
@@ -119,7 +118,7 @@ class Model:
 
         return None
 
-    def reset(self: Model) -> None:
+    def reset(self: typing.Self) -> None:
         """Reset the model forgetting all accumulated knowledge."""
         self.__cases = {}
         self.__reference_model = []
@@ -128,21 +127,34 @@ class Model:
         self.__running_model = []
 
 
+T = typing.TypeVar("T")
+
+@dataclass
+class Pair(typing.Generic[T]):
+    """A class representing a pair of T objects, one for the reference and one for the running model."""
+
+    reference: T
+    """The value associated to the reference model"""
+    running: T
+    """The value associated to the running model"""
+
+
 @dataclass
 class Result:
-    """TODO"""
+    """
+    The result of a concept drift detection.
 
-    model: ReferenceRunning[Iterable[Event]]
-    arrival_rate: ReferenceRunning[dict[str, float] | Mapping[str, float]]
-    resource_utilization_rate: ReferenceRunning[dict[str, float] | Mapping[str, float]]
+    It contains the corresponding running and reference collections of events, the computed arrival rates for each
+    activity, the resource utilization rates, the mean waiting times...
+    """
+
+    model: Pair[typing.Iterable[Event]]
+    """The pair of collections of events used as the reference and running models"""
+    arrival_rate: Pair[typing.Mapping[str, float]]
+    """The arrival rate for each activity for the running and the reference models"""
+    resource_utilization_rate: Pair[typing.Mapping[str, float]]
+    """The utilization rate for each resource for the running and the reference models"""
+    waiting_time: Pair[typing.Mapping[str, float]]
+    """The mean waiting time for each activity for the running and the reference models"""
 
 
-__T = TypeVar("__T")
-
-
-@dataclass
-class ReferenceRunning(Generic[__T]):
-    """TODO"""
-
-    reference: __T
-    running: __T

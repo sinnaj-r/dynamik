@@ -5,7 +5,7 @@ import sys
 from datetime import timedelta
 
 from expert.drift import detect_drift
-from expert.input import Mapping
+from expert.input import EventMapping
 
 
 def __parse_arg() -> argparse.Namespace:
@@ -40,10 +40,10 @@ def __config_logger(level: int = logging.INFO) -> None:
     )
 
 
-def __parse_mapping(path: str) -> Mapping:
+def __parse_mapping(path: str) -> EventMapping:
     with open(path) as file:
         source = json.load(file)
-    return Mapping(
+    return EventMapping(
         start=source["start"],
         end=source["end"],
         resource=source["resource"],

@@ -1,7 +1,7 @@
 """This module contains the definition of a model for the events from an event log."""
-
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -29,16 +29,16 @@ class Event:
     """The time when the activity was made available for execution"""
 
     @property
-    def execution_time(self: Event) -> timedelta:
+    def execution_time(self: typing.Self) -> timedelta:
         """The execution time elapsed between the event start end the event finalization"""
         return self.end - self.start
 
     @property
-    def waiting_time(self: Event) -> timedelta:
+    def waiting_time(self: typing.Self) -> timedelta:
         """The waiting time between the activity enablement and the beginning of its execution"""
         return self.start - self.enabled
 
     @property
-    def total_time(self: Event) -> timedelta:
+    def total_time(self: typing.Self) -> timedelta:
         """The total event time, between its enablement and the finalization of the execution"""
         return self.waiting_time + self.execution_time

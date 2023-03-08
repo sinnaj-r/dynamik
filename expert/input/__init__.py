@@ -1,11 +1,11 @@
 """
 This module contains the definitions for reading the logs later used by the drift detection algorithm.
+
 A specific implementation for parsing CSV files from apromore is included.
 All log parsers are expected to return an iterator, which will be used later by the detection algorithm.
 """
 from __future__ import annotations
 
-import collections.abc
 import logging
 import typing
 from dataclasses import dataclass
@@ -14,7 +14,7 @@ from expert.model import Event
 
 
 @dataclass
-class Mapping:
+class EventMapping:
     """Defines the mapping between a dictionary-like object and Event attributes."""
 
     start: str
@@ -30,7 +30,7 @@ class Mapping:
     enablement: str | None = None
     """The attribute from the log file containing the event enablement timestamp"""
 
-    def dict_to_event(self: Mapping, source: dict[str, typing.Any] | collections.abc.Mapping[str, typing.Any]) -> Event:
+    def dict_to_event(self: typing.Self, source: typing.Mapping[str, typing.Any]) -> Event:
         """
         Create an `expert.model.Event` instance from a source *dictionary-like* object applying the current mapping.
 

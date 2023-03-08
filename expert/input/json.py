@@ -1,20 +1,20 @@
 """
-This module contains everything needed for reading an event log from a JSON file and produce a
-`collections.abc.Generator[expert.model.Event, None, None]` that yields events one by one in order
-to simulate an event stream.
+This module contains everything needed for reading an event log from a JSON file.
+
+The log is read and objects transformed `expert.model.Event` instances that are yield by a
+`typing.Generator[expert.model.Event, None, None]` that simulates an event stream where events can be consumed only
+once.
 """
-from __future__ import annotations
-
 import json
-from collections.abc import Iterator
+import typing
 
-from expert.input import Mapping
+from expert.input import EventMapping
 from expert.model import Event
-from expert.utils import compute_enablement_timestamps
 
-DEFAULT_JSON_MAPPING = Mapping(start="start", end="end", case="case", activity="activity", resource="resource")
+DEFAULT_JSON_MAPPING = EventMapping(start="start", end="end", case="case", activity="activity", resource="resource")
 
-def read_json_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_JSON_MAPPING) -> Iterator[Event]:
+def read_json_log(log_path: str, *,
+                  attribute_mapping: EventMapping = DEFAULT_JSON_MAPPING) -> typing.Generator[Event, None, None]:
     """
     Read an event log from a JSON file.
 
@@ -30,18 +30,11 @@ def read_json_log(log_path: str, *, attribute_mapping: Mapping = DEFAULT_JSON_MA
     Yields
     ------
     * the parsed events sorted by the `expert.model.Event.end` timestamp and transformed to instances of `expert.model.Event`
-
-    Returns
-    -------
-    * a collections.abc.Generator[expert.model.Event, None, None]` containing the events from the read file
     """
     # Read log
     with open(log_path) as file:
         event_log = [attribute_mapping.dict_to_event(source) for source in json.load(file)]
         event_log = sorted(event_log, key=lambda event: event.end)
-
-        if attribute_mapping.enablement is None:
-            event_log = compute_enablement_timestamps(event_log)
 
         # Yield events from the parsed file
         yield from event_log

@@ -1,28 +1,27 @@
 """
-This module contains everything needed for reading an event log from a CSV file and produce a
-`collections.abc.Generator[expert.model.Event, None, None]` that yields events one by one in order
-to simulate an event stream.
-"""
-from __future__ import annotations
+This module contains everything needed for reading an event log from a CSV file.
 
+The log is read as a `typing.Generator[expert.model.Event, None, None]` that yields events one by one in order to
+simulate an event stream where events can be consumed only once.
+"""
 import logging
-from collections.abc import Iterator
+import typing
 
 import numpy as np
 import pandas as pd
 from river.stream import iter_pandas
 
-from expert.input import Mapping
+from expert.input import EventMapping
 from expert.model import Event
 
-DEFAULT_CSV_MAPPING: Mapping = Mapping(start="start", end="end", case="case", activity="activity", resource="resource")
+DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", case="case", activity="activity", resource="resource")
 
-DEFAULT_APROMORE_CSV_MAPPING: Mapping = Mapping(start="start_time", end="end_time", case="case_id",
-                                                activity="Activity", resource="Resource")
+DEFAULT_APROMORE_CSV_MAPPING: EventMapping = EventMapping(start="start_time", end="end_time", case="case_id",
+                                                          activity="Activity", resource="Resource")
 
 def read_csv_log(log_path: str, *,
-                 attribute_mapping: Mapping = DEFAULT_CSV_MAPPING,
-                 case_prefix: str = "") -> Iterator[Event]:
+                 attribute_mapping: EventMapping = DEFAULT_CSV_MAPPING,
+                 case_prefix: str = "") -> typing.Generator[Event, None, None]:
     """
     Read an event log from a CSV file.
 
@@ -33,17 +32,14 @@ def read_csv_log(log_path: str, *,
     Parameters
     ----------
     * `log_path`:           *the path to the CSV log file*
-    * `attribute_mapping`:  *an instance of `expert.input.Mapping` defining a mapping between CSV columns and event attributes*.
+    * `attribute_mapping`:  *an instance of `expert.input.Mapping` defining a mapping between CSV columns and event
+                             attributes*.
     * `case_prefix`:        *a prefix that will be prepended to every case ID on the log*
 
     Yields
     ------
-    * the parsed events sorted by the `expert.model.Event.end`and `expert.model.Event.start` timestamps and transformed to
-      instances of `expert.model.Event`
-
-    Returns
-    -------
-    * a `collections.abc.Generator[expert.model.Event, None, None]` containing the events from the read file
+    * the parsed events sorted by the `expert.model.Event.end`and `expert.model.Event.start` timestamps and transformed
+      to instances of `expert.model.Event`
     """
     # Read log
     event_log = pd.read_csv(log_path, skipinitialspace=True)

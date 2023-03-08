@@ -1,10 +1,9 @@
-"""TODO DOCUMENT"""
-
+"""This module contains the functions needed for detecting and explaining performance drifts in a process model."""
 from __future__ import annotations
 
 import logging
+import typing
 from collections import defaultdict
-from collections.abc import Callable, Iterable
 from datetime import datetime, timedelta
 from math import ceil
 from pprint import pprint
@@ -15,23 +14,22 @@ from intervaltree import Interval, IntervalTree
 from river.drift import ADWIN
 from scipy.stats import cramervonmises_2samp as cramer_von_mises_test
 
-from expert.drift.model import Model, ReferenceRunning, Result
+from expert.drift.model import Model, Pair, Result
 from expert.model import Event
 from expert.utils import find_log_end, find_log_start
 from expert.utils.filters import has_any_resource
 
 
 def detect_drift(
-        log: Iterable[Event],
+        log: typing.Generator[Event, typing.Any, typing.Any],
         timeframe_size: timedelta,
         *,
         initial_activity: str = "START",
         final_activity: str = "END",
         alpha: float = 0.005,
-        filters: Iterable[Callable[[Event], bool]] = (),
+        filters: typing.Iterable[typing.Callable[[Event], bool]] = (),
 ) -> Result | None:
-    """
-    Find and explain drifts in the performance of a process execution by monitoring its cycle time.
+    """Find and explain drifts in the performance of a process execution by monitoring its cycle time.
 
     The detection follows these steps:
     1. A reference model is built using the first events from the log. This model will be used later as the ground
@@ -53,7 +51,7 @@ def detect_drift(
 
     Returns
     -------
-    * a list of events causing drift.
+    * the detection result, with the point where the drift happened and the reasons for that drift
     """
     drift_detector = ADWIN(delta=alpha)
 
@@ -86,9 +84,9 @@ def detect_drift(
     return None
 
 
-def compute_arrival_rate(log: Iterable[Event], timeunit: timedelta = timedelta(minutes=1)) -> dict[str, float]:
-    """
-    Compute the arrival rate for each activity in the log.
+def compute_arrival_rate(log: typing.Iterable[Event],
+                         timeunit: timedelta = timedelta(minutes=1)) -> typing.Mapping[str, float]:
+    """Compute the arrival rate for each activity in the log.
 
     To compute the arrival rate, the log timeframe is split in slots of size `timeunit` and, for each of these slots,
     we count how many events started within the slot timeframe. Finally, the count of events per slot is reduced by a
@@ -101,7 +99,7 @@ def compute_arrival_rate(log: Iterable[Event], timeunit: timedelta = timedelta(m
 
     Returns
     -------
-    * a dictionary with pairs (`activity`, `arrival rate`)
+    * a mapping with pairs (`activity`, `arrival rate`)
     """
     # Get the set of activities
     activities = {event.activity for event in log}
@@ -136,10 +134,9 @@ def compute_arrival_rate(log: Iterable[Event], timeunit: timedelta = timedelta(m
     return {key: activity_rates[key] for key in sorted(activity_rates.keys())}
 
 
-def compute_resources_utilization_rate(log: Iterable[Event],
-                                       timeunit: timedelta = timedelta(minutes=1)) -> dict[str, float]:
-    """
-    Compute the mean resource utilization for each resource in the event log.
+def compute_resources_utilization_rate(log: typing.Iterable[Event],
+                                       timeunit: timedelta = timedelta(minutes=1)) -> typing.Mapping[str, float]:
+    """Compute the mean resource utilization for each resource in the event log.
 
     To perform this computation, the log timeframe is split in slots of size `timeunit` and, for each of these slots,
     the rate of occupation is computed by intersecting it with the events executed by each resource. Finally, the mean
@@ -195,9 +192,8 @@ def compute_resources_utilization_rate(log: Iterable[Event],
 
 
 
-def compute_waiting_times(log: Iterable[Event]) -> dict[str, timedelta]:
-    """
-    Compute the average waiting time for each activity in the log.
+def compute_waiting_times(log: typing.Iterable[Event]) -> typing.Mapping[str, timedelta]:
+    """Compute the average waiting time for each activity in the log.
 
     To compute the average waiting time events are grouped by their activity and then the waiting times per event are
     aggregated by the mean.
@@ -222,8 +218,7 @@ def compute_waiting_times(log: Iterable[Event]) -> dict[str, timedelta]:
     }
 
 def check_arrival_rate(drift_model: Model, timeframe: timedelta, *, alpha: float = 0.05) -> bool:
-    """
-    Check whether the arrival rate for the activities did change between the reference and the running model.
+    """Check whether the arrival rate for the activities did change between the reference and the running model.
 
     To check if there is a statistically significant change, the distribution of arrival rates are compared using a
     Cramer von Mises statistical test. A change is detected if the p-value for comparing if the two distributions are
@@ -255,8 +250,7 @@ def check_arrival_rate(drift_model: Model, timeframe: timedelta, *, alpha: float
 
 
 def check_resources_utilization(drift_model: Model, timeframe: timedelta, *, alpha: float = 0.05) -> bool:
-    """
-    Check whether the resource utilization rates did change between the reference and the running model.
+    """Check whether the resource utilization rates did change between the reference and the running model.
 
     To perform this checking, the average utilization rate per resource is computed for both the reference and
     the running models, and the distributions of utilization rates are compared using a statistical test.
@@ -290,7 +284,23 @@ def check_resources_utilization(drift_model: Model, timeframe: timedelta, *, alp
 
 
 def explain_drift(drift_model: Model, *, alpha: float = 0.005) -> Result:
-    """TODO"""
+    """
+    Find the actionable causes of a drift given the drift model.
+
+    This function computes multiple metrics for the reference and running models and, based on that metrics, it provides
+    insights about actionable causes for the drift, mainly related to the resources.
+
+
+    Parameters
+    ----------
+    * `drift_model`:    *the model containing the running and reference events for the drift*
+    * `alpha`:          *the threshold for the confidence of the statistical tests used to determine the presence of a
+                         change*
+
+    Returns
+    -------
+    * the result of the drift detection with the drift causes
+    """
     # Compute the different metrics
     reference_arrival_rate = compute_arrival_rate(drift_model.reference_model, timeunit=timedelta(minutes=1))
     running_arrival_rate = compute_arrival_rate(drift_model.running_model, timeunit=timedelta(minutes=1))
@@ -301,28 +311,31 @@ def explain_drift(drift_model: Model, *, alpha: float = 0.005) -> Result:
     reference_waiting_times = compute_waiting_times(drift_model.reference_model)
     running_waiting_times = compute_waiting_times(drift_model.running_model)
 
-    pprint(reference_waiting_times)
-    pprint(running_waiting_times)
-
     # Build the result using the values previously computed
     result = Result(
-        model=ReferenceRunning(
+        model=Pair(
             reference=drift_model.reference_model,
             running=drift_model.running_model,
         ),
-        arrival_rate=ReferenceRunning(
+        arrival_rate=Pair(
             reference=reference_arrival_rate,
             running=running_arrival_rate,
         ),
-        resource_utilization_rate=ReferenceRunning(
+        resource_utilization_rate=Pair(
             reference=reference_resource_utilization_rate,
             running=running_resource_utilization_rate,
+        ),
+        waiting_time=Pair(
+            reference=reference_waiting_times,
+            running=running_waiting_times,
         ),
     )
 
     check_arrival_rate(drift_model, timedelta(days=5), alpha=alpha)
     check_resources_utilization(drift_model, timedelta(days=5), alpha=alpha)
 
+    pprint(f"reference waiting times: {reference_waiting_times}")
+    pprint(f"running waiting times: {running_waiting_times}")
     pprint(f"reference arrival rate: {reference_arrival_rate}")
     pprint(f"running arrival rate: {running_arrival_rate}")
     pprint(f"reference resource utilization rate: {reference_resource_utilization_rate}")

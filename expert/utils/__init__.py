@@ -1,12 +1,6 @@
-"""
-This module provides you with some utilities like event filters that can be used to preprocess the log and discard
-some events and functions to find the beginning or end of an event log and to compute the enablement timestamps if they
-are not present.
-"""
-from __future__ import annotations
-
+"""This module provides some utilities for working with logs."""
+import typing
 from collections import defaultdict
-from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 from intervaltree import Interval, IntervalTree
@@ -14,26 +8,67 @@ from intervaltree import Interval, IntervalTree
 from expert.model import Event
 
 
-def compute_case_duration(case: list[Event]) -> timedelta:
+def compute_case_duration(case: typing.Iterable[Event]) -> timedelta:
     """
-    Compute the duration of a case as the difference between the time the last event ended and the time the first event
+    Compute the duration of a case.
+
+    The duration is computed as the difference between the time the last event ended and the time the first event
     started
+
+    Parameters
+    ----------
+    * `case`:   *the events from a case*
+
+    Returns
+    -------
+    * the case duration
     """
     return max(evt.end for evt in case) - min(evt.start for evt in case)
 
-def find_log_start(log: Iterable[Event]) -> datetime:
-    """TODO"""
+def find_log_start(log: typing.Iterable[Event]) -> datetime:
+    """
+    Find the timestamp when executions in the log began (i.e., the minimum start time from the events)
+
+    Parameters
+    ----------
+    * `log`:   *an event log*
+
+    Returns
+    -------
+    * the start timestamp for the log, computed as the minimum start timestamp from the events
+    """
     return min(event.start for event in log)
 
+def find_log_end(log: typing.Iterable[Event]) -> datetime:
+    """
+    Find the timestamp when executions in the log ended (i.e., the maximum end time from the events)
 
-def find_log_end(log: Iterable[Event]) -> datetime:
-    """TODO"""
+    Parameters
+    ----------
+    * `log`:   *an event log*
+
+    Returns
+    -------
+    * the end timestamp for the log, computed as the maximum end timestamp from the events
+    """
     return max(event.end for event in log)
 
-def compute_enablement_timestamps(log: Iterable[Event]) -> Iterable[Event]:
-    """TODO"""
+def compute_enablement_timestamps(log: typing.Iterable[Event]) -> typing.Iterable[Event]:
+    """
+    Compute the enablement timestamps for the events in the log.
+
+    This computation is naive, taking as the enablement time for each event the end time of the lastly completed event.
+
+    Parameters
+    ----------
+    * `log`:   *an event log*
+
+    Returns
+    -------
+    * the event log with the enablement time updated for the events
+    """
     # Create a dict to group the events in cases
-    cases: defaultdict[str, IntervalTree] = defaultdict(IntervalTree)
+    cases: typing.MutableMapping[str, IntervalTree] = defaultdict(IntervalTree)
 
     log_start = find_log_start(log)
 
