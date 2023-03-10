@@ -13,8 +13,11 @@ from expert.model import Event
 
 DEFAULT_JSON_MAPPING = EventMapping(start="start", end="end", case="case", activity="activity", resource="resource")
 
-def read_json_log(log_path: str, *,
-                  attribute_mapping: EventMapping = DEFAULT_JSON_MAPPING) -> typing.Generator[Event, None, None]:
+def read_json_log(
+        log_path: str, *,
+        attribute_mapping: EventMapping = DEFAULT_JSON_MAPPING,
+        preprocessor: typing.Callable[[typing.Iterable[Event]], typing.Iterable[Event]],
+) -> typing.Generator[Event, None, None]:
     """
     Read an event log from a JSON file.
 
@@ -37,4 +40,4 @@ def read_json_log(log_path: str, *,
         event_log = sorted(event_log, key=lambda event: event.end)
 
         # Yield events from the parsed file
-        yield from event_log
+        yield from preprocessor(event_log)

@@ -15,9 +15,9 @@ expert = "expert.__runner:run"
 python = "~3.11"
 pandas = "^1.5.3"
 numpy = "^1.24.2"
-river = "^0.15.0"
 scipy = "^1.10.1"
 intervaltree = "^3.1.0"
+coloredlogs = "^15.0.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.253"
@@ -42,10 +42,10 @@ select = [
     "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
     "PLE", "PLR", "PLW", "NPY", "RUF"
 ]
-#ignore = ["D203", "D212", "PLE1205", "B008", "D400", "D403", "D415", "D417", "D404", "D205"]
-ignore = ["PLE1205", "B008", "D400", "D404"]
+ignore = ["PLE1205", "B008", "D105", "D400", "D404"]
 line-length = 120
 target-version = "py311"
+exclude = ["scripts"]
 
 [tool.ruff.per-file-ignores]
 "__runner.py" = ["D103", "N811"]

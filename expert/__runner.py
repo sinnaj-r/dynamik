@@ -4,9 +4,14 @@ import logging
 import sys
 from datetime import timedelta
 
+import coloredlogs
+
 from expert.drift import detect_drift
 from expert.input import EventMapping
+from expert.utils.statistical_tests import ks_test
 
+__DEBUG = 2
+__INFO = 1
 
 def __parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -33,6 +38,8 @@ def __parse_arg() -> argparse.Namespace:
 
 
 def __config_logger(level: int = logging.INFO) -> None:
+    coloredlogs.install()
+
     logging.basicConfig(
         format='%(asctime)s [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)d): %(message)s',
         level=level,
@@ -50,10 +57,6 @@ def __parse_mapping(path: str) -> EventMapping:
         activity=source["activity"],
         case=source["case"],
     )
-
-
-__DEBUG = 2
-__INFO = 1
 
 
 def run() -> None:
@@ -92,7 +95,7 @@ def run() -> None:
     detect_drift(
         log=log,
         timeframe_size=timedelta(days=args.timeframe),
-        alpha=args.alpha,
+        test=ks_test(args.alpha),
     )
 
     print("drift detection finished!")

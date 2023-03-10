@@ -42,3 +42,6 @@ class Event:
     def total_time(self: typing.Self) -> timedelta:
         """The total event time, between its enablement and the finalization of the execution"""
         return self.waiting_time + self.execution_time
+
+    def __hash__(self: typing.Self) -> object:
+        return hash((self.case, self.activity, self.resource, self.start, self.end))
