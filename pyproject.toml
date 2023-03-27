@@ -18,6 +18,8 @@ numpy = "^1.24.2"
 scipy = "^1.10.1"
 intervaltree = "^3.1.0"
 coloredlogs = "^15.0.1"
+matplotlib = "^3.7.1"
+verboselogs = "^1.7"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.253"
@@ -42,7 +44,7 @@ select = [
     "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
     "PLE", "PLR", "PLW", "NPY", "RUF"
 ]
-ignore = ["PLE1205", "B008", "D105", "D400", "D404"]
+ignore = ["PLE1205", "PLR2004", "B008", "D105", "D400", "D404", "N801"]
 line-length = 120
 target-version = "py311"
 exclude = ["scripts"]
@@ -51,7 +53,7 @@ exclude = ["scripts"]
 "__runner.py" = ["D103", "N811"]
 
 [tool.ruff.pylint]
-max-args = 6
+max-args = 7
 
 [tool.ruff.pydocstyle]
 convention = "numpy"

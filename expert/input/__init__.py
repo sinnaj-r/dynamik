@@ -2,14 +2,14 @@
 This module contains the definitions for reading the logs later used by the drift detection algorithm.
 
 A specific implementation for parsing CSV files from apromore is included.
-All log parsers are expected to return an iterator, which will be used later by the detection algorithm.
+Log parsers are expected to return a generator, which will be used later by the detection algorithm.
 """
 from __future__ import annotations
 
-import logging
 import typing
 from dataclasses import dataclass
 
+from expert.__logger import LOGGER
 from expert.model import Event
 
 
@@ -51,6 +51,6 @@ class EventMapping:
             enabled=source[self.enablement] if self.enablement is not None else None,
         )
 
-        logging.debug('transforming %(source)r to %(instance)r', {'source': source, 'instance': instance})
+        LOGGER.spam('transforming %(source)r to %(instance)r', {'source': source, 'instance': instance})
 
         return instance

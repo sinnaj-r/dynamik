@@ -4,12 +4,12 @@ This module contains everything needed for reading an event log from a CSV file.
 The log is read as a `typing.Generator[expert.model.Event, None, None]` that yields events one by one in order to
 simulate an event stream where events can be consumed only once.
 """
-import logging
 import typing
 
 import numpy as np
 import pandas as pd
 
+from expert.__logger import LOGGER
 from expert.input import EventMapping
 from expert.model import Event
 
@@ -32,15 +32,15 @@ def __preprocess_and_yield(event_log: pd.DataFrame,
     event_log = event_log.replace(np.nan, None)
 
     # Print some debugging information about the parsed log
-    logging.debug('\t- %(count)d events', {'count': event_log.count()[attribute_mapping.case]})
-    logging.debug('\t- %(count)d activities',
+    LOGGER.debug('    - %(count)d events', {'count': event_log.count()[attribute_mapping.case]})
+    LOGGER.debug('    - %(count)d activities',
                   {'count': event_log[attribute_mapping.activity].unique().size})
-    logging.debug('\t- %(count)d resources',
+    LOGGER.debug('    - %(count)d resources',
                   {'count': event_log[attribute_mapping.resource].unique().size})
-    logging.debug('\t- %(timeframe)s timeframe',
+    LOGGER.debug('    - %(timeframe)s timeframe',
                   {'timeframe': event_log[attribute_mapping.end].max() - event_log[
                       attribute_mapping.start].min()})
-    logging.debug('\t\t (from %(start)s to %(end)s)',
+    LOGGER.debug('         (from %(start)s to %(end)s)',
                   {'start': event_log[attribute_mapping.start].min(),
                    'end': event_log[attribute_mapping.end].max()})
 
@@ -79,7 +79,7 @@ def read_csv_log(
     # Force case identifier to be a string and add prefix
     event_log[attribute_mapping.case] = str(f"{case_prefix}/") + event_log[attribute_mapping.case].astype(str)
 
-    logging.debug('parsed logs from %(log_path)s:', {'log_path': log_path})
+    LOGGER.verbose("parsed logs from %s", log_path)
 
     if preprocessor is not None:
         event_log = preprocessor(__preprocess_and_yield(event_log, attribute_mapping))
@@ -123,13 +123,13 @@ def read_and_merge_csv_logs(
     for name, file in logs:
         log = pd.read_csv(file, skipinitialspace=True)
         # Force case identifier to be a string and add prefix
-        log[attribute_mapping.case] = str(f"{name}/") + log[attribute_mapping.case].astype(str)
+        log[attribute_mapping.case] = f"{name}/" + log[attribute_mapping.case].astype(str)
         event_logs.append(log)
 
     # Concat them into a single dataframe
     event_log = pd.concat(event_logs)
 
-    logging.debug('parsed logs from %(log_paths)s:', {'log_paths': logs})
+    LOGGER.debug("parsed logs from %s:", logs)
 
     if preprocessor is not None:
         event_log = preprocessor(__preprocess_and_yield(event_log, attribute_mapping))

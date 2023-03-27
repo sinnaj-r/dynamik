@@ -4,14 +4,16 @@ import logging
 import sys
 from datetime import timedelta
 
-import coloredlogs
+import verboselogs
 
-from expert.drift import detect_drift
+from expert.__logger import LOGGER, setup_logger
+from expert.drift import __test_factory, detect_drift
+from expert.drift.causes import explain_drift, plot_causes
 from expert.input import EventMapping
-from expert.utils.statistical_tests import ks_test
 
+__SPAM = 3
 __DEBUG = 2
-__INFO = 1
+__VERBOSE = 1
 
 def __parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -29,27 +31,24 @@ def __parse_arg() -> argparse.Namespace:
                         help="provide a custom mapping file")
     parser.add_argument("-t", "--timeframe", metavar="TIMEFRAME", type=int, nargs=1, default=5,
                         help="provide a timeframe size, in days, used to define the reference and running models")
+    parser.add_argument("-u", "--warmup", metavar="WARMUP", type=int, nargs=1, default=5,
+                        help="provide the number of days used as a warm-up")
+    parser.add_argument("-o", "--overlap", metavar="OVERLAP", type=int, nargs=1, default=2,
+                        help="provide the overlapping between running models, in days")
     parser.add_argument("-a", "--alpha", metavar="ALPHA", type=float, nargs=1, default=0.05,
                         help="specify the confidence for the statistical tests")
+    parser.add_argument("-w", "--warnings", metavar="WARNINGS", type=int, nargs=1, default=3,
+                        help="provide a number of warnings to wait after confirming a drift")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="enable verbose output. High verbosity level can drastically decrease expert performance")
 
     return parser.parse_args()
 
 
-def __config_logger(level: int = logging.INFO) -> None:
-    coloredlogs.install()
-
-    logging.basicConfig(
-        format='%(asctime)s [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)d): %(message)s',
-        level=level,
-        datefmt='%d/%m/%Y %H:%M:%S',
-    )
-
-
 def __parse_mapping(path: str) -> EventMapping:
     with open(path) as file:
         source = json.load(file)
+
     return EventMapping(
         start=source["start"],
         end=source["end"],
@@ -62,12 +61,14 @@ def __parse_mapping(path: str) -> EventMapping:
 def run() -> None:
     args = __parse_arg()
 
-    if args.verbose >= __DEBUG:
-        __config_logger(logging.DEBUG)
-    elif args.verbose == __INFO:
-        __config_logger(logging.INFO)
+    if args.verbose >= __SPAM:
+        setup_logger(verboselogs.SPAM)
+    elif args.verbose == __DEBUG:
+        setup_logger(logging.DEBUG)
+    elif args.verbose == __VERBOSE:
+        setup_logger(verboselogs.VERBOSE)
     else:
-        __config_logger(logging.ERROR)
+        setup_logger(logging.INFO)
 
     if args.format == "csv":
         from expert.input.csv import read_csv_log as parser
@@ -82,20 +83,32 @@ def run() -> None:
         else:
             mapping = __parse_mapping(args.mapping)
     else:
-        logging.critical("Log file format is not supported!")
+        LOGGER.critical("log file format not supported!")
         sys.exit(-1)
 
-    print(f"applying expert drift detector to file {args.log_file}...")
+    LOGGER.notice("applying expert drift detector to file %s", args.log_file)
 
     log = parser(
         args.log_file,
         attribute_mapping=mapping,
     )
 
-    detect_drift(
-        log=log,
+    detector = detect_drift(
+        log=(event for event in log),
         timeframe_size=timedelta(days=args.timeframe),
-        test=ks_test(args.alpha),
+        warm_up=timedelta(days=args.warmup),
+        initial_activities=["START"],
+        final_activities=["END"],
+        test=__test_factory(args.alpha),
+        warnings_to_confirm=args.warnings,
+        overlap_between_models=timedelta(days=args.overlap),
     )
 
-    print("drift detection finished!")
+    for index, drift in enumerate(detector):
+        causes = explain_drift(drift, test=__test_factory(args.alpha))
+        plots = plot_causes(causes)
+        plots.savefig(f"causes-drift-{index}.svg")
+        LOGGER.notice("drift detected")
+        LOGGER.notice("    causes: %r", causes)
+
+    LOGGER.success("drift detection finished")

@@ -1,11 +1,9 @@
 """This module provides some utilities for working with logs."""
-import logging
 import typing
 from collections import defaultdict
 from datetime import datetime, timedelta
 from math import ceil
 
-import numpy as np
 import pandas as pd
 from intervaltree import Interval, IntervalTree
 
@@ -27,6 +25,7 @@ def find_log_start(log: typing.Iterable[Event]) -> datetime:
     """
     return min(event.start for event in log)
 
+
 def find_log_end(log: typing.Iterable[Event]) -> datetime:
     """
     Find the timestamp when executions in the log ended (i.e., the maximum end time from the events)
@@ -40,6 +39,7 @@ def find_log_end(log: typing.Iterable[Event]) -> datetime:
     * the end timestamp for the log, computed as the maximum end timestamp from the events
     """
     return max(event.end for event in log)
+
 
 def compute_enablement_timestamps(log: typing.Iterable[Event]) -> typing.Iterable[Event]:
     """
@@ -81,12 +81,13 @@ def compute_enablement_timestamps(log: typing.Iterable[Event]) -> typing.Iterabl
                 data.enabled = begin
 
     # Flatten the events in the cases dictionary and return them
-    return sorted([event.data for tree in cases_timetable.values() for event in tree], key = lambda evt: evt.end)
+    return sorted([event.data for tree in cases_timetable.values() for event in tree], key = lambda evt: (evt.end, evt.start))
+
 
 def compute_activity_arrival_rate(
         log: typing.Iterable[Event],
         timeunit: timedelta = timedelta(minutes=1),
-) -> typing.Mapping[str, float]:
+) -> typing.Mapping[str, typing.Iterable[float]]:
     """Compute the arrival rate for each activity in the log.
 
     To compute the arrival rate, the log timeframe is split in slots of size `timeunit` and, for each of these slots,
@@ -104,41 +105,27 @@ def compute_activity_arrival_rate(
     """
     # Get the set of activities
     activities = {event.activity for event in log}
-
     # Build time slots where arrival rate will be checked
     log_start: datetime = find_log_start(log)
     log_end: datetime = find_log_end(log)
-
     intervals = pd.interval_range(start=log_start, periods=ceil((log_end - log_start) / timeunit), freq=timeunit).array
     slots: list[Interval] = [Interval(interval.left, interval.right) for interval in intervals]
-
     # Build a timetable with all the event start timestamps for each activity
     event_timetable = defaultdict(IntervalTree)
     for event in log:
         event_timetable[event.activity][event.start:(event.start + timedelta(microseconds=1))] = event
 
-    activity_rates = {}
-    # Compute activity arrival rates
-    for activity in activities:
-        events_per_slot = []
-        for slot in slots:
-            # Get the events with the given activity that started in the time slot
-            events_in_slot = len(event_timetable[activity][slot.begin:slot.end])
-
-            events_per_slot.append(events_in_slot)
-            logging.debug("activity %(activity)s slot %(slot)r events %(events)d",
-                          {"activity": activity, "slot": slot, "events": events_in_slot})
-
-        # Summarize the results for every activity computing the average arrival rate per time slot
-        activity_rates[activity] = float(np.mean(np.array(events_per_slot)))
-
-    return {key: activity_rates[key] for key in sorted(activity_rates.keys())}
+    # Compute arrival rates for each activity and time slot
+    return {
+        activity: [ len(event_timetable[activity][slot.begin:slot.end]) for slot in slots ]
+        for activity in sorted(activities)
+    }
 
 
 def compute_resources_utilization_rate(
         log: typing.Iterable[Event],
         timeunit: timedelta = timedelta(minutes=1),
-) -> typing.Mapping[str, float]:
+) -> typing.Mapping[str, typing.Iterable[float]]:
     """Compute the mean resource utilization for each resource in the event log.
 
     To perform this computation, the log timeframe is split in slots of size `timeunit` and, for each of these slots,
@@ -155,26 +142,22 @@ def compute_resources_utilization_rate(
     * a mapping with pairs (`resource`, `utilization`) where usage is in the range [0.0, 1.0], being 0.0 no activity
       at all and 1.0 a fully used resource
     """
-    # Filter events without resource
+    # Filter out the events without assigned resources
     filtered_log: list[Event] = [event for event in log if has_any_resource(event)]
-    # Get the set of resources
+    # Extract the set of resources from the event log
     resources: set[str] = {event.resource for event in filtered_log}
-
-    # Build time slots where frequency will be checked
+    # Build the time slots where the frequency will be checked
     log_start: datetime = find_log_start(log)
     log_end: datetime = find_log_end(log)
-
     intervals = pd.interval_range(start=log_start, periods=ceil((log_end - log_start) / timeunit), freq=timeunit).array
     slots: list[Interval] = [Interval(interval.left, interval.right) for interval in intervals]
-
-    # Build resources timetables
+    # Build the event execution timetable for each resource
     resources_timetable: defaultdict[str, IntervalTree] = defaultdict(IntervalTree)
     for event in filtered_log:
-        resources_timetable[event.resource][event.start:(event.end+timedelta(microseconds=1))] = event
-
+        resources_timetable[event.resource][event.start:event.end] = event
     # Compute resource occupancy for each resource
-    resources_occupancy: defaultdict[str, list[float]] = defaultdict(list)
-    for resource in resources:
+    resources_occupancy: dict[str, list[float]] = defaultdict(list)
+    for resource in sorted(resources):
         for slot in slots:
             # Get the events in the time slot for the resource
             events_in_slot = resources_timetable[resource][slot.begin:slot.end]
@@ -184,20 +167,13 @@ def compute_resources_utilization_rate(
                 start=timedelta(),
             ) / (slot.end - slot.begin)
             resources_occupancy[resource].append(used_time_in_slot)
-            logging.debug("resource %(resource)s slot %(slot)r usage %(usage)06f",
-                          {"resource": resource, "slot": slot, "usage": used_time_in_slot})
 
-    # Summarize the results computing the average resource usage for every time slot
-    return {
-        key: float(np.mean(np.array(resources_occupancy[key])))
-        for key in sorted(resources_occupancy.keys())
-    }
-
+    return resources_occupancy
 
 
 def compute_activity_waiting_times(
         log: typing.Iterable[Event],
-) -> typing.Mapping[str, timedelta]:
+) -> typing.Mapping[str, typing.Iterable[timedelta]]:
     """Compute the average waiting time for each activity in the log.
 
     To compute the average waiting time events are grouped by their activity and then the waiting times per event are
@@ -209,30 +185,104 @@ def compute_activity_waiting_times(
 
     Returns
     -------
-    * a mapping with pairs (`activity`, `average waiting time`)
+    * a mapping with pairs (`activity`, [`waiting time`])
     """
     # get the set of activities
     activities = {event.activity for event in log}
     # group events by activity and store the waiting time for each event
-    waiting_times = {
-        activity: [event.waiting_time for event in log if event.activity == activity] for activity in activities
-    }
-    # aggregate events waiting time by the average
     return {
-        activity: sum(waiting_times[activity], timedelta(0)) / len(waiting_times[activity]) for activity in activities
+        activity: [event.waiting_time for event in log if event.activity == activity] for activity in sorted(activities)
     }
 
 
+def infer_initial_activities(log: typing.Iterable[Event]) -> typing.Iterable[str]:
+    """
+    Infer the start activities of a process from the log execution.
+
+    Parameters
+    ----------
+    * `log`:    *the event log*
+
+    Returns
+    -------
+    * the set of activities that are seen first from the cases
+    """
+    cases = {}
+
+    for event in log:
+        if event.case not in cases:
+            cases[event.case] = event.activity
+
+    return set(cases.values())
 
 
+def infer_final_activities(log: typing.Iterable[Event]) -> typing.Iterable[str]:
+    """
+    Infer the end activities of a process from the log execution.
+
+    Parameters
+    ----------
+    * `log`:    *the event log*
+
+    Returns
+    -------
+    * the set of activities that are seen last for each case
+    """
+    cases = {}
+
+    for event in log:
+        cases[event.case] = event.activity
+
+    return set(cases.values())
 
 
+def compute_average_case_duration(log: typing.Iterable[Event]) -> timedelta:
+    """
+    Compute the average case duration for the given log
+
+    Parameters
+    ----------
+    * `log`:    *the event log*
+
+    Returns
+    -------
+    * the average case duration
+    """
+    cases = defaultdict(list)
+
+    for event in log:
+        cases[event.case].append(event)
+
+    for key in cases:
+        cases[key] = cases[key][-1].end - cases[key][0].start
+
+    return sum(cases.values(), timedelta()) / len(cases)
 
 
+def compute_average_inter_case_time(log: typing.Iterable[Event], initial_activities: typing.Iterable[str]) -> timedelta:
+    """
+    Compute the average time between new cases
 
+    Parameters
+    ----------
+    * `log`:                *the event log*
+    * `initial_activities`: *the list of initial activities*
 
+    Returns
+    -------
+    * the average time between cases
+    """
+    times = []
+    last = None
 
+    for event in log:
+        if event.activity in initial_activities and last is None:
+            last = event
+        elif event.activity in initial_activities:
+            times.append(event.start - last.end)
+            last = event
 
+    return sum(times, timedelta()) / len(times)
 
 
 

@@ -43,5 +43,20 @@ class Event:
         """The total event time, between its enablement and the finalization of the execution"""
         return self.waiting_time + self.execution_time
 
-    def __hash__(self: typing.Self) -> object:
-        return hash((self.case, self.activity, self.resource, self.start, self.end))
+    @property
+    def violations(self: typing.Self) -> typing.Iterable[str]:
+        """Get the violations of the validity of the event"""
+        result = []
+        if self.enabled > self.start:
+            result.append("enabled > start")
+        if self.enabled > self.end:
+            result.append("enabled > end")
+        if self.start > self.end:
+            result.append("start > end")
+
+
+        return result
+
+    def is_valid(self: typing.Self) -> bool:
+        """Check if the event is valid or malformed"""
+        return self.enabled <= self.start <= self.end

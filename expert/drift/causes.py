@@ -1,122 +1,62 @@
-import logging
 import typing
 from datetime import timedelta
+from statistics import mean
 
-from expert.drift import Model
-from expert.drift.model import Pair, Result
+import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
+from expert.drift import __test_factory
+from expert.drift.model import Drift, DriftCauses
+from expert.drift.model import _Pair as Pair
 from expert.utils import (
     compute_activity_arrival_rate,
     compute_activity_waiting_times,
     compute_resources_utilization_rate,
 )
-from expert.utils.statistical_tests import ks_test
 
 
-def check_arrival_rate(
-        drift_model: Model,
-        timeframe: timedelta,
+def __check_drift(
+        reference_data: typing.Mapping[str, typing.Iterable[float]],
+        running_data: typing.Mapping[str, typing.Iterable[float]],
         *,
         test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool],
-) -> bool:
-    """Check whether the arrival rate for the activities did change between the reference and the running model.
-
-    To check if there is a statistically significant change, the distribution of arrival rates are compared using a
-    statistical test.
-
-    Parameters
-    ----------
-    * `model`:      *a drift model containing the sublogs being compared*
-    * `timeunit`:   *the granularity for checking the arrival rate of the activities*
-    * `test`:       *the test for evaluating if there are any difference between the reference and the running
-                     models*
-
-    Returns
-    -------
-    * a boolean indicating whether the model presents a change in the arrival rates
-    """
-    # Compute the arrival rate for the reference and the running models
-    reference_arrival_rate = compute_activity_arrival_rate(drift_model.reference_model, timeframe)
-    running_arrival_rate = compute_activity_arrival_rate(drift_model.running_model, timeframe)
-
-    logging.debug("reference arrival rate: %(reference_rate)r", {"reference_rate": reference_arrival_rate})
-    logging.debug("running arrival rate: %(running_rate)r", {"running_rate": running_arrival_rate})
-
-    # Check if there are changes
-    return test(list(running_arrival_rate.values()), list(reference_arrival_rate.values()))
+) -> typing.Mapping[str, bool]:
+    # Perform the statistical test over each pair of items in the given mappings to check if there has been a change
+    return {
+        key: test(reference_data[key], running_data[key]) if key in reference_data and key in running_data else True
+        for key in set(list(reference_data.keys()) + list(running_data.keys()))
+    }
 
 
-def check_resources_utilization(
-        drift_model: Model,
-        timeframe: timedelta,
-        *,
-        test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool],
-) -> bool:
-    """Check whether the resource utilization rates did change between the reference and the running model.
+def __plot_bars(ax: Axes,
+                title: str,
+                keys: list[str],
+                reference: list[float],
+                running: list[float],
+                width: float = 0.3,
+                space: float = 0.015) -> Axes:
+    # Build the list of indices where the bars will be print
+    ticks = np.arange(len(keys))
+    # Put the bars for the reference dataset on their positions
+    ax.bar(x=ticks, height=reference, width=width, color="royalblue", label="Reference")
+    # Add the width plus the space between bars to offset the bar in the plot and prevent overlapping
+    ax.bar(x=ticks + width + space, height=running, width=width, color="orangered", label="Running")
+    ax.set_title(title)
+    # Put the ticks in their position + (width + space) / 2 to center them below the bars, and add the labels rotated
+    ax.set_xticks(ticks=ticks + (width + space) / 2, labels=keys, rotation=45, ha='right')
+    ax.legend(loc="upper left")
 
-    To perform this checking, the average utilization rate per resource is computed for both the reference and
-    the running models, and the distributions of utilization rates are compared using a statistical test.
+    return ax
 
-    Parameters
-    ----------
-    * `model`:      *a drift model containing the sublogs being compared*
-    * `timeunit`:   *the granularity for computing the resource utilization rate*
-    * `test`:       *the test for evaluating if there are any difference between the reference and the running
-                     models*
-
-    Returns
-    -------
-    * a boolean indicating whether the model presents a change in the resources utilization rates or not
-    """
-    # Compute the resource utilization for the reference and the running models
-    reference_resources_utilization = compute_resources_utilization_rate(drift_model.reference_model, timeframe)
-    running_resources_utilization = compute_resources_utilization_rate(drift_model.running_model, timeframe)
-
-    logging.debug("reference resource utilization: %(reference_usage)r",
-                  {"reference_usage": reference_resources_utilization})
-    logging.debug("running resource utilization: %(running_usage)r", {"running_usage": running_resources_utilization})
-
-    # Check if there are changes
-    return test(list(reference_resources_utilization.values()), list(running_resources_utilization.values()))
-
-
-def check_waiting_times(
-        drift_model: Model,
-        *,
-        test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool],
-) -> bool:
-    """Check whether the waiting time for each activity changed between the reference and running models.
-
-    To perform this checking, the average waiting time per activity is computed for both the reference and
-    the running models, and the distributions of waiting times are compared using a statistical test.
-
-    Parameters
-    ----------
-    * `model`:      *a drift model containing the sublogs being compared*
-    * `timeunit`:   *the granularity for computing the resource utilization rate*
-    * `test`:       *the test for evaluating if there are any difference between the reference and the running
-                     models*
-
-    Returns
-    -------
-    * a boolean indicating whether the model presents a change in the resources utilization rates or not
-    """
-    reference_waiting_times = compute_activity_waiting_times(drift_model.reference_model)
-    running_waiting_times = compute_activity_waiting_times(drift_model.running_model)
-
-    logging.debug("reference waiting times: %(reference_waiting_times)r", {"reference_waiting_times": reference_waiting_times})
-    logging.debug("running waiting times: %(running_waiting_times)r", {"running_waiting_times": running_waiting_times})
-
-    # Check if there are changes
-    return test(
-        [value.total_seconds() for value in reference_waiting_times.values()],
-        [value.total_seconds() for value in running_waiting_times.values()],
-    )
 
 def explain_drift(
-        drift_model: Model,
+        drift_model: Drift,
         *,
-        test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool] = ks_test(),
-) -> Result:
+        test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool] = __test_factory(),
+        granularity: timedelta = timedelta(hours=1),
+) -> DriftCauses:
     """
     Find the actionable causes of a drift given the drift model.
 
@@ -135,26 +75,26 @@ def explain_drift(
     * the result of the drift detection with the drift causes
     """
     # Compute the different metrics
-    reference_arrival_rate = compute_activity_arrival_rate(drift_model.reference_model, timeunit=timedelta(days=1))
-    running_arrival_rate = compute_activity_arrival_rate(drift_model.running_model, timeunit=timedelta(days=1))
+    reference_arrival_rate = compute_activity_arrival_rate(drift_model.reference_model, timeunit=granularity)
+    running_arrival_rate = compute_activity_arrival_rate(drift_model.running_model, timeunit=granularity)
 
     reference_resource_utilization_rate = compute_resources_utilization_rate(drift_model.reference_model,
-                                                                               timeunit=timedelta(days=1))
+                                                                             timeunit=granularity)
     running_resource_utilization_rate = compute_resources_utilization_rate(drift_model.running_model,
-                                                                             timeunit=timedelta(days=1))
+                                                                           timeunit=granularity)
 
     reference_waiting_times = compute_activity_waiting_times(drift_model.reference_model)
     running_waiting_times = compute_activity_waiting_times(drift_model.running_model)
 
     # Build the result using the values previously computed
-    return Result(
+    return DriftCauses(
         model=Pair(
             reference=drift_model.reference_model,
             running=drift_model.running_model,
         ),
         case_duration=Pair(
-            reference=drift_model.reference_model_durations,
-            running=drift_model.running_model_durations,
+            reference=drift_model.reference_durations,
+            running=drift_model.running_durations,
         ),
         arrival_rate=Pair(
             reference=reference_arrival_rate,
@@ -168,7 +108,105 @@ def explain_drift(
             reference=reference_waiting_times,
             running=running_waiting_times,
         ),
-        arrival_rate_changed=check_arrival_rate(drift_model, timedelta(days=1), test=test),
-        resource_utilization_rate_changed=check_resources_utilization(drift_model, timedelta(days=1), test=test),
-        waiting_time_changed=check_waiting_times(drift_model, test=test),
+        arrival_rate_changed=any(
+            __check_drift(
+                reference_arrival_rate,
+                running_arrival_rate,
+                test=test,
+            ).values(),
+        ),
+        resource_utilization_rate_changed=any(
+            __check_drift(
+                reference_resource_utilization_rate,
+                running_resource_utilization_rate,
+                test=test,
+            ).values(),
+        ),
+        waiting_time_changed=any(
+            __check_drift(
+                {
+                    key: [value.total_seconds() for value in reference_waiting_times[key]]
+                    for key in reference_waiting_times
+                },
+                {
+                    key: [value.total_seconds() for value in running_waiting_times[key]]
+                    for key in running_waiting_times
+                },
+                test=test,
+            ).values(),
+        ),
     )
+
+def plot_causes(causes: DriftCauses) -> Figure:
+    """TODO"""
+    fig, (ct, wt, ar, ru) = plt.subplots(nrows=4, ncols=1, layout="constrained", figsize=(8, 16))
+
+    # Plot cycle times
+    # Build the list of values for the cycle time and sort them
+    reference = causes.case_duration.reference
+    running = causes.case_duration.running
+
+    reference_count=len(list(reference))
+    running_count=len(list(running))
+    max_x = max(reference_count, running_count)
+
+    ref_x = np.linspace(start=0, stop=max_x, num=reference_count)
+    run_x = np.linspace(start=0, stop=max_x, num=running_count)
+
+    ct.plot(ref_x, reference, color="tab:blue", label="Reference")
+    ct.plot(run_x, running, color="tab:red", label="Running")
+    ct.set_title("Process cycle time")
+    ct.set_ylabel("time (s)")
+    ct.set_xticks([])
+    ct.legend(loc="upper left")
+
+
+
+    # Plot waiting times per activity
+    # Get the set of keys (they can be different in reference and running, so we concat and build a set)
+    keys = sorted(set(list(causes.waiting_time.reference.keys()) + list(causes.waiting_time.running.keys())))
+    # Compute the mean for each key, and assign 0.0 if the activity was not present
+    reference = [
+        mean([value.total_seconds() for value in causes.waiting_time.reference[key]])
+        if key in causes.waiting_time.reference else 0.0 for key in keys
+    ]
+    running = [
+        mean([value.total_seconds() for value in causes.waiting_time.running[key]])
+        if key in causes.waiting_time.running else 0.0 for key in keys
+    ]
+    __plot_bars(ax= wt, title ="waiting time/activity", reference=reference, running=running, keys=keys)
+
+    # Plot arrival rate per activity
+    keys = sorted(set(list(causes.arrival_rate.reference.keys()) + list(causes.arrival_rate.running.keys())))
+    reference = [
+        mean(causes.arrival_rate.reference[key]) if key in causes.arrival_rate.reference else 0.0 for key in keys
+    ]
+    running = [
+        mean(causes.arrival_rate.running[key]) if key in causes.arrival_rate.running else 0.0 for key in keys
+    ]
+    __plot_bars(ax=ar, title="arrival rate/activity", reference=reference, running=running, keys=keys)
+
+    # Plot resource utilization rate
+    keys = sorted(
+        set(
+            list(causes.resource_utilization_rate.reference.keys()) +
+            list(causes.resource_utilization_rate.running.keys()),
+            ),
+    )
+    reference = [
+        mean(causes.resource_utilization_rate.reference[key])
+        if key in causes.resource_utilization_rate.reference else 0.0 for key in keys
+    ]
+    running = [
+        mean(causes.resource_utilization_rate.running[key])
+        if key in causes.resource_utilization_rate.running else 0.0 for key in keys
+    ]
+    __plot_bars(ax=ru, title="utilization rate/resource", reference=reference, running=running, keys=keys)
+
+    # Set the figure title
+    fig.suptitle('Drift causes', size="xx-large")
+    # Modify the figure layout to increase the gap between subplots
+    fig.get_layout_engine().set(w_pad=8/72, h_pad=8/72)
+
+    return fig
+
