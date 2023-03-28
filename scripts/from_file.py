@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import verboselogs
 from dateutil.tz import UTC
 
 from expert.__logger import LOGGER, setup_logger
@@ -27,7 +28,7 @@ def __print_causes(_causes: DriftCauses) -> None:
 if __name__ == '__main__':
     start = datetime.now(tz=UTC)
 
-    setup_logger()
+    setup_logger(verboselogs.NOTICE)
 
     files = (
         ("log1", "../data/Loan Application 1.csv"),

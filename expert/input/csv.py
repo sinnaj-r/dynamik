@@ -32,17 +32,15 @@ def __preprocess_and_yield(event_log: pd.DataFrame,
     event_log = event_log.replace(np.nan, None)
 
     # Print some debugging information about the parsed log
-    LOGGER.debug('    - %(count)d events', {'count': event_log.count()[attribute_mapping.case]})
-    LOGGER.debug('    - %(count)d activities',
-                  {'count': event_log[attribute_mapping.activity].unique().size})
-    LOGGER.debug('    - %(count)d resources',
-                  {'count': event_log[attribute_mapping.resource].unique().size})
-    LOGGER.debug('    - %(timeframe)s timeframe',
-                  {'timeframe': event_log[attribute_mapping.end].max() - event_log[
-                      attribute_mapping.start].min()})
-    LOGGER.debug('         (from %(start)s to %(end)s)',
-                  {'start': event_log[attribute_mapping.start].min(),
-                   'end': event_log[attribute_mapping.end].max()})
+    LOGGER.info("    - %d events", event_log.count()[attribute_mapping.case])
+    LOGGER.info("    - %d activities", event_log[attribute_mapping.activity].unique().size)
+    LOGGER.info("    - %d resources", event_log[attribute_mapping.resource].unique().size)
+    LOGGER.info(
+        "    - from %s to %s (%s)",
+        event_log[attribute_mapping.start].min(),
+        event_log[attribute_mapping.end].max(),
+        event_log[attribute_mapping.end].max() - event_log[attribute_mapping.start].min(),
+    )
 
     # Yield parsed events
     yield from (attribute_mapping.dict_to_event(evt._asdict()) for evt in event_log.itertuples())
@@ -79,7 +77,7 @@ def read_csv_log(
     # Force case identifier to be a string and add prefix
     event_log[attribute_mapping.case] = str(f"{case_prefix}/") + event_log[attribute_mapping.case].astype(str)
 
-    LOGGER.verbose("parsed logs from %s", log_path)
+    LOGGER.info("parsed logs from %s", log_path)
 
     if preprocessor is not None:
         event_log = preprocessor(__preprocess_and_yield(event_log, attribute_mapping))
@@ -129,7 +127,7 @@ def read_and_merge_csv_logs(
     # Concat them into a single dataframe
     event_log = pd.concat(event_logs)
 
-    LOGGER.debug("parsed logs from %s:", logs)
+    LOGGER.info("parsed logs from %s:", logs)
 
     if preprocessor is not None:
         event_log = preprocessor(__preprocess_and_yield(event_log, attribute_mapping))

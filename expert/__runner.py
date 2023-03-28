@@ -11,9 +11,12 @@ from expert.drift import __test_factory, detect_drift
 from expert.drift.causes import explain_drift, plot_causes
 from expert.input import EventMapping
 
-__SPAM = 3
-__DEBUG = 2
-__VERBOSE = 1
+__NOTICE = 0
+__INFO = __NOTICE + 1
+__VERBOSE = __INFO + 1
+__DEBUG = __VERBOSE + 1
+__SPAM = __DEBUG + 1
+__QUIET = 1000
 
 def __parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -39,8 +42,10 @@ def __parse_arg() -> argparse.Namespace:
                         help="specify the confidence for the statistical tests")
     parser.add_argument("-w", "--warnings", metavar="WARNINGS", type=int, nargs=1, default=3,
                         help="provide a number of warnings to wait after confirming a drift")
-    parser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="enable verbose output. High verbosity level can drastically decrease expert performance")
+    parser.add_argument("-v", "--verbose", action="count", type=int, default=0,
+                        help="enable verbose output. High verbosity levels can drastically decrease performance")
+    parser.add_argument("-q", "--quiet", action="store_true", type=bool, default=False,
+                        help="disable all output")
 
     return parser.parse_args()
 
@@ -61,14 +66,18 @@ def __parse_mapping(path: str) -> EventMapping:
 def run() -> None:
     args = __parse_arg()
 
-    if args.verbose >= __SPAM:
+    if args.quiet:
+        setup_logger(__QUIET)
+    elif args.verbose >= __SPAM:
         setup_logger(verboselogs.SPAM)
     elif args.verbose == __DEBUG:
         setup_logger(logging.DEBUG)
     elif args.verbose == __VERBOSE:
         setup_logger(verboselogs.VERBOSE)
-    else:
+    elif args.verbose == __INFO:
         setup_logger(logging.INFO)
+    else:
+        setup_logger(verboselogs.NOTICE)
 
     if args.format == "csv":
         from expert.input.csv import read_csv_log as parser
