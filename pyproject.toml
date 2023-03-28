@@ -9,7 +9,7 @@ repository = "https://gitlab.citius.usc.es/ProcessMining/explainable-performance
 packages = [{ include = "expert" }]
 
 [tool.poetry.scripts]
-expert = "expert.__runner:run"
+expert = "expert.cli:run"
 
 [tool.poetry.dependencies]
 python = "~3.11"
@@ -50,7 +50,7 @@ target-version = "py311"
 exclude = ["scripts"]
 
 [tool.ruff.per-file-ignores]
-"__runner.py" = ["D103", "N811"]
+"cli.py" = ["D103", "N811", "C901", "PLR0912"]
 
 [tool.ruff.pylint]
 max-args = 7

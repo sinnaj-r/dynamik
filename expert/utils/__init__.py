@@ -174,10 +174,10 @@ def compute_resources_utilization_rate(
 def compute_activity_waiting_times(
         log: typing.Iterable[Event],
 ) -> typing.Mapping[str, typing.Iterable[timedelta]]:
-    """Compute the average waiting time for each activity in the log.
+    """
+    Compute the waiting time for each activity in the log.
 
-    To compute the average waiting time events are grouped by their activity and then the waiting times per event are
-    aggregated by the mean.
+    To compute the waiting time, events are grouped by their activity and then the waiting times per event are computed.
 
     Parameters
     ----------
@@ -193,6 +193,56 @@ def compute_activity_waiting_times(
     return {
         activity: [event.waiting_time for event in log if event.activity == activity] for activity in sorted(activities)
     }
+
+
+def compute_activity_execution_times(
+        log: typing.Iterable[Event],
+) -> typing.Mapping[str, typing.Iterable[timedelta]]:
+    """
+    Compute the execution times for each activity in the log.
+
+    To compute the execution time, events are grouped by their activity and then the execution times per event are
+    computed.
+
+    Parameters
+    ----------
+        * `log`:   *an event log*
+
+    Returns
+    -------
+        * a mapping with pairs (`activity`, [`execution time`])
+    """
+    # get the set of activities
+    activities = {event.activity for event in log}
+    # group events by activity and store the waiting time for each event
+    return {
+        activity: [event.execution_time for event in log if event.activity == activity] for activity in sorted(activities)
+    }
+
+
+
+# compute activity duration
+
+# compute activity waiting time
+#   - activity batching time
+#       - batch accumulation
+#       - batch ready
+#       - batch size???
+#   - resource contention
+#   - resource unavailability
+#   - activity prioritization
+#   - extraneous factors
+
+
+def compute_activity_batching_time(
+        log: typing.Iterable[Event],
+) -> typing.Mapping[str, typing.Iterable[timedelta]]:
+    ...
+
+
+
+
+
 
 
 def infer_initial_activities(log: typing.Iterable[Event]) -> typing.Iterable[str]:

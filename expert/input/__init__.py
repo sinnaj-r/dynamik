@@ -1,15 +1,14 @@
 """
 This module contains the definitions for reading the logs later used by the drift detection algorithm.
 
-A specific implementation for parsing CSV files from apromore is included.
-Log parsers are expected to return a generator, which will be used later by the detection algorithm.
+Log parsers are expected to return a generator, which will be consumed later by the detection algorithm.
 """
 from __future__ import annotations
 
 import typing
 from dataclasses import dataclass
 
-from expert.__logger import LOGGER
+from expert.logger import LOGGER
 from expert.model import Event
 
 

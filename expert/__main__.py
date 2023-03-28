@@ -1,3 +1,3 @@
-from .__runner import run
+from .cli import run
 
 run()

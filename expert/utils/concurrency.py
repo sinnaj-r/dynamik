@@ -33,9 +33,10 @@ class HeuristicsConcurrencyOracle:
     def __init__(
             self: typing.Self,
             log: typing.Iterable[Event],
+            *,
             thresholds: HeuristicsThresholds = HeuristicsThresholds(),
     ) -> None:
-        self.__log = log
+        self.__log = list(log)
 
         # Heuristics concurrency
         activities: set[str] = {event.activity for event in self.__log}
@@ -81,7 +82,7 @@ class HeuristicsConcurrencyOracle:
             previous_activity: str | None = None
 
             # Iterate the events of the trace in pairs: (e1, e2), (e2, e3), (e3, e4)...
-            for (event_1, event_2) in zip(trace[:-2], trace[1:], strict=True):
+            for (event_1, event_2) in zip(trace[:-1], trace[1:], strict=True):
                 # Store df relation
                 df[event_1.activity][event_2.activity] = df[event_1.activity][event_2.activity] + 1
                 # Increase l2l value if there is a length 2 loop (A-B-A)
@@ -148,11 +149,9 @@ class HeuristicsConcurrencyOracle:
         -------
         * the transformed event log, with the enablement timestamps computed
         """
-        log = list(self.__log)
-
         # Build traces
         traces = defaultdict(list)
-        for event in log:
+        for event in self.__log:
             traces[event.case].append(event)
 
         for trace in traces.values():
@@ -165,6 +164,6 @@ class HeuristicsConcurrencyOracle:
                 else:
                     event.enabled = event.start
 
-        self.__log = sorted(log, key = lambda evt: (evt.end, evt.start, evt.enabled))
+        self.__log = sorted(self.__log, key = lambda evt: (evt.end, evt.start, evt.enabled))
 
         return self.__log

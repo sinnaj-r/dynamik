@@ -1,32 +1,34 @@
 from __future__ import annotations
 
-from datetime import datetime
+import time
+from datetime import timedelta
 
 import verboselogs
-from dateutil.tz import UTC
 
-from expert.__logger import LOGGER, setup_logger
 from expert.drift import detect_drift
-from expert.drift.causes import explain_drift, plot_causes
+from expert.drift.causes import explain_drift
 from expert.drift.model import DriftCauses
+from expert.drift.plot import plot_causes
 from expert.input.csv import DEFAULT_APROMORE_CSV_MAPPING, read_and_merge_csv_logs
+from expert.logger import LOGGER, setup_logger
 from expert.utils import (
     compute_average_case_duration,
     compute_average_inter_case_time,
-    compute_enablement_timestamps,
     infer_final_activities,
     infer_initial_activities,
 )
+from expert.utils.concurrency import HeuristicsConcurrencyOracle
 
 
 def __print_causes(_causes: DriftCauses) -> None:
     LOGGER.notice("drift causes:")
+    LOGGER.notice("    execution times changed: %s", _causes.execution_time_changed)
     LOGGER.notice("    waiting times changed: %s", _causes.waiting_time_changed)
     LOGGER.notice("    arrival rate changed: %s", _causes.arrival_rate_changed)
     LOGGER.notice("    resource utilization rate changed: %s", _causes.resource_utilization_rate_changed)
 
 if __name__ == '__main__':
-    start = datetime.now(tz=UTC)
+    start = time.perf_counter_ns()
 
     setup_logger(verboselogs.NOTICE)
 
@@ -38,7 +40,7 @@ if __name__ == '__main__':
     log = read_and_merge_csv_logs(
         files,
         attribute_mapping=DEFAULT_APROMORE_CSV_MAPPING,
-        preprocessor=compute_enablement_timestamps,
+        preprocessor=lambda evt_log: HeuristicsConcurrencyOracle(evt_log).compute_enablement_timestamps(),
     )
 
     num_cases = 50
@@ -63,4 +65,8 @@ if __name__ == '__main__':
         causes = explain_drift(drift)
         __print_causes(causes)
         plots = plot_causes(causes)
-        plots.savefig(f"causes-drift-{index}.png")
+        plots.savefig(f"causes-drift-{index}.svg")
+
+    end = time.perf_counter_ns()
+
+    LOGGER.success("execution took %s", timedelta(microseconds=(end - start)/1000))

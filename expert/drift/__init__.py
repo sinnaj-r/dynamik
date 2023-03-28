@@ -6,12 +6,13 @@ from datetime import timedelta
 
 import scipy
 
-from expert.__logger import LOGGER
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, DriftModel
+from expert.logger import LOGGER
 from expert.model import Event
 
 
-def __test_factory(alpha: float = 0.05) -> typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool]:
+def __default_drift_test_factory(alpha: float = 0.05) -> \
+        typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool]:
     """Compare the reference and running distributions using the Mann-Whitney U test"""
     def __test(reference: typing.Iterable[float], running: typing.Iterable[float]) -> bool:
         return scipy.stats.mannwhitneyu(list(reference), list(running), alternative="less").pvalue < alpha
@@ -26,20 +27,20 @@ def detect_drift(
         timeframe_size: timedelta,
         warm_up: timedelta,
         overlap_between_models: timedelta = timedelta(),
-        test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool] = __test_factory(),
+        test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool] = __default_drift_test_factory(),
         warnings_to_confirm: int = 5,
 ) -> typing.Generator[Drift, None, typing.Iterable[Drift]]:
     """Find and explain drifts in the performance of a process execution by monitoring its cycle time.
 
     The detection follows these steps:
+
     1. A reference model is built using the first events from the log. This model will be used later as the ground
        truth to check for the change causes.
     2. A running model is defined, using the last events from the log. This is the model that will be checked for
        changes.
     3. Events are read one by one, and the running model is updated, computing the cycle time for each completed
        case. This cycle time are monitored using a statistical test.
-    4. If a change in the process cycle time is detected by the statistical test, the causes leading to that change are
-       analyzed
+    4. If a change is detected, the reference and running models are reset and the detection process starts again.
 
     Parameters
     ----------

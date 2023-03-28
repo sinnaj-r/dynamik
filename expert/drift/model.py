@@ -1,3 +1,5 @@
+"""This module contains the definition of the model used for drift detection in the cycle time of a process."""
+
 from __future__ import annotations
 
 import enum
@@ -7,14 +9,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from statistics import mean
 
-from expert.__logger import LOGGER
+from expert.logger import LOGGER
 from expert.model import Event
 
 T = typing.TypeVar("T")
 
 @dataclass
 class Drift:
-    """TODO"""
+    """The drift, with its level and the data that lead to the detection"""
 
     level: DriftLevel
     reference_model: typing.Iterable[Event] | None = None
@@ -58,13 +60,17 @@ class DriftCauses:
     resource_utilization_rate: _Pair[typing.Mapping[str, typing.Iterable[float]]]
     """The utilization rate for each resource for the running and the reference models"""
     waiting_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
-    """The mean waiting time for each activity for the running and the reference models"""
+    """The set of waiting times for each activity for the running and the reference models"""
+    execution_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
+    """The set of execution times for each activity for the running and the reference models"""
     arrival_rate_changed: bool
     """A flag showing if there are significant differences between the reference and the running arrival rates"""
     resource_utilization_rate_changed: bool
     """A flag showing if there are significant differences between the reference and the running utilization rates """
     waiting_time_changed: bool
     """A flag showing if there are significant differences between the reference and the running waiting times """
+    execution_time_changed: bool
+    """A flag showing if there are significant differences between the reference and the running execution times """
 
 
 class DriftModel:

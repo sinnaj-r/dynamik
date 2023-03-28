@@ -9,8 +9,8 @@ import typing
 import numpy as np
 import pandas as pd
 
-from expert.__logger import LOGGER
 from expert.input import EventMapping
+from expert.logger import LOGGER
 from expert.model import Event
 
 DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", case="case", activity="activity", resource="resource")

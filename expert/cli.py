@@ -1,15 +1,19 @@
+"""This module contains the logic used for launching expert from the command line."""
+
 import argparse
 import json
 import logging
 import sys
+import time
 from datetime import timedelta
 
 import verboselogs
 
-from expert.__logger import LOGGER, setup_logger
-from expert.drift import __test_factory, detect_drift
-from expert.drift.causes import explain_drift, plot_causes
+from expert.drift import __default_drift_test_factory, detect_drift
+from expert.drift.causes import explain_drift
+from expert.drift.plot import plot_causes
 from expert.input import EventMapping
+from expert.logger import LOGGER, setup_logger
 
 __NOTICE = 0
 __INFO = __NOTICE + 1
@@ -97,6 +101,8 @@ def run() -> None:
 
     LOGGER.notice("applying expert drift detector to file %s", args.log_file)
 
+    start = time.perf_counter_ns()
+
     log = parser(
         args.log_file,
         attribute_mapping=mapping,
@@ -108,16 +114,19 @@ def run() -> None:
         warm_up=timedelta(days=args.warmup),
         initial_activities=["START"],
         final_activities=["END"],
-        test=__test_factory(args.alpha),
+        test=__default_drift_test_factory(args.alpha),
         warnings_to_confirm=args.warnings,
         overlap_between_models=timedelta(days=args.overlap),
     )
 
     for index, drift in enumerate(detector):
-        causes = explain_drift(drift, test=__test_factory(args.alpha))
+        causes = explain_drift(drift, test=__default_drift_test_factory(args.alpha))
         plots = plot_causes(causes)
         plots.savefig(f"causes-drift-{index}.svg")
         LOGGER.notice("drift detected")
         LOGGER.notice("    causes: %r", causes)
 
+    end = time.perf_counter_ns()
+
     LOGGER.success("drift detection finished")
+    LOGGER.success("execution took %s", timedelta(microseconds=(end - start)/1000))
