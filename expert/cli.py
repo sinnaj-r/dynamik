@@ -2,18 +2,15 @@
 
 import argparse
 import json
-import logging
 import sys
 import time
 from datetime import timedelta
-
-import verboselogs
 
 from expert.drift import __default_drift_test_factory, detect_drift
 from expert.drift.causes import explain_drift
 from expert.drift.plot import plot_causes
 from expert.input import EventMapping
-from expert.logger import LOGGER, setup_logger
+from expert.logger import LOGGER, Level, setup_logger
 from expert.utils import infer_final_activities, infer_initial_activities
 
 __NOTICE = 0
@@ -72,17 +69,17 @@ def run() -> None:
     args = __parse_arg()
 
     if args.quiet:
-        setup_logger(__QUIET)
+        setup_logger(Level.DISABLED)
     elif args.verbose >= __SPAM:
-        setup_logger(verboselogs.SPAM)
+        setup_logger(Level.SPAM)
     elif args.verbose == __DEBUG:
-        setup_logger(logging.DEBUG)
+        setup_logger(Level.DEBUG)
     elif args.verbose == __VERBOSE:
-        setup_logger(verboselogs.VERBOSE)
+        setup_logger(Level.VERBOSE)
     elif args.verbose == __INFO:
-        setup_logger(logging.INFO)
+        setup_logger(Level.INFO)
     else:
-        setup_logger(verboselogs.NOTICE)
+        setup_logger(Level.NOTICE)
 
     if args.format == "csv":
         from expert.input.csv import read_csv_log as parser

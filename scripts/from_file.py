@@ -3,14 +3,12 @@ from __future__ import annotations
 import time
 from datetime import timedelta
 
-import verboselogs
-
 from expert.drift import detect_drift
 from expert.drift.causes import explain_drift
 from expert.drift.model import DriftCauses
 from expert.drift.plot import plot_causes
 from expert.input.csv import DEFAULT_APROMORE_CSV_MAPPING, read_and_merge_csv_logs
-from expert.logger import LOGGER, setup_logger
+from expert.logger import LOGGER, Level, setup_logger
 from expert.utils import (
     compute_average_case_duration,
     compute_average_inter_case_time,
@@ -30,11 +28,10 @@ def __print_causes(_causes: DriftCauses) -> None:
 if __name__ == '__main__':
     start = time.perf_counter_ns()
 
-    setup_logger(verboselogs.NOTICE)
+    setup_logger(Level.INFO)
 
     files = (
-        ("log1", "../data/Loan Application 1.csv"),
-        ("log2", "../data/Loan Application 3.csv"),
+        ("log1", "../data/simple/base.csv"),
     )
 
     log = read_and_merge_csv_logs(
@@ -43,7 +40,7 @@ if __name__ == '__main__':
         preprocessor=lambda evt_log: HeuristicsConcurrencyOracle(evt_log).compute_enablement_timestamps(),
     )
 
-    num_cases = 50
+    num_cases = 200
 
     log = list(log)
     initial_activities = infer_initial_activities(log)
@@ -56,7 +53,7 @@ if __name__ == '__main__':
         timeframe_size=num_cases * time_between_cases + avg_case_duration,
         overlap_between_models=(num_cases * time_between_cases + avg_case_duration) / 2,
         warm_up=num_cases * time_between_cases,
-        warnings_to_confirm=5,
+        warnings_to_confirm=3,
         initial_activities=initial_activities,
         final_activities=final_activities,
     )
