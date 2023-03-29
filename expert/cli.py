@@ -14,6 +14,7 @@ from expert.drift.causes import explain_drift
 from expert.drift.plot import plot_causes
 from expert.input import EventMapping
 from expert.logger import LOGGER, setup_logger
+from expert.utils import infer_final_activities, infer_initial_activities
 
 __NOTICE = 0
 __INFO = __NOTICE + 1
@@ -103,17 +104,14 @@ def run() -> None:
 
     start = time.perf_counter_ns()
 
-    log = parser(
-        args.log_file,
-        attribute_mapping=mapping,
-    )
+    log = list(parser(args.log_file, attribute_mapping=mapping))
 
     detector = detect_drift(
         log=(event for event in log),
         timeframe_size=timedelta(days=args.timeframe),
         warm_up=timedelta(days=args.warmup),
-        initial_activities=["START"],
-        final_activities=["END"],
+        initial_activities=infer_initial_activities(log),
+        final_activities=infer_final_activities(log),
         test=__default_drift_test_factory(args.alpha),
         warnings_to_confirm=args.warnings,
         overlap_between_models=timedelta(days=args.overlap),
