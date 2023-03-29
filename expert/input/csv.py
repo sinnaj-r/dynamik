@@ -33,6 +33,7 @@ def __preprocess_and_yield(event_log: pd.DataFrame,
 
     # Print some debugging information about the parsed log
     LOGGER.info("    - %d events", event_log.count()[attribute_mapping.case])
+    LOGGER.info("    - %d cases", event_log[attribute_mapping.case].unique().size)
     LOGGER.info("    - %d activities", event_log[attribute_mapping.activity].unique().size)
     LOGGER.info("    - %d resources", event_log[attribute_mapping.resource].unique().size)
     LOGGER.info(
