@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from expert.drift import __default_drift_test_factory, detect_drift
 from expert.drift.causes import explain_drift
+from expert.drift.model import DriftCauses
 from expert.drift.plot import plot_causes
 from expert.input import EventMapping
 from expert.logger import LOGGER, Level, setup_logger
@@ -64,6 +65,12 @@ def __parse_mapping(path: str) -> EventMapping:
         case=source["case"],
     )
 
+def __print_causes(_causes: DriftCauses) -> None:
+    LOGGER.notice("drift causes:")
+    LOGGER.notice("    execution times changed: %s", _causes.execution_time_changed)
+    LOGGER.notice("    waiting times changed: %s", _causes.waiting_time_changed)
+    LOGGER.notice("    arrival rate changed: %s", _causes.arrival_rate_changed)
+    LOGGER.notice("    resource utilization rate changed: %s", _causes.resource_utilization_rate_changed)
 
 def run() -> None:
     args = __parse_arg()
@@ -118,8 +125,7 @@ def run() -> None:
         causes = explain_drift(drift, test=__default_drift_test_factory(args.alpha))
         plots = plot_causes(causes)
         plots.savefig(f"causes-drift-{index}.svg")
-        LOGGER.notice("drift detected")
-        LOGGER.notice("    causes: %r", causes)
+        __print_causes(causes)
 
     end = time.perf_counter_ns()
 
