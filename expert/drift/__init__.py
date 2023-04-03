@@ -15,7 +15,11 @@ def __default_drift_test_factory(alpha: float = 0.05) -> \
         typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool]:
     """Compare the reference and running distributions using the Mann-Whitney U test"""
     def __test(reference: typing.Iterable[float], running: typing.Iterable[float]) -> bool:
-        return scipy.stats.mannwhitneyu(list(reference), list(running), alternative="less").pvalue < alpha
+        p_value = scipy.stats.mannwhitneyu(list(reference), list(running), alternative="less").pvalue
+
+        LOGGER.verbose("test(ct reference < ct running) p-value: %.4f", p_value)
+
+        return p_value < alpha
     return __test
 
 
