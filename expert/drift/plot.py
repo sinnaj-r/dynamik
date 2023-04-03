@@ -25,7 +25,7 @@ def __plot_bars(ax: Axes,
     ax.bar(x=ticks + width + space, height=running, width=width, color="tab:red", label="Running")
     ax.set_title(title)
     # Put the ticks in their position + (width + space) / 2 to center them below the bars, and add the labels rotated
-    ax.set_xticks(ticks=ticks + (width + space) / 2, labels=keys, rotation=45, ha='right')
+    ax.set_xticks(ticks=ticks + (width + space) / 2, labels=keys, rotation=45, ha="right")
     ax.legend(loc="upper left")
 
     return ax
@@ -110,7 +110,7 @@ def plot_causes(causes: DriftCauses) -> Figure:
     __plot_bars(ax=ru, title="utilization rate/resource", reference=reference, running=running, keys=keys)
 
     # Set the figure title
-    fig.suptitle('Drift causes', size="xx-large")
+    fig.suptitle("Drift causes", size="xx-large")
     # Modify the figure layout to increase the gap between subplots
     fig.get_layout_engine().set(w_pad=8/72, h_pad=8/72)
 

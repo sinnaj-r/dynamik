@@ -44,10 +44,10 @@ select = [
     "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
     "PLE", "PLR", "PLW", "NPY", "RUF"
 ]
-ignore = ["PLE1205", "PLR2004", "B008", "D105", "D400", "D404", "N801"]
+ignore = ["PLE1205", "PLR2004", "B008", "B024", "D105", "D400", "D404", "N801"]
 line-length = 120
 target-version = "py311"
-exclude = ["scripts"]
+extend-exclude = ["scripts/*"]
 
 [tool.ruff.per-file-ignores]
 "cli.py" = ["D103", "N811", "C901", "PLR0912"]

@@ -28,8 +28,8 @@ class Level(enum.Enum):
 def setup_logger(verbosity: Level = Level.INFO) -> None:
     """Configure the log with the provided verbosity level and add colored output"""
     logging.basicConfig(
-        format='%(asctime)s [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)d): %(message)s',
-        datefmt='%d/%m/%Y %H:%M:%S',
+        format="%(asctime)s [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)d): %(message)s",
+        datefmt="%d/%m/%Y %H:%M:%S",
     )
     coloredlogs.install(level=verbosity.value, logger=LOGGER)
     LOGGER.setLevel(verbosity.value)

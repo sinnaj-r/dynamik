@@ -50,6 +50,6 @@ class EventMapping:
             enabled=source[self.enablement] if self.enablement is not None else None,
         )
 
-        LOGGER.spam('transforming %(source)r to %(instance)r', {'source': source, 'instance': instance})
+        LOGGER.spam("transforming %(source)r to %(instance)r", {"source": source, "instance": instance})
 
         return instance
