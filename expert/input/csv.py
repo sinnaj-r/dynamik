@@ -19,8 +19,8 @@ DEFAULT_APROMORE_CSV_MAPPING: EventMapping = EventMapping(start="start_time", en
                                                           activity="Activity", resource="Resource")
 
 
-def __preprocess_and_yield(event_log: pd.DataFrame,
-                           attribute_mapping: EventMapping) -> typing.Generator[Event, None, None]:
+def __preprocess_and_sort(event_log: pd.DataFrame,
+                          attribute_mapping: EventMapping) -> typing.Generator[Event, None, None]:
     # Convert timestamp value to pd.Timestamp, setting timezone to UTC
     event_log[attribute_mapping.start] = pd.to_datetime(event_log[attribute_mapping.start], utc=True)
     event_log[attribute_mapping.end] = pd.to_datetime(event_log[attribute_mapping.end], utc=True)
@@ -73,17 +73,17 @@ def read_csv_log(
       instances of `expert.model.Event`
     """
     # Read log
-    event_log = pd.read_csv(log_path, skipinitialspace=True)
+    event_log = pd.read_csv(log_path, skipinitialspace=True, na_values="[NULL]")
 
     # Force case identifier to be a string and add prefix
     event_log[attribute_mapping.case] = str(f"{case_prefix}/") + event_log[attribute_mapping.case].astype(str)
 
     LOGGER.info("parsed logs from %s", log_path)
 
+    event_log = __preprocess_and_sort(event_log, attribute_mapping)
+
     if preprocessor is not None:
-        event_log = preprocessor(__preprocess_and_yield(event_log, attribute_mapping))
-    else:
-        event_log = __preprocess_and_yield(event_log, attribute_mapping)
+        event_log = preprocessor(event_log)
 
     yield from event_log
 
@@ -120,20 +120,20 @@ def read_and_merge_csv_logs(
 
     # Read logs
     for name, file in logs:
-        log = pd.read_csv(file, skipinitialspace=True)
+        log = pd.read_csv(file, skipinitialspace=True, na_values="[NULL]")
         # Force case identifier to be a string and add prefix
         log[attribute_mapping.case] = f"{name}/" + log[attribute_mapping.case].astype(str)
         event_logs.append(log)
 
-    # Concat them into a single dataframe
-    event_log = pd.concat(event_logs)
-
     LOGGER.info("parsed logs from %s:", logs)
 
+    event_log = __preprocess_and_sort(
+        pd.concat(event_logs),
+        attribute_mapping,
+    )
+
     if preprocessor is not None:
-        event_log = preprocessor(__preprocess_and_yield(event_log, attribute_mapping))
-    else:
-        event_log = __preprocess_and_yield(event_log, attribute_mapping)
+        event_log = preprocessor(event_log)
 
     yield from event_log
 
