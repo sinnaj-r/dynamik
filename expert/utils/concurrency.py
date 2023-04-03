@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import abc
 import itertools
 import typing
 from collections import defaultdict
@@ -15,16 +18,96 @@ class HeuristicsThresholds:
     l2l: float = 0.9
 
 
-class HeuristicsConcurrencyOracle:
+@dataclass
+class OverlappingThresholds:
+    """Thresholds for the split miner 2.0 oracle"""
+
+    overlapping_threshold: float = 0.9
+
+
+class ConcurrencyOracle(abc.ABC):
     """
-    Concurrency oracle from heuristics miner.
+    A concurrency oracle.
 
     Allows you to compute the concurrency relations between the events in the log and to set the enablement times for
     every event taking into account these relations.
     """
 
+    @abc.abstractmethod
+    def compute_enablement_timestamps(self: typing.Self) -> typing.Iterable[Event]:
+        """
+        Add the enabled time for every event in the log.
+
+        The enabler event is found based on the concurrency relations computed by the specific concurrency oracle.
+        Events without an enabler event get their enablement time from their own start time (so, its waiting time is 0).
+
+        Returns
+        -------
+        * the transformed event log, with the enablement timestamps computed
+        """
+        ...
+
+
+class _ConcurrencyOracle(ConcurrencyOracle):
     __log: typing.Iterable[Event]
-    __concurrency: typing.Mapping[str, set[str]] = defaultdict(set)
+    __concurrency: typing.Mapping[str, typing.Mapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
+
+    def __init__(
+            self: typing.Self,
+            log: typing.Iterable[Event],
+            concurrency: typing.Mapping[str, typing.Mapping[str, bool]],
+    ) -> None:
+        self.__log = log
+        self.__concurrency = concurrency
+
+    def __find_enabler(self: typing.Self, trace: typing.Iterable[Event], event: Event) -> Event | None:
+        # Get the list of previous events (events that ended before the current one started and that are not
+        # concurrent with it).
+        previous = sorted(
+            [evt for evt in trace if evt.end <= event.start and not self.__concurrency[event.activity][evt.activity]],
+            key= lambda evt: evt.end,
+        )
+        # Return the last
+        return previous[-1] if len(previous) > 0 else None
+
+    def compute_enablement_timestamps(self: typing.Self) -> typing.Iterable[Event]:
+        """
+        Add the enabled time for every event in the log.
+
+        The enabler event is found based on the concurrency relations computed by the HeuristicsMiner oracle.
+        Events without an enabler event get their enablement time from their own start time (so, its waiting time is 0).
+
+        Returns
+        -------
+        * the transformed event log, with the enablement timestamps computed
+        """
+        # Build traces
+        traces = defaultdict(list)
+        for event in self.__log:
+            traces[event.case].append(event)
+
+        for trace in traces.values():
+            for event in trace:
+                # Find the enabler for the current event
+                enabler: Event | None = self.__find_enabler(trace, event)
+                # Set the enabled timestamp
+                if enabler is not None:
+                    event.enabled = enabler.end
+                else:
+                    event.enabled = event.start
+
+        self.__log = sorted(self.__log, key = lambda evt: (evt.end, evt.start, evt.enabled))
+
+        return self.__log
+
+
+class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
+    """Concurrency oracle from the heuristics miner."""
+
+    __log: typing.Iterable[Event]
+    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(
+        lambda: defaultdict(lambda: False),
+    )
     __df_count: typing.Mapping[str, typing.Mapping[str, int]]
     __df_dependency: typing.Mapping[str, typing.Mapping[str, float]]
     __l2l_dependency: typing.Mapping[str, typing.Mapping[str, float]]
@@ -50,11 +133,13 @@ class HeuristicsConcurrencyOracle:
                 if (self.__l2l_dependency[activity_1][activity_2] < thresholds.l2l and  # 'A' and 'B' are not a length 2 loop
                         abs(self.__df_dependency[activity_1][activity_2] < thresholds.df)):  # The df relations are weak
                     # Concurrency relation AB, add it to A
-                    self.__concurrency[activity_1].add(activity_2)
+                    self.__concurrency[activity_1][activity_2] = True
                 if (self.__l2l_dependency[activity_2][activity_1] < thresholds.l2l and  # 'B' and 'A' are not a length 2 loop
                         abs(self.__df_dependency[activity_2][activity_1]) < thresholds.df):  # The df relations are weak
                     # Concurrency relation AB, add it to A
-                    self.__concurrency[activity_2].add(activity_1)
+                    self.__concurrency[activity_2][activity_1] = True
+
+        super().__init__(self.__log, self.__concurrency)
 
 
     def __build_matrices(
@@ -127,43 +212,85 @@ class HeuristicsConcurrencyOracle:
         self.__l2l_dependency = l2l_dependency
 
 
-    def __find_enabler(self: typing.Self, trace: typing.Iterable[Event], event: Event) -> Event | None:
-        # Get the list of previous events (events that ended before the current one started and that are not
-        # concurrent with it).
-        previous = sorted(
-            [evt for evt in trace if evt.end <= event.start and evt.activity not in self.__concurrency[event.activity]],
-            key= lambda evt: evt.end,
-        )
-        # Return the last
-        return previous[-1] if len(previous) > 0 else None
+class OverlappingConcurrencyOracle(_ConcurrencyOracle):
+    """Concurrency oracle from the split miner 2.0."""
 
+    __log: typing.Iterable[Event]
+    __overlaps = defaultdict(lambda: defaultdict(lambda: 0))
+    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(
+        lambda: defaultdict(lambda: False),
+    )
 
-    def compute_enablement_timestamps(self: typing.Self) -> typing.Iterable[Event]:
-        """
-        Add the enabled time for every event in the log.
+    def __init__(
+            self: typing.Self, log: typing.Iterable[Event],
+            thresholds: OverlappingThresholds = OverlappingThresholds(),
+    ) -> None:
+        self.__log = list(log)
 
-        The enabler event is found based on the concurrency relations computed by the HeuristicsMiner oracle.
-        Events without an enabler event get their enablement time from their own start time (so, its waiting time is 0).
+        # build the activity set and the cases map
+        activities: set[str] = {event.activity for event in self.__log}
+        cases: typing.Mapping[str, typing.MutableSequence[Event]] = defaultdict(list)
+        for event in log:
+            cases[event.case].append(event)
 
-        Returns
-        -------
-        * the transformed event log, with the enablement timestamps computed
-        """
-        # Build traces
-        traces = defaultdict(list)
-        for event in self.__log:
-            traces[event.case].append(event)
+        # build overlapping relations
+        self.__build_matrices(cases)
 
-        for trace in traces.values():
-            for event in trace:
-                # Find the enabler for the current event
-                enabler: Event | None = self.__find_enabler(trace, event)
-                # Set the enabled timestamp
-                if enabler is not None:
-                    event.enabled = enabler.end
-                else:
-                    event.enabled = event.start
+        # check overlapping for every pair of activities
+        for (activity_a, activity_b) in itertools.combinations(activities, 2):
+            # count instances of activity a
+            activity_a_instances = len([
+                event for event in log if event.activity == activity_a
+            ])
+            # count instances of activity b
+            activity_b_instances = len([
+                event for event in log if event.activity == activity_b
+            ])
 
-        self.__log = sorted(self.__log, key = lambda evt: (evt.end, evt.start, evt.enabled))
+            overlap_factor = 2 * self.__overlaps[activity_a][activity_b] / (activity_a_instances + activity_b_instances)
 
-        return self.__log
+            if overlap_factor > thresholds.overlapping_threshold:
+                # Concurrency relation AB, add it
+                self.__concurrency[activity_a][activity_b] = True
+                self.__concurrency[activity_b][activity_a] = True
+
+        super().__init__(self.__log, self.__concurrency)
+
+    def __build_matrices(
+            self: typing.Self,
+            cases: typing.Mapping[str, typing.Iterable[Event]],
+    ) -> None:
+        # Count overlapping relations
+        for trace in cases.values():
+            for (current, other) in itertools.combinations(trace, 2):
+                if (
+                        # different activities
+                        other.activity != current.activity and
+                        (
+                                # current starts while other is running
+                                other.start < current.start < other.end or
+                                # current ends while other is running
+                                other.start < current.end < other.end or
+                                # current is executed within other's timeframe
+                                (other.start <= current.start and current.end <= other.end)
+                        )
+
+                ):
+                    self.__overlaps[current.activity][other.activity] += 1
+                    self.__overlaps[other.activity][current.activity] += 1
+
+                if (
+                        # different activities
+                        other.activity != current.activity and
+                        (
+                                # other starts while current is running
+                                current.start < other.start < current.end or
+                                # other ends while current is running
+                                current.start < other.end < current.end or
+                                # other is executed within current's timeframe
+                                (current.start <= other.start and other.end <= current.end)
+                        )
+
+                ):
+                    self.__overlaps[other.activity][current.activity] += 1
+                    self.__overlaps[current.activity][other.activity] += 1
