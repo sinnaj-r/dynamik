@@ -6,12 +6,15 @@ import scipy
 
 from expert.drift.model import Drift, DriftCauses
 from expert.drift.model import _Pair as Pair
-from expert.utils import (
+from expert.utils.activities import (
     compute_activity_arrival_rate,
+    compute_activity_batching_times,
+    compute_activity_contention_times,
     compute_activity_execution_times,
+    compute_activity_prioritization_times,
     compute_activity_waiting_times,
-    compute_resources_utilization_rate,
 )
+from expert.utils.resources import compute_resources_utilization_rate
 
 
 def __default_cause_test_factory(alpha: float = 0.05) -> \
@@ -82,45 +85,32 @@ def explain_drift(
     reference_execution_times = compute_activity_execution_times(drift_model.reference_model)
     running_execution_times = compute_activity_execution_times(drift_model.running_model)
 
+    reference_batching_times = compute_activity_batching_times(drift_model.reference_model)
+    running_batching_times = compute_activity_batching_times(drift_model.running_model)
+
+    reference_contention_times = compute_activity_contention_times(drift_model.reference_model)
+    running_contention_times = compute_activity_contention_times(drift_model.running_model)
+
+    reference_prioritization_times = compute_activity_prioritization_times(drift_model.reference_model)
+    running_prioritization_times = compute_activity_prioritization_times(drift_model.running_model)
+
     # Build the result using the values previously computed
     return DriftCauses(
-        model=Pair(
-            reference=drift_model.reference_model,
-            running=drift_model.running_model,
-        ),
-        case_duration=Pair(
-            reference=drift_model.reference_durations,
-            running=drift_model.running_durations,
-        ),
-        arrival_rate=Pair(
-            reference=reference_arrival_rate,
-            running=running_arrival_rate,
-        ),
-        resource_utilization_rate=Pair(
-            reference=reference_resource_utilization_rate,
-            running=running_resource_utilization_rate,
-        ),
-        waiting_time=Pair(
-            reference=reference_waiting_times,
-            running=running_waiting_times,
-        ),
-        execution_time=Pair(
-            reference=reference_execution_times,
-            running=running_execution_times,
-        ),
+        model=Pair(drift_model.reference_model, drift_model.running_model),
+        case_duration=Pair(drift_model.reference_durations, drift_model.running_durations),
+        arrival_rate=Pair(reference_arrival_rate, running_arrival_rate),
+        resource_utilization_rate=Pair(reference_resource_utilization_rate, running_resource_utilization_rate),
+        waiting_time=Pair(reference_waiting_times, running_waiting_times),
+        execution_time=Pair(reference_execution_times, running_execution_times),
+        batching_time=Pair(reference_batching_times, running_batching_times),
+        contention_time=Pair(reference_contention_times, running_contention_times),
+        prioritization_time=Pair(reference_prioritization_times, running_prioritization_times),
+
         arrival_rate_changed=any(
-            __check_drift(
-                reference_arrival_rate,
-                running_arrival_rate,
-                test=test,
-            ).values(),
+            __check_drift( reference_arrival_rate, running_arrival_rate, test=test ).values(),
         ),
         resource_utilization_rate_changed=any(
-            __check_drift(
-                reference_resource_utilization_rate,
-                running_resource_utilization_rate,
-                test=test,
-            ).values(),
+            __check_drift(reference_resource_utilization_rate,running_resource_utilization_rate,test=test).values(),
         ),
         waiting_time_changed=any(
             __check_drift(

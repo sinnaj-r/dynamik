@@ -63,6 +63,14 @@ class DriftCauses:
     """The set of waiting times for each activity for the running and the reference models"""
     execution_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
     """The set of execution times for each activity for the running and the reference models"""
+
+    batching_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
+    """The part of waiting times due to batching for each activity for the running and the reference models"""
+    contention_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
+    """The part of waiting times due to contention for each activity for the running and the reference models"""
+    prioritization_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
+    """The part of waiting times due to prioritization for each activity for the running and the reference models"""
+
     arrival_rate_changed: bool
     """A flag showing if there are significant differences between the reference and the running arrival rates"""
     resource_utilization_rate_changed: bool
@@ -186,12 +194,12 @@ class DriftModel:
         # Store the case start timestamp
         if event.activity in self.__initial_activities:
             LOGGER.spam("adding case %s to reference model (timeframe %s - %s)",
-                          event.case, self.__reference_model_start, self.__reference_model_end)
+                        event.case, self.__reference_model_start, self.__reference_model_end)
             self.__reference_cases_start[event.case] = event.start
         # If the event is the final activity and the case started in the reference timeframe, compute the case duration
         if event.activity in self.__final_activities and event.case in self.__reference_cases_start:
             LOGGER.spam("adding case %s duration to reference model (timeframe %s - %s)",
-                          event.case, self.__reference_model_start, self.__reference_model_end)
+                        event.case, self.__reference_model_start, self.__reference_model_end)
             case_start = self.__reference_cases_start[event.case]
             self.__reference_durations[event.case] = (event.end - case_start).total_seconds()
 
@@ -203,12 +211,12 @@ class DriftModel:
         # Store the case start if the event corresponds to the initial activity
         if event.activity in self.__initial_activities:
             LOGGER.spam("adding case %s to running model (timeframe %s - %s)",
-                          event.case, self.__reference_model_start, self.__reference_model_end)
+                        event.case, self.__reference_model_start, self.__reference_model_end)
             self.__running_cases_start[event.case] = event.start
         # If the event is the final activity and the case started in the running timeframe, compute the case duration
         if event.activity in self.__final_activities and event.case in self.__running_cases_start:
             LOGGER.spam("adding case %s duration to running model (timeframe %s - %s)",
-                          event.case, self.__reference_model_start, self.__reference_model_end)
+                        event.case, self.__reference_model_start, self.__reference_model_end)
             case_start = self.__running_cases_start[event.case]
             self.__running_durations[event.case] = (event.end - case_start).total_seconds()
 
@@ -220,16 +228,16 @@ class DriftModel:
             # Remove the event from the model
             outdated = self.__running_model.pop(0)
             LOGGER.spam("removing event %r from running model (timeframe %s - %s)",
-                          outdated, self.__reference_model_start, self.__reference_model_end)
+                        outdated, self.__reference_model_start, self.__reference_model_end)
             # Remove the case start for the outdated event
             if outdated.case in self.__running_cases_start:
                 LOGGER.spam("removing case %s from running model (timeframe %s - %s)",
-                              outdated.case, self.__reference_model_start, self.__reference_model_end)
+                            outdated.case, self.__reference_model_start, self.__reference_model_end)
                 del self.__running_cases_start[outdated.case]
             # Remove the case duration for the outdated event
             if outdated.case in self.__running_durations:
                 LOGGER.spam("removing case %s duration from running model (timeframe %s - %s)",
-                              outdated.case, self.__reference_model_start, self.__reference_model_end)
+                            outdated.case, self.__reference_model_start, self.__reference_model_end)
                 del self.__running_durations[outdated.case]
 
 
@@ -237,8 +245,8 @@ class DriftModel:
         LOGGER.debug("updating drifts")
         if len(self.__running_durations.values()) == 0:
             LOGGER.warning("no case executed completely in the running timeframe %s - %s",
-                            self.__running_model_start,
-                            self.__running_model_end)
+                           self.__running_model_start,
+                           self.__running_model_end)
             return
 
         # If the model presents a drift add a warning
@@ -276,10 +284,10 @@ class DriftModel:
         # If the model does not present a drift add a NONE
         else:
             LOGGER.verbose("no drift between reference timeframe (%s - %s) -> %s and running timeframe (%s, %s) -> %s",
-                         self.__reference_model_start, self.__reference_model_end,
-                         mean(list(self.__reference_durations.values())),
-                         self.__running_model_start, self.__running_model_end,
-                         mean(list(self.__running_durations.values())))
+                           self.__reference_model_start, self.__reference_model_end,
+                           mean(list(self.__reference_durations.values())),
+                           self.__running_model_start, self.__running_model_end,
+                           mean(list(self.__running_durations.values())))
             self.__drifts.append(NO_DRIFT)
 
 
@@ -320,51 +328,57 @@ class DriftModel:
             self.__reference_model_start = event.start + self.__warm_up
             self.__reference_model_end = self.__reference_model_start + self.__timeframe_size
             LOGGER.debug("updating reference model to timeframe (%s - %s)",
-                          self.__reference_model_start, self.__reference_model_end)
+                         self.__reference_model_start, self.__reference_model_end)
         # Update the running model timeframe if it is not initialized
         if self.__running_model_start is None:
             # Set the running model start and end
             self.__running_model_start = self.__reference_model_end - self.__overlap
             self.__running_model_end = self.__running_model_start + self.__timeframe_size
             LOGGER.debug("updating running model to timeframe (%s - %s)",
-                          self.__running_model_start, self.__running_model_end)
+                         self.__running_model_start, self.__running_model_end)
         # Drop the event if it is part of the warm-up period
         if event.start < self.__reference_model_start:
             LOGGER.spam("dropping warm-up event %r", event)
         # If the event is part of the reference model, update it
         if (self.__reference_model_start <= event.start) and (event.end <= self.__reference_model_end):
             LOGGER.debug("updating reference model (timeframe %s - %s) with event %r",
-                          self.__reference_model_start, self.__reference_model_end, event)
+                         self.__reference_model_start, self.__reference_model_end, event)
             self.__update_reference_model(event)
         # If the event is part of the running model, update it
         if (self.__running_model_start <= event.start) and (event.end <= self.__running_model_end):
             LOGGER.spam("updating running model (timeframe %s - %s) with event %r",
-                          self.__reference_model_start, self.__reference_model_end, event)
+                        self.__reference_model_start, self.__reference_model_end, event)
             self.__update_running_model(event)
         # If the event is out of the running model, update the limits and prune the running model content
         if event.end > self.__running_model_end:
             if len(self.__running_model) == 0:
                 LOGGER.warning("no event executed in the timeframe %s - %s",
-                                self.__running_model_start,
-                                self.__running_model_end)
+                               self.__running_model_start,
+                               self.__running_model_end)
             else:
                 # Update the drifts
                 LOGGER.verbose("checking drift between reference timeframe %s - %s and running timeframe %s - %s",
-                             self.__reference_model_start, self.__reference_model_end,
-                             self.__running_model_start, self.__running_model_end)
+                               self.__reference_model_start, self.__reference_model_end,
+                               self.__running_model_start, self.__running_model_end)
                 self.__update_drifts()
 
-            # Update the running model limits
-            self.__running_model_start = self.__running_model_end - self.__overlap
-            self.__running_model_end = self.__running_model_start + self.__timeframe_size
-            LOGGER.debug("updating running model to timeframe (%s - %s)",
-                          self.__running_model_start, self.__running_model_end)
+            # Update the running model limits until the event lies in the timeframe
+            while event.end > self.__running_model_end:
+                self.__running_model_start = self.__running_model_end - self.__overlap
+                self.__running_model_end = self.__running_model_start + self.__timeframe_size
+                LOGGER.debug("updating running model to timeframe (%s - %s)",
+                             self.__running_model_start, self.__running_model_end)
 
-            # Delete outdated events from the running model
-            LOGGER.debug("pruning running model (timeframe %s - %s)",
-                          self.__reference_model_start, self.__reference_model_end)
-            self.__prune_running()
+                # Delete outdated events from the running model
+                LOGGER.debug("pruning running model (timeframe %s - %s)",
+                             self.__running_model_start, self.__running_model_end)
+                self.__prune_running()
+
+                if len(self.__running_model) == 0:
+                    LOGGER.debug("no events found in timeframe %s - %s",
+                                   self.__running_model_start, self.__running_model_end)
+
             # Add the event to the running model
-            LOGGER.debug("updating running model (timeframe %s - %s) with event %r",
-                          self.__reference_model_start, self.__reference_model_end, event)
+            LOGGER.spam("updating running model (timeframe %s - %s) with event %r",
+                         self.__reference_model_start, self.__reference_model_end, event)
             self.__update_running_model(event)
