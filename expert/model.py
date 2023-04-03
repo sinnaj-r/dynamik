@@ -5,6 +5,20 @@ import typing
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from intervaltree import Interval
+
+
+@dataclass
+class Batch:
+    """A batch descriptor"""
+
+    size: int
+    """The batch size"""
+    accumulation: Interval[datetime]
+    """The batch accumulation interval"""
+    execution: Interval[datetime]
+    """The batch execution interval"""
+
 
 @dataclass
 class Event:
@@ -23,10 +37,12 @@ class Event:
     """The time when the activity execution began"""
     end: datetime
     """The time when the activity execution ended"""
-    resource: str
+    resource: str | None
     """The resource in charge of the activity"""
     enabled: datetime | None = None
     """The time when the activity was made available for execution"""
+    batch: Batch | None = None
+    """The batch this event belongs to"""
 
     @property
     def execution_time(self: typing.Self) -> timedelta:
@@ -37,6 +53,11 @@ class Event:
     def waiting_time(self: typing.Self) -> timedelta:
         """The waiting time between the activity enablement and the beginning of its execution"""
         return self.start - self.enabled
+
+    @property
+    def batching_time(self: typing.Self) -> timedelta:
+        """The part of the waiting time due to batch accumulation"""
+        return self.batch.accumulation.end - self.enabled
 
     @property
     def total_time(self: typing.Self) -> timedelta:
