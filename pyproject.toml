@@ -13,13 +13,15 @@ expert = "expert.cli:run"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-pandas = "^1.5.3"
+pandas = "^2.0.0"
 numpy = "^1.24.2"
 scipy = "^1.10.1"
 intervaltree = "^3.1.0"
 coloredlogs = "^15.0.1"
 matplotlib = "^3.7.1"
 verboselogs = "^1.7"
+lazy = "^1.5"
+anytree = "^2.8.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.253"
@@ -44,7 +46,7 @@ select = [
     "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
     "PLE", "PLR", "PLW", "NPY", "RUF"
 ]
-ignore = ["PLE1205", "PLR2004", "B008", "B024", "D105", "D400", "D404", "N801"]
+ignore = ["PLE1205", "PLR2004", "B008", "B024", "D105", "D400", "D401", "D404", "N801", "ERA001", "F841"]
 line-length = 120
 target-version = "py311"
 extend-exclude = ["scripts/*"]
