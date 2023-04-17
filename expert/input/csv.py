@@ -13,17 +13,17 @@ from expert.input import EventMapping
 from expert.logger import LOGGER
 from expert.model import Event
 
-DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", case="case", activity="activity", resource="resource")
-
-DEFAULT_APROMORE_CSV_MAPPING: EventMapping = EventMapping(start="start_time", end="end_time", case="case_id",
-                                                          activity="Activity", resource="Resource")
-
+DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", enablement="enabled", case="case", activity="activity", resource="resource")
 
 def __preprocess_and_sort(event_log: pd.DataFrame,
                           attribute_mapping: EventMapping) -> typing.Generator[Event, None, None]:
     # Convert timestamp value to pd.Timestamp, setting timezone to UTC
-    event_log[attribute_mapping.start] = pd.to_datetime(event_log[attribute_mapping.start], utc=True)
-    event_log[attribute_mapping.end] = pd.to_datetime(event_log[attribute_mapping.end], utc=True)
+    event_log[attribute_mapping.start] = pd.to_datetime(event_log[attribute_mapping.start], utc=True, format="ISO8601")
+    event_log[attribute_mapping.end] = pd.to_datetime(event_log[attribute_mapping.end], utc=True, format="ISO8601")
+    if attribute_mapping.enablement is not None:
+        event_log[attribute_mapping.enablement] = pd.to_datetime(
+            event_log[attribute_mapping.enablement], utc=True, format="ISO8601",
+        )
 
     # Sort events
     event_log = event_log.sort_values([attribute_mapping.end, attribute_mapping.start])
@@ -32,12 +32,12 @@ def __preprocess_and_sort(event_log: pd.DataFrame,
     event_log = event_log.replace(np.nan, None)
 
     # Print some debugging information about the parsed log
-    LOGGER.info("    - %d events", event_log.count()[attribute_mapping.case])
-    LOGGER.info("    - %d cases", event_log[attribute_mapping.case].unique().size)
-    LOGGER.info("    - %d activities", event_log[attribute_mapping.activity].unique().size)
-    LOGGER.info("    - %d resources", event_log[attribute_mapping.resource].unique().size)
+    LOGGER.info("    %d events", event_log.count()[attribute_mapping.case])
+    LOGGER.info("    %d cases", event_log[attribute_mapping.case].unique().size)
+    LOGGER.info("    %d activities", event_log[attribute_mapping.activity].unique().size)
+    LOGGER.info("    %d resources", event_log[attribute_mapping.resource].unique().size)
     LOGGER.info(
-        "    - from %s to %s (%s)",
+        "    timeframe from %s to %s (%s)",
         event_log[attribute_mapping.start].min(),
         event_log[attribute_mapping.end].max(),
         event_log[attribute_mapping.end].max() - event_log[attribute_mapping.start].min(),
@@ -88,7 +88,6 @@ def read_csv_log(
     yield from event_log
 
 
-
 def read_and_merge_csv_logs(
         logs: typing.Iterable[tuple],
         *,
@@ -127,8 +126,10 @@ def read_and_merge_csv_logs(
 
     LOGGER.info("parsed logs from %s:", logs)
 
+    concatenated_logs = pd.concat(event_logs, ignore_index=True)
+
     event_log = __preprocess_and_sort(
-        pd.concat(event_logs),
+        concatenated_logs,
         attribute_mapping,
     )
 
