@@ -12,6 +12,10 @@ from intervaltree import Interval
 class Batch:
     """A batch descriptor"""
 
+    activity: str
+    """The activity performed during the batch"""
+    resource: str
+    """The resource executing the batch"""
     size: int
     """The batch size"""
     accumulation: Interval[datetime]

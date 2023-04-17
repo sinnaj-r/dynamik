@@ -123,6 +123,8 @@ def compute_batches(log: typing.Iterable[Event]) -> typing.Iterable[Event]:
     # Build batch descriptors and add them to the events
     for batch in batches:
         batch_descriptor = Batch(
+            activity=batch[0].activity,
+            resource=batch[0].resource,
             accumulation=Interval(
                 # the first enabled event
                 begin=min(event.enabled for event in batch),

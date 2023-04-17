@@ -1,13 +1,17 @@
 """This module contains the logic for plotting change causes"""
-
+import math
+from datetime import timedelta
 from statistics import mean
 
 import numpy as np
+from anytree import Node, RenderTree
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-from expert.drift.model import DriftCauses
+from expert.drift.causality import CAUSE_DETAILS_TYPE
+from expert.drift.features import DriftFeatures
+from expert.logger import LOGGER
 
 
 def __plot_bars(ax: Axes,
@@ -30,7 +34,7 @@ def __plot_bars(ax: Axes,
 
     return ax
 
-def plot_causes(causes: DriftCauses) -> Figure:
+def plot_features(causes: DriftFeatures) -> Figure:
     """Generate a plot with the before and after of the drift causes to easily visualize what changed"""
     fig, (ct, et, wt, ar, ru) = plt.subplots(nrows=5, ncols=1, layout="constrained", figsize=(8, 24))
 
@@ -115,3 +119,73 @@ def plot_causes(causes: DriftCauses) -> Figure:
     fig.get_layout_engine().set(w_pad=8/72, h_pad=8/72)
 
     return fig
+
+
+def print_causes(drift_causes: Node) -> None:
+    """Pretty-print the drift causes"""
+    LOGGER.notice("drift causes:")
+    for pre, fill, node in RenderTree(drift_causes):
+        match node.type:
+            case CAUSE_DETAILS_TYPE.SUMMARY_PAIR:
+                factor: float = (
+                    node.details.running.mean / node.details.reference.mean
+                    if node.details.running.mean != 0.0 and node.details.reference.mean != 0
+                    else math.inf
+                )
+
+                LOGGER.notice("    %s%s x%.2f (from %s to %s)",
+                              pre, node.name.lower(), factor,
+                              timedelta(seconds=node.details.reference.mean),
+                              timedelta(seconds=node.details.running.mean))
+            case CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY:
+                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+
+                for (activity, details) in node.details.items():
+                    factor: float = (
+                        details.running.mean/details.reference.mean
+                        if details.running.mean != 0.0 and details.reference.mean != 0
+                        else math.inf
+                    )
+
+                    LOGGER.info(
+                        "    %s    '%s' %s x%.2f (from %s to %s)",
+                        fill,
+                        activity,
+                        node.name.lower(),
+                        factor,
+                        timedelta(seconds=details.reference.mean)
+                        if details.unit == "duration"
+                        else f"{details.reference.mean} {details.unit}",
+                        timedelta(seconds=details.running.mean)
+                        if details.unit == "duration"
+                        else f"{details.reference.mean} {details.unit}",
+                    )
+            case CAUSE_DETAILS_TYPE.DIFFERENCE_PER_ACTIVITY:
+                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+
+                for (activity, details) in node.details.items():
+                    LOGGER.info("    %s    '%s' %s %s", fill, activity, node.name.lower(), ", ".join(details))
+            case CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE:
+                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+
+                for (activity, resources) in node.details.items():
+                    LOGGER.info(
+                        "    %s    '%s' %s",
+                        fill,
+                        activity,
+                        node.name.lower(),
+                    )
+
+                    for (resource, summary) in resources.items():
+                        LOGGER.info(
+                            "    %s        '%s' mean time is %s (reference mean time was %s)",
+                            fill,
+                            resource,
+                            timedelta(seconds=summary.running.mean),
+                            timedelta(seconds=summary.reference.mean),
+                        )
+
+            case _:
+                LOGGER.notice("    %s%s", pre, node.name.lower())
+                LOGGER.info("    %s    %s", fill, node.details)
+

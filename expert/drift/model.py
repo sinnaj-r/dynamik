@@ -12,7 +12,6 @@ from statistics import mean
 from expert.logger import LOGGER
 from expert.model import Event
 
-T = typing.TypeVar("T")
 
 @dataclass
 class Drift:
@@ -33,52 +32,7 @@ class DriftLevel(enum.Enum):
     CONFIRMED = 2
 
 
-NO_DRIFT=Drift(level=DriftLevel.NONE)
-
-
-@dataclass
-class _Pair(typing.Generic[T]):
-    reference: T
-    running: T
-
-
-@dataclass
-class DriftCauses:
-    """
-    The causes of a drift.
-
-    It contains the corresponding running and reference collections of events, the computed arrival rates for each
-    activity, the resource utilization rates, the mean waiting times...
-    """
-
-    model: _Pair[typing.Iterable[Event]]
-    """The pair of collections of events used as the reference and running models"""
-    case_duration: _Pair[typing.Iterable[float]]
-    """The case durations for the running and reference models"""
-    arrival_rate: _Pair[typing.Mapping[str, typing.Iterable[float]]]
-    """The arrival rate for each activity for the running and the reference models"""
-    resource_utilization_rate: _Pair[typing.Mapping[str, typing.Iterable[float]]]
-    """The utilization rate for each resource for the running and the reference models"""
-    waiting_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
-    """The set of waiting times for each activity for the running and the reference models"""
-    execution_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
-    """The set of execution times for each activity for the running and the reference models"""
-
-    batching_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
-    """The part of waiting times due to batching for each activity for the running and the reference models"""
-    contention_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
-    """The part of waiting times due to contention for each activity for the running and the reference models"""
-    prioritization_time: _Pair[typing.Mapping[str, typing.Iterable[timedelta]]]
-    """The part of waiting times due to prioritization for each activity for the running and the reference models"""
-
-    arrival_rate_changed: bool
-    """A flag showing if there are significant differences between the reference and the running arrival rates"""
-    resource_utilization_rate_changed: bool
-    """A flag showing if there are significant differences between the reference and the running utilization rates """
-    waiting_time_changed: bool
-    """A flag showing if there are significant differences between the reference and the running waiting times """
-    execution_time_changed: bool
-    """A flag showing if there are significant differences between the reference and the running execution times """
+NO_DRIFT: Drift = Drift(level=DriftLevel.NONE)
 
 
 class DriftModel:
@@ -126,7 +80,7 @@ class DriftModel:
             self: typing.Self,
             *,
             timeframe_size: timedelta,
-            test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool],
+            test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
             initial_activities: typing.Iterable[str] = tuple("START"),
             final_activities: typing.Iterable[str] = tuple("END"),
             warm_up: timedelta = timedelta(),
@@ -340,12 +294,12 @@ class DriftModel:
         if event.start < self.__reference_model_start:
             LOGGER.spam("dropping warm-up event %r", event)
         # If the event is part of the reference model, update it
-        if (self.__reference_model_start <= event.start) and (event.end <= self.__reference_model_end):
+        if self.__reference_model_start <= event.start <= event.end <= self.__reference_model_end:
             LOGGER.debug("updating reference model (timeframe %s - %s) with event %r",
                          self.__reference_model_start, self.__reference_model_end, event)
             self.__update_reference_model(event)
         # If the event is part of the running model, update it
-        if (self.__running_model_start <= event.start) and (event.end <= self.__running_model_end):
+        if self.__running_model_start <= event.start <= event.end <= self.__running_model_end:
             LOGGER.spam("updating running model (timeframe %s - %s) with event %r",
                         self.__reference_model_start, self.__reference_model_end, event)
             self.__update_running_model(event)
@@ -376,9 +330,9 @@ class DriftModel:
 
                 if len(self.__running_model) == 0:
                     LOGGER.debug("no events found in timeframe %s - %s",
-                                   self.__running_model_start, self.__running_model_end)
+                                 self.__running_model_start, self.__running_model_end)
 
             # Add the event to the running model
             LOGGER.spam("updating running model (timeframe %s - %s) with event %r",
-                         self.__reference_model_start, self.__reference_model_end, event)
+                        self.__running_model_start, self.__running_model_end, event)
             self.__update_running_model(event)
