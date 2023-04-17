@@ -98,13 +98,6 @@ def compute_activity_arrival_rate(
     }
 
 
-# compute activity waiting time
-
-#       - batch size???
-#   - resource unavailability
-#   - extraneous factors
-
-
 def compute_activity_batching_times(
         log: typing.Iterable[Event],
 ) -> typing.Mapping[str, typing.Iterable[timedelta]]:
@@ -122,10 +115,39 @@ def compute_activity_batching_times(
     -------
         * a mapping with pairs (`activity`, [`batching time`])
     """
-    log = compute_batches(log)
+    if any(event.batch is None for event in log):
+        log = compute_batches(log)
+
     activities = { event.activity for event in log }
 
     return { activity: [event.batching_time for event in log if event.activity == activity] for activity in activities}
+
+
+def compute_activity_batch_sizing(
+        log: typing.Iterable[Event],
+) -> typing.Mapping[str, typing.Iterable[timedelta]]:
+    """
+    Compute the size of the batches for each activity in the log.
+
+    Parameters
+    ----------
+        * `log`:   *an event log*
+
+    Returns
+    -------
+        * a mapping with pairs (`activity`, [`batch size`])
+    """
+    if any(event.batch is None for event in log):
+        log = compute_batches(log)
+
+    # get the set of batches per activity
+    batch_per_activity = defaultdict(set)
+    for event in log:
+        batch_per_activity[event.activity].add(event.batch)
+
+    # get the batch sizes for each activity
+    return { activity: [batch.size for batch in batches] for (activity, batches) in batch_per_activity }
+
 
 def compute_activity_contention_times(
         log: typing.Iterable[Event],
@@ -160,11 +182,12 @@ def compute_activity_contention_times(
                 # the contention time is the period between the first blocking event start and the last blocking event end
                 # or the current one start, whatever happens first
                 min(max(evt.end for evt in blocking_events), event.start) - min(evt.start for evt in blocking_events),
-            )
+                )
         else:
             # if no blocking events found, the contention is 0
             contention_time_per_activity[event.activity].append(timedelta())
     return contention_time_per_activity
+
 
 def compute_activity_prioritization_times(
         log: typing.Iterable[Event],
@@ -198,9 +221,38 @@ def compute_activity_prioritization_times(
                 # the prioritization time is the period between the first blocking event start and the last blocking event
                 # end or the current one start, whatever happens first
                 min(max(evt.end for evt in blocking_events), event.start) - min(evt.start for evt in blocking_events),
-            )
+                )
         else:
             # if no blocking events found, the prioritization is 0
             prioritization_time_per_activity[event.activity].append(timedelta())
 
     return prioritization_time_per_activity
+
+
+def compute_activity_resources(
+        log: typing.Iterable[Event],
+) -> typing.Mapping[str, set[str]]:
+    """
+    Compute the resource allocations for each activity
+
+    Parameters
+    ----------
+    * `log`:        *an event log*
+
+    Returns
+    -------
+    * a mapping with pairs (`activity`, {`resources`}) where resources is the list of resources executing the activity
+    """
+    # Filter out the events without assigned resources
+    filtered_log: list[Event] = [ event for event in log if event.resource is not None ]
+    # Extract the set of activities from the event log
+    activities: set[str] = { event.activity for event in filtered_log }
+
+    # create the allocations map
+    allocations = defaultdict(set)
+    # populate the allocations map
+    for activity in activities:
+        allocations[activity] = { event.resource for event in filtered_log if event.activity == activity }
+
+    # Get the set of resources executing each activity
+    return allocations
