@@ -25,14 +25,18 @@ class Level(enum.Enum):
     DISABLED=math.inf
 
 
-def setup_logger(verbosity: Level = Level.INFO) -> None:
+def setup_logger(verbosity: Level = Level.INFO, destination: str | None = None) -> None:
     """Configure the log with the provided verbosity level and add colored output"""
-    logging.basicConfig(
-        format="%(asctime)s [%(levelname)s] (%(module)s.%(funcName)s:%(lineno)d): %(message)s",
-        datefmt="%d/%m/%Y %H:%M:%S",
-    )
     coloredlogs.install(level=verbosity.value, logger=LOGGER)
     LOGGER.setLevel(verbosity.value)
 
+    formatter = coloredlogs.ColoredFormatter(
+        "%(asctime)s %(name)s[%(process)d] %(levelname)4s %(message)s",
+    )
 
+    for handler in LOGGER.handlers:
+        handler.setFormatter(formatter)
 
+    if destination is not None:
+        file_handler = logging.FileHandler(destination, mode="w", encoding="utf-8")
+        LOGGER.addHandler(file_handler)
