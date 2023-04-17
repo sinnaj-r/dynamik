@@ -6,13 +6,12 @@ import sys
 import time
 from datetime import timedelta
 
-from expert.drift import __default_drift_test_factory, detect_drift
-from expert.drift.causes import explain_drift
-from expert.drift.model import DriftCauses
-from expert.drift.plot import plot_causes
+from expert.drift import default_drift_detector_test_factory, detect_drift
+from expert.drift.features import DriftFeatures
+from expert.drift.plot import plot_features
 from expert.input import EventMapping
 from expert.logger import LOGGER, Level, setup_logger
-from expert.utils import infer_final_activities, infer_initial_activities
+from expert.utils.log import infer_final_activities, infer_initial_activities
 
 __NOTICE = 0
 __INFO = __NOTICE + 1
@@ -65,12 +64,6 @@ def __parse_mapping(path: str) -> EventMapping:
         case=source["case"],
     )
 
-def __print_causes(_causes: DriftCauses) -> None:
-    LOGGER.notice("drift causes:")
-    LOGGER.notice("    execution times changed: %s", _causes.execution_time_changed)
-    LOGGER.notice("    waiting times changed: %s", _causes.waiting_time_changed)
-    LOGGER.notice("    arrival rate changed: %s", _causes.arrival_rate_changed)
-    LOGGER.notice("    resource utilization rate changed: %s", _causes.resource_utilization_rate_changed)
 
 def run() -> None:
     args = __parse_arg()
@@ -116,16 +109,15 @@ def run() -> None:
         warm_up=timedelta(days=args.warmup),
         initial_activities=infer_initial_activities(log),
         final_activities=infer_final_activities(log),
-        test=__default_drift_test_factory(args.alpha),
+        test=default_drift_detector_test_factory(args.alpha),
         warnings_to_confirm=args.warnings,
         overlap_between_models=timedelta(days=args.overlap),
     )
 
     for index, drift in enumerate(detector):
-        causes = explain_drift(drift, test=__default_drift_test_factory(args.alpha))
-        plots = plot_causes(causes)
+        metrics = DriftFeatures(drift)
+        plots = plot_features(metrics)
         plots.savefig(f"causes-drift-{index}.svg")
-        __print_causes(causes)
 
     end = time.perf_counter_ns()
 
