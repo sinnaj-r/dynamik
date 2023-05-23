@@ -9,28 +9,35 @@ import scipy
 from anytree import Node
 
 from expert.drift.features import DriftFeatures, Pair
+from expert.model import Test
+from expert.utils.activities import compute_activity_batch_sizing, compute_prioritized_activities
 
 
 class CAUSE_DETAILS_TYPE(enum.Enum):
     """The type of the details object for the tree nodes"""
 
-    SUMMARY_PAIR = 1
-    SUMMARY_PAIR_PER_ACTIVITY = 2
-    DIFFERENCE_PER_ACTIVITY = 3
-    SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE = 4
-    CALENDAR_PER_RESOURCE = 5
+    SIZE_SUMMARY_PAIR_PER_ACTIVITY = 0
+    DURATION_SUMMARY_PAIR = 1
+    DURATION_SUMMARY_PAIR_PER_ACTIVITY = 2
+    DURATION_SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE = 3
+    FREQUENCY_SUMMARY_PAIR_PER_ACTIVITY = 4
+    DIFFERENCE_PER_ACTIVITY = 5
+    CALENDAR_PER_RESOURCE = 6
 
 
-def default_drift_causality_test_factory(alpha: float = 0.05, min_diff: timedelta = timedelta(minutes=0)) -> \
-        typing.Callable[[typing.Sequence[typing.Any], typing.Sequence[typing.Any]], bool]:
+def default_drift_causality_test_factory(
+        alpha: float = 0.05,
+        min_diff: timedelta = timedelta(minutes=0),
+) -> Test:
     """Default statistical test factory used for comparing the reference and running distributions for drift causes"""
     def __test_causes(
-            reference: typing.Sequence[typing.Any],
-            running: typing.Sequence[typing.Any],
+            reference: typing.Iterable[typing.Any],
+            running: typing.Iterable[typing.Any],
+            *,
             alternative: str = "less",
     ) -> bool:
         # transform timedeltas to floats for applying the test
-        if isinstance(reference[0], timedelta):
+        if isinstance(list(reference)[0], timedelta):
             reference = [value.total_seconds() for value in reference]
             running = [value.total_seconds() for value in running]
 
@@ -51,46 +58,274 @@ def default_drift_causality_test_factory(alpha: float = 0.05, min_diff: timedelt
     return __test_causes
 
 
-def __check_batching_times(
+def __check_contention_times(
         drift_features: DriftFeatures,
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
-    if test(drift_features.batching_time.reference, drift_features.batching_time.running):
+    # check contention times for common activities
+    activities = set(drift_features.contention_time.reference.keys())\
+        .intersection(set(drift_features.contention_time.running.keys()))
+    # compute batch sizes for running and reference data
+    reference_times = drift_features.contention_time.reference
+    running_times = drift_features.contention_time.running
+    # check if any batch size changed between reference and running
+    drifting_activities = {
+        activity: Pair(
+            reference=scipy.stats.describe([
+                time.total_seconds() for time in reference_times[activity]
+            ]),
+            running=scipy.stats.describe([
+                time.total_seconds() for time in running_times[activity]
+            ]),
+            unit="duration",
+        )
+        for activity in activities
+        if test(reference_times[activity], running_times[activity])
+    }
+    # if there are significant changes, add a new node to the cause tree
+    if len(drifting_activities) > 0:
+        node = Node(
+            "contention time increased",
+            details=drifting_activities,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
+            parent=parent,
+        )
+        __check_arrival_rate(drift_features, node, test)
+
+
+def __check_batch_sizes(
+        drift_features: DriftFeatures,
+        activities: typing.Iterable[str],
+        parent: Node,
+        test: Test,
+) -> None:
+    # compute batch sizes for running and reference data
+    reference_sizes = compute_activity_batch_sizing(drift_features.model.reference_model)
+    running_sizes = compute_activity_batch_sizing(drift_features.model.running_model)
+    # check if any batch size changed between reference and running
+    drifting_sizes = {
+        activity: Pair(
+            reference=scipy.stats.describe(reference_sizes[activity]),
+            running=scipy.stats.describe(running_sizes[activity]),
+            unit = "size",
+        )
+        for activity in activities
+        if test(reference_sizes[activity], running_sizes[activity])
+    }
+    # if there are significant changes, add a new node to the cause tree
+    if len(drifting_sizes) > 0:
         Node(
-            "Batching time",
+            "batch size increased",
+            details = drifting_sizes,
+            type=CAUSE_DETAILS_TYPE.SIZE_SUMMARY_PAIR_PER_ACTIVITY,
             parent=parent,
         )
 
 
-def __check_contention_times(
+def __check_batching_policy(
+        drift_features: DriftFeatures,
+        activities: typing.Iterable[str],
+        parent: Node,
+        test: Test,
+) -> None:
+    __check_batch_sizes(drift_features, activities, parent, test)
+
+
+def __check_arrival_rate_decrease_for_activities(
+        drift_features: DriftFeatures,
+        activities: typing.Iterable[str],
+        parent: Node,
+        test: Test,
+) -> None:
+    # build a map of drifting activities and their pre- and post-drift waiting time distributions to describe the drift
+    drifting_activities = {
+        # the pair activity: description
+        activity: Pair(
+            # the description of the reference distribution
+            reference=scipy.stats.describe(drift_features.arrival_rate.reference[activity]),
+            # the description of the running distribution
+            running=scipy.stats.describe(drift_features.arrival_rate.running[activity]),
+            unit=drift_features.arrival_rate.unit,
+        )
+        # for each activity in the set of activities
+        for activity in activities
+        # if there is a drift between reference and running data
+        if test(drift_features.arrival_rate.running[activity], drift_features.arrival_rate.reference[activity])
+    }
+    # if there are increased arrival rates for any activity, add a node to the causes tree
+    if len(drifting_activities) > 0:
+        Node(
+            "arrival rate decreased",
+            parent=parent,
+            details=drifting_activities,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
+        )
+
+
+def __check_batching_times(
         drift_features: DriftFeatures,
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
-    if test(drift_features.contention_time.reference, drift_features.contention_time.running):
-        Node(
-            "Contention time",
+    activities = set(
+        list(drift_features.batching_time.reference.keys()) + list(drift_features.batching_time.running.keys()),
+        )
+    # check which activities present a drift in the batching time
+    drifting_activities = {
+        # save the summary for the drifting activities
+        activity: Pair(
+            reference=scipy.stats.describe([
+                time.total_seconds() for time in drift_features.batching_time.reference[activity]
+            ]),
+            running=scipy.stats.describe([
+                time.total_seconds() for time in drift_features.batching_time.running[activity]
+            ]),
+            unit=drift_features.batching_time.unit,
+        )
+        for activity in activities
+        if test(drift_features.batching_time.reference[activity], drift_features.batching_time.running[activity])
+    }
+
+    # check batching times
+    if len(drifting_activities) > 0:
+        node = Node(
+            "batching time increased",
             parent=parent,
+            details=drifting_activities,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
+        )
+        # if there are changes, check for drifts in the batching policy
+        __check_batching_policy(
+            drift_features,
+            drifting_activities.keys(),
+            node,
+            test,
+        )
+        # if changed, check arrival rates (lower arrival rates can lead to higher batching times)
+        __check_arrival_rate_decrease_for_activities(
+            drift_features,
+            drifting_activities.keys(),
+            node,
+            test,
+        )
+
+
+def __check_priorities(
+        drift_features: DriftFeatures,
+        activities: typing.Iterable[str],
+        parent: Node,
+) -> None:
+    # compute the priorities in reference
+    reference_priorities = compute_prioritized_activities(drift_features.model.reference_model)
+    # compute the priorities in running
+    running_priorities = compute_prioritized_activities(drift_features.model.running_model)
+    # check new priorities in running
+    priorities_added = {
+        activity: running_priorities[activity] - reference_priorities[activity]
+        for activity in activities
+        if len(running_priorities[activity] - reference_priorities[activity]) > 0
+    }
+    # if there are new priorities, add a node with the details
+    if len(priorities_added) > 0:
+        Node(
+            "new priorities causing longer waiting times",
+            parent=parent,
+            details=priorities_added,
+            type=CAUSE_DETAILS_TYPE.DIFFERENCE_PER_ACTIVITY,
+        )
+
+    # check removed priorities in running
+    priorities_removed = {
+        activity: reference_priorities[activity] - running_priorities[activity]
+        for activity in activities
+        if len(reference_priorities[activity] - running_priorities[activity]) > 0
+    }
+    # if there are removed priorities, add a node with the details
+    if len(priorities_removed) > 0:
+        Node(
+            "removed priorities causing longer waiting times",
+            parent=parent,
+            details=priorities_removed,
+            type=CAUSE_DETAILS_TYPE.DIFFERENCE_PER_ACTIVITY,
         )
 
 
 def __check_prioritization_times(
         drift_features: DriftFeatures,
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
-    if test(drift_features.prioritization_time.reference, drift_features.prioritization_time.running):
-        Node(
-            "Prioritization time",
-            parent=parent,
+    # get prioritization times
+    reference_prioritization_times = drift_features.prioritization_time.reference
+    running_prioritization_times = drift_features.prioritization_time.running
+    # get the set of activities
+    activities = set(list(reference_prioritization_times.keys()) + list(running_prioritization_times.keys()))
+    # check which activities present a drift in the prioritization times
+    drifting_activities = {
+        # save the summary for the drifting activities
+        activity: Pair(
+            reference=scipy.stats.describe([
+                time.total_seconds() for time in reference_prioritization_times[activity]
+            ]),
+            running=scipy.stats.describe([
+                time.total_seconds() for time in running_prioritization_times[activity]
+            ]),
+            unit=drift_features.prioritization_time.unit,
         )
+        for activity in activities
+        if test(reference_prioritization_times[activity], running_prioritization_times[activity])
+    }
+    # if there are any drift, add a node to the causes tree with the causes
+    if len(drifting_activities) > 0:
+        node = Node(
+            "prioritization time increased",
+            parent=parent,
+            details=drifting_activities,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
+        )
+        # check how priorities changed
+        __check_priorities(drift_features, drifting_activities.keys(), node)
 
+
+def __check_extraneous_times(
+        drift_features: DriftFeatures,
+        parent: Node,
+        test: Test,
+) -> None:
+    # get extraneous times
+    reference_extraneous_times = drift_features.extraneous_time.reference
+    running_extraneous_times = drift_features.extraneous_time.running
+    # get the set of activities
+    activities = set(list(reference_extraneous_times.keys()) + list(running_extraneous_times.keys()))
+    # check which activities present a drift in the extraneous times
+    drifting_activities = {
+        # save the summary for the drifting activities
+        activity: Pair(
+            reference=scipy.stats.describe([
+                time.total_seconds() for time in reference_extraneous_times[activity]
+            ]),
+            running=scipy.stats.describe([
+                time.total_seconds() for time in running_extraneous_times[activity]
+            ]),
+            unit=drift_features.extraneous_time.unit,
+        )
+        for activity in activities
+        if test(reference_extraneous_times[activity], running_extraneous_times[activity])
+    }
+    # if there are any drift, add a node to the causes tree with the causes
+    if len(drifting_activities) > 0:
+        Node(
+            "extraneous time increased",
+            parent=parent,
+            details=drifting_activities,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
+        )
 
 def __check_arrival_rate(
         drift_features: DriftFeatures,
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
     # get the list of activities
     activities = set(
@@ -112,13 +347,13 @@ def __check_arrival_rate(
         # if there is a drift between reference and running data
         if test(drift_features.arrival_rate.reference[activity], drift_features.arrival_rate.running[activity])
     }
-
+    # if there are increased arrival rates for any activity, add a node to the causes tree
     if len(drifting_activities) > 0:
         Node(
             "arrival rate increased",
             parent=parent,
             details=drifting_activities,
-            type=CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY,
+            type=CAUSE_DETAILS_TYPE.FREQUENCY_SUMMARY_PAIR_PER_ACTIVITY,
         )
 
 
@@ -126,7 +361,7 @@ def __check_resources_underperforming_in_running(
         drift_features: DriftFeatures,
         resources_allocation_per_activity: typing.Mapping[str, set[str]],
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
     # get the reference execution times (already computed in drift features container)
     execution_times_reference: typing.Mapping[str, typing.Iterable[timedelta]] = drift_features.execution_time.reference
@@ -168,7 +403,7 @@ def __check_resources_underperforming_in_running(
             "resources under-performing",
             parent=parent,
             details=underperforming_resources_per_activity,
-            type=CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE,
         )
 
 
@@ -176,7 +411,7 @@ def __check_resources_overperforming_in_reference(
         drift_features: DriftFeatures,
         resources_allocation_per_activity: typing.Mapping[str, set[str]],
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
     # get the running execution times (already computed in drift features container)
     execution_times_running: typing.Mapping[str, typing.Iterable[timedelta]] = drift_features.execution_time.running
@@ -215,7 +450,7 @@ def __check_resources_overperforming_in_reference(
             "resources over-performing",
             parent=parent,
             details=overperforming_resources_per_activity,
-            type=CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE,
         )
 
 
@@ -223,7 +458,7 @@ def __check_resources_allocation(
         drift_features: DriftFeatures,
         activities: set[str],
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
     # compute resources allocations for each activity
     reference_allocations = drift_features.resources_allocation.reference
@@ -303,7 +538,7 @@ def __check_resources_availability(
 def __check_waiting_times(
         drift_features: DriftFeatures,
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
     # get the list of activities
     activities = set(
@@ -337,23 +572,22 @@ def __check_waiting_times(
             "waiting time increased",
             parent=parent,
             details=drifting_activities,
-            type=CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
         )
 
         # check for changes in the batching times
-        # __check_batching_times(drift_features, node, test)
+        __check_batching_times(drift_features, node, test)
         # check for changes in the contention times
-        # __check_contention_times(drift_features, node, test)
+        __check_contention_times(drift_features, node, test)
         # check for changes in the prioritization times
-        # __check_prioritization_times(drift_features, node, test)
-        # check for changes in the arrival rates
-        __check_arrival_rate(drift_features, node, test)
-
+        __check_prioritization_times(drift_features, node, test)
+        # check for changes in extraneous times
+        # __check_extraneous_times(drift_features, node, test)
 
 def __check_execution_times(
         drift_features: DriftFeatures,
         parent: Node,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
+        test: Test,
 ) -> None:
     # Get the list of activities
     activities=set(
@@ -389,7 +623,7 @@ def __check_execution_times(
             "execution time increased",
             parent=parent,
             details=drifting_activities,
-            type=CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY,
+            type=CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY,
         )
 
         __check_resources_allocation(drift_features, set(drifting_activities.keys()), node, test)
@@ -397,7 +631,7 @@ def __check_execution_times(
 
 def explain_drift(
         drift_features: DriftFeatures,
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool] = default_drift_causality_test_factory(),
+        test: Test = default_drift_causality_test_factory(),
 ) -> Node:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there are a drift in the cycle time distribution, build a node
@@ -409,7 +643,7 @@ def explain_drift(
                 running=scipy.stats.describe(drift_features.case_duration.running),
                 unit=drift_features.case_duration.unit,
             ),
-            type = CAUSE_DETAILS_TYPE.SUMMARY_PAIR,
+            type = CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR,
         )
 
         # if there is a drift, check the waiting times

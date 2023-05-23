@@ -31,7 +31,7 @@ def setup_logger(verbosity: Level = Level.INFO, destination: str | None = None) 
     LOGGER.setLevel(verbosity.value)
 
     formatter = coloredlogs.ColoredFormatter(
-        "%(asctime)s %(name)s[%(process)d] %(levelname)4s %(message)s",
+        "%(asctime)s %(name)s[%(process)d] %(levelname)8s %(message)s",
     )
 
     for handler in LOGGER.handlers:

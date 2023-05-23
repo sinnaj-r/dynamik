@@ -126,7 +126,7 @@ def print_causes(drift_causes: Node) -> None:
     LOGGER.notice("drift causes:")
     for pre, fill, node in RenderTree(drift_causes):
         match node.type:
-            case CAUSE_DETAILS_TYPE.SUMMARY_PAIR:
+            case CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR:
                 factor: float = (
                     node.details.running.mean / node.details.reference.mean
                     if node.details.running.mean != 0.0 and node.details.reference.mean != 0
@@ -137,7 +137,7 @@ def print_causes(drift_causes: Node) -> None:
                               pre, node.name.lower(), factor,
                               timedelta(seconds=node.details.reference.mean),
                               timedelta(seconds=node.details.running.mean))
-            case CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY:
+            case CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY:
                 LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
 
                 for (activity, details) in node.details.items():
@@ -153,19 +153,35 @@ def print_causes(drift_causes: Node) -> None:
                         activity,
                         node.name.lower(),
                         factor,
-                        timedelta(seconds=details.reference.mean)
-                        if details.unit == "duration"
-                        else f"{details.reference.mean} {details.unit}",
-                        timedelta(seconds=details.running.mean)
-                        if details.unit == "duration"
-                        else f"{details.reference.mean} {details.unit}",
+                        timedelta(seconds=details.reference.mean),
+                        timedelta(seconds=details.running.mean),
                     )
+            case CAUSE_DETAILS_TYPE.SIZE_SUMMARY_PAIR_PER_ACTIVITY:
+                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+
+                for (activity, details) in node.details.items():
+                    factor: float = (
+                        details.running.mean / details.reference.mean
+                        if details.running.mean != 0 and details.reference.mean != 0
+                        else math.inf
+                    )
+
+                    LOGGER.info(
+                        "    %s    '%s' %s x%.2f (from %s to %s)",
+                        fill,
+                        activity,
+                        node.name.lower(),
+                        factor,
+                        details.reference.mean,
+                        details.running.mean,
+                    )
+
             case CAUSE_DETAILS_TYPE.DIFFERENCE_PER_ACTIVITY:
                 LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
 
                 for (activity, details) in node.details.items():
                     LOGGER.info("    %s    '%s' %s %s", fill, activity, node.name.lower(), ", ".join(details))
-            case CAUSE_DETAILS_TYPE.SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE:
+            case CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE:
                 LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
 
                 for (activity, resources) in node.details.items():
@@ -185,6 +201,8 @@ def print_causes(drift_causes: Node) -> None:
                             timedelta(seconds=summary.reference.mean),
                         )
 
+            # case CAUSE_DETAILS_TYPE.FREQUENCY_SUMMARY_PAIR_PER_ACTIVITY:
+            # case CAUSE_DETAILS_TYPE.CALENDAR_PER_RESOURCE:
             case _:
                 LOGGER.notice("    %s%s", pre, node.name.lower())
                 LOGGER.info("    %s    %s", fill, node.details)

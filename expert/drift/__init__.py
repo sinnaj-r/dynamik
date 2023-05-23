@@ -8,11 +8,10 @@ import scipy
 
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, DriftModel
 from expert.logger import LOGGER
-from expert.model import Event
+from expert.model import Activity, Log, Test
 
 
-def default_drift_detector_test_factory(alpha: float = 0.05) -> \
-        typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool]:
+def default_drift_detector_test_factory(alpha: float = 0.05) -> Test:
     """Default statistical test factory used for comparing the reference and running distributions using the U test"""
     def __test_drift(reference: typing.Iterable[float], running: typing.Iterable[float]) -> bool:
         p_value = scipy.stats.mannwhitneyu(list(reference), list(running), alternative="less").pvalue
@@ -24,15 +23,14 @@ def default_drift_detector_test_factory(alpha: float = 0.05) -> \
 
 
 def detect_drift(
-        log: typing.Generator[Event, typing.Any, typing.Any],
+        log: Log,
         *,
-        initial_activities: typing.Iterable[str] = tuple("START"),
-        final_activities: typing.Iterable[str] = tuple("END"),
+        initial_activities: typing.Iterable[Activity] = tuple("START"),
+        final_activities: typing.Iterable[Activity] = tuple("END"),
         timeframe_size: timedelta,
         warm_up: timedelta,
         overlap_between_models: timedelta = timedelta(),
-        test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool] =
-        default_drift_detector_test_factory(),
+        test: Test = default_drift_detector_test_factory(),
         warnings_to_confirm: int = 5,
 ) -> typing.Generator[Drift, None, typing.Iterable[Drift]]:
     """Find and explain drifts in the performance of a process execution by monitoring its cycle time.

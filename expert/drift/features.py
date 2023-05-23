@@ -1,24 +1,29 @@
 """This module contains the logic for evaluating the actionable causes of a drift in the cycle time of a process"""
 import typing
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import timedelta
 
-from lazy import lazy
-
 from expert.drift.model import Drift
-from expert.utils.activities import (
-    compute_activity_arrival_rate,
-    compute_activity_batch_sizing,
-    compute_activity_batching_times,
-    compute_activity_contention_times,
-    compute_activity_execution_times,
-    compute_activity_prioritization_times,
-    compute_activity_resources,
-    compute_activity_waiting_times,
-)
-from expert.utils.resources import compute_resources_availability_calendars, compute_resources_utilization_rate
+from expert.model import Activity, Event, Log
+from expert.utils.waiting import decompose_waiting_times
 
 _T = typing.TypeVar("_T")
+_K = typing.TypeVar("_K")
+_V = typing.TypeVar("_V")
+
+def _aggregate(
+        log: Log,
+        *,
+        key_extractor: typing.Callable[[Event], _K],
+        value_extractor: typing.Callable[[Event], _V],
+) -> typing.Mapping[_K, typing.Iterable[_V]]:
+    # group events by key and store the value for each event
+    grouped = defaultdict(list)
+    for event in log:
+        grouped[key_extractor(event)].append(value_extractor(event))
+
+    return grouped
 
 
 @dataclass
@@ -60,8 +65,11 @@ class DriftFeatures:
     def __init__(self: typing.Self, model: Drift, granularity: timedelta = timedelta(hours=1)) -> None:
         self.model = model
         self.granularity = granularity
+        self.__reference_waiting_times = decompose_waiting_times(model.reference_model)
+        self.__running_waiting_times = decompose_waiting_times(model.running_model)
 
-    @lazy
+
+    @property
     def case_duration(self: typing.Self) -> Pair[typing.Iterable[float]]:
         """Get the case durations for the running and reference models"""
         return Pair(
@@ -69,83 +77,187 @@ class DriftFeatures:
             running=self.model.running_durations,
             unit="duration",
         )
-    @lazy
-    def execution_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[timedelta]]]:
+
+
+    @property
+    def execution_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
         """Get the set of execution times for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_activity_execution_times(self.model.reference_model),
-            running=compute_activity_execution_times(self.model.running_model),
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.execution_time,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.execution_time,
+            ),
             unit="duration",
         )
-    @lazy
-    def arrival_rate(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[float]]]:
-        """Get the arrival rate for each activity for the running and the reference models"""
-        return Pair(
-            reference=compute_activity_arrival_rate(self.model.reference_model, self.granularity),
-            running=compute_activity_arrival_rate(self.model.running_model, self.granularity),
-            unit=f"instances per {self.granularity}",
-        )
-    @lazy
-    def resource_utilization_rate(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[float]]]:
-        """Get the utilization rate for each resource for the running and the reference models"""
-        return Pair(
-            reference=compute_resources_utilization_rate(self.model.reference_model, self.granularity),
-            running=compute_resources_utilization_rate(self.model.running_model, self.granularity),
-            unit=f"instances per {self.granularity}",
-        )
-    @lazy
-    def waiting_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[timedelta]]]:
+
+
+    @property
+    def waiting_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
         """Get the set of waiting times for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_activity_waiting_times(self.model.reference_model),
-            running=compute_activity_waiting_times(self.model.running_model),
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.total.duration,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.total.duration,
+            ),
             unit="duration",
         )
-    @lazy
-    def batching_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[timedelta]]]:
+
+
+    @property
+    def batching_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
         """Get the part of waiting times due to batching for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_activity_batching_times(self.model.reference_model),
-            running=compute_activity_batching_times(self.model.running_model),
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.batching.duration,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.batching.duration,
+            ),
             unit="duration",
         )
-    @lazy
-    def batch_sizes(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
-        """Get the batch sizes for each activity for the running and the reference models"""
-        return Pair(
-            reference=compute_activity_batch_sizing(self.model.reference_model),
-            running=compute_activity_batch_sizing(self.model.running_model),
-            unit="instances",
-        )
-    @lazy
-    def contention_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[timedelta]]]:
+
+
+    @property
+    def contention_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
         """Get the part of waiting times due to contention for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_activity_contention_times(self.model.reference_model),
-            running=compute_activity_contention_times(self.model.running_model),
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.contention.duration,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.contention.duration,
+            ),
             unit="duration",
         )
-    @lazy
-    def prioritization_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[timedelta]]]:
+
+
+    @property
+    def prioritization_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
         """Get the part of waiting times due to prioritization for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_activity_prioritization_times(self.model.reference_model),
-            running=compute_activity_prioritization_times(self.model.running_model),
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.prioritization.duration,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.prioritization.duration,
+            ),
             unit="duration",
         )
-    @lazy
-    def resources_allocation(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[timedelta]]]:
-        """Get the resources allocation for each activity for the running and the reference models"""
+
+
+    @property
+    def availability_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
+        """Get the part of waiting times due to resources unavailability for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_activity_resources(self.model.reference_model),
-            running=compute_activity_resources(self.model.running_model),
-            unit="resources per activity",
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.availability.duration,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.availability.duration,
+            ),
+            unit="duration",
         )
-    @lazy
-    def resources_availability(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[bool]]]:
-        """Get resources availability calendars for each resource for the running and the reference models"""
+
+
+    @property
+    def extraneous_time(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[timedelta]]]:
+        """Get the part of waiting times due to extraneous factors for each activity for the running and the reference models"""
         return Pair(
-            reference=compute_resources_availability_calendars(self.model.reference_model, granularity=self.granularity),
-            running=compute_resources_availability_calendars(self.model.running_model, granularity=self.granularity),
-            unit="resources calendars",
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.extraneous.duration,
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: event.waiting_time.extraneous.duration,
+            ),
+            unit="duration",
         )
+
+
+
+    # # REFACTOR FROM HERE DOWN
+    # @lazy
+    # def arrival_rate(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[float]]]:
+    #     """Get the arrival rate for each activity for the running and the reference models"""
+    #     return Pair(
+    #         reference=compute_activity_arrival_rate(self.model.reference_model, self.granularity),
+    #         running=compute_activity_arrival_rate(self.model.running_model, self.granularity),
+    #         unit=f"instances per {self.granularity}",
+    #     )
+    #
+    #
+    # @lazy
+    # def resource_utilization_rate(self: typing.Self) -> Pair[typing.Mapping[Resource, typing.Iterable[float]]]:
+    #     """Get the utilization rate for each resource for the running and the reference models"""
+    #     return Pair(
+    #         reference=compute_resources_utilization_rate(self.model.reference_model, self.granularity),
+    #         running=compute_resources_utilization_rate(self.model.running_model, self.granularity),
+    #         unit=f"instances per {self.granularity}",
+    #     )
+    #
+    #
+    # @lazy
+    # def resources_allocation(self: typing.Self) -> Pair[typing.Mapping[Activity, typing.Iterable[Resource]]]:
+    #     """Get the resources allocation for each activity for the running and the reference models"""
+    #     return Pair(
+    #         reference=compute_activity_resources(self.model.reference_model),
+    #         running=compute_activity_resources(self.model.running_model),
+    #         unit="resources per activity",
+    #     )
+    #
+    #
+    # @lazy
+    # def resources_availability(self: typing.Self) -> Pair[typing.Mapping[Resource, typing.Iterable[bool]]]:
+    #     """Get resources availability calendars for each resource for the running and the reference models"""
+    #     return Pair(
+    #         reference=compute_resources_availability_calendars(
+    #             self.model.reference_model,
+    #             granularity=self.granularity,
+    #         ),
+    #         running=compute_resources_availability_calendars(
+    #             self.model.running_model,
+    #             granularity=self.granularity,
+    #         ),
+    #         unit="resources calendars",
+    #     )
+    #
+    #
+    # @lazy
+    # def batch_sizes(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+    #     """Get the batch sizes for each activity for the running and the reference models"""
+    #     return Pair(
+    #         reference=compute_activity_batch_sizing(self.model.reference_model),
+    #         running=compute_activity_batch_sizing(self.model.running_model),
+    #         unit="instances",
+    #     )

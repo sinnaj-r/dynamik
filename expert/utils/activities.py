@@ -11,55 +11,6 @@ from expert.model import Event
 from expert.utils.log import compute_batches, find_log_end, find_log_start
 
 
-def compute_activity_waiting_times(
-        log: typing.Iterable[Event],
-) -> typing.Mapping[str, typing.Iterable[timedelta]]:
-    """
-    Compute the waiting time for each activity in the log.
-
-    To compute the waiting time, events are grouped by their activity and then the waiting times per event are computed.
-
-    Parameters
-    ----------
-    * `log`:   *an event log*
-
-    Returns
-    -------
-    * a mapping with pairs (`activity`, [`waiting time`])
-    """
-    # get the set of activities
-    activities = {event.activity for event in log}
-    # group events by activity and store the waiting time for each event
-    return {
-        activity: [event.waiting_time for event in log if event.activity == activity] for activity in sorted(activities)
-    }
-
-
-def compute_activity_execution_times(
-        log: typing.Iterable[Event],
-) -> typing.Mapping[str, typing.Iterable[timedelta]]:
-    """
-    Compute the execution times for each activity in the log.
-
-    To compute the execution time, events are grouped by their activity and then the execution times per event are
-    computed.
-
-    Parameters
-    ----------
-        * `log`:   *an event log*
-
-    Returns
-    -------
-        * a mapping with pairs (`activity`, [`execution time`])
-    """
-    # get the set of activities
-    activities = {event.activity for event in log}
-    # group events by activity and store the waiting time for each event
-    return {
-        activity: [event.execution_time for event in log if event.activity == activity] for activity in sorted(activities)
-    }
-
-
 def compute_activity_arrival_rate(
         log: typing.Iterable[Event],
         timeunit: timedelta = timedelta(minutes=1),
@@ -98,31 +49,6 @@ def compute_activity_arrival_rate(
     }
 
 
-def compute_activity_batching_times(
-        log: typing.Iterable[Event],
-) -> typing.Mapping[str, typing.Iterable[timedelta]]:
-    """
-    Compute the part of the waiting time due to batching accumulation for each activity in the log.
-
-    To compute the batching time, events are grouped by their activity and then the batching times per event are
-    computed.
-
-    Parameters
-    ----------
-        * `log`:   *an event log*
-
-    Returns
-    -------
-        * a mapping with pairs (`activity`, [`batching time`])
-    """
-    if any(event.batch is None for event in log):
-        log = compute_batches(log)
-
-    activities = { event.activity for event in log }
-
-    return { activity: [event.batching_time for event in log if event.activity == activity] for activity in activities}
-
-
 def compute_activity_batch_sizing(
         log: typing.Iterable[Event],
 ) -> typing.Mapping[str, typing.Iterable[timedelta]]:
@@ -149,15 +75,14 @@ def compute_activity_batch_sizing(
     return { activity: [batch.size for batch in batches] for (activity, batches) in batch_per_activity }
 
 
-def compute_activity_contention_times(
+def compute_prioritized_activities(
         log: typing.Iterable[Event],
-) -> typing.Mapping[str, typing.Iterable[timedelta]]:
+) -> typing.Mapping[str, set[str]]:
     """
-    Compute the part of the waiting time due to resource contention for each activity in the log.
+    Compute the prioritized activities for each activity in the log.
 
-    To compute the contention time, we find the blocking events (the ones that share resource and are enabled and began
-    execution before the analyzed resource), and compute the contention time as the interval between the first blocking
-    event started its execution and the last one finished, or the event started.
+    To compute the prioritized activities, we find the blocking events (the ones that share resource, are enabled  after
+    the analyzed event but began executing before it), store the event activity as prioritized over the current one.
 
     Parameters
     ----------
@@ -165,68 +90,20 @@ def compute_activity_contention_times(
 
     Returns
     -------
-        * a mapping with pairs (`activity`, [`contention time`])
+        * a mapping with pairs (`activity`, [`prioritized activities`])
     """
-    contention_time_per_activity: dict[str, list[timedelta]] = defaultdict(list)
+    prioritized_activities_per_activity: dict[str, set[str]] = defaultdict(set)
 
     for event in log:
-        blocking_events = [
-            evt for evt in log if evt.resource == event.resource and # same resource
-                                  # events enabled before the current one that started executing after this was enabled
-                                  # but before it started running
-                                  evt.enabled < event.enabled < evt.start < event.start
-        ]
+        # save the activities that are prioritized over the current one
+        prioritized_activities_per_activity[event.activity] = prioritized_activities_per_activity[event.activity].union(
+            {
+                evt.activity for evt in log
+                if evt.resource == event.resource and evt.enabled > event.enabled < evt.start < event.start
+            },
+        )
 
-        if len(blocking_events) > 0:
-            contention_time_per_activity[event.activity].append(
-                # the contention time is the period between the first blocking event start and the last blocking event end
-                # or the current one start, whatever happens first
-                min(max(evt.end for evt in blocking_events), event.start) - min(evt.start for evt in blocking_events),
-                )
-        else:
-            # if no blocking events found, the contention is 0
-            contention_time_per_activity[event.activity].append(timedelta())
-    return contention_time_per_activity
-
-
-def compute_activity_prioritization_times(
-        log: typing.Iterable[Event],
-) -> typing.Mapping[str, typing.Iterable[timedelta]]:
-    """
-    Compute the part of the waiting time due to activity prioritization for each activity in the log.
-
-    To compute the prioritization time, we find the blocking events (the ones that share resource, are enabled after the
-    analyzed event but began executing before it), and compute the prioritization time as the interval between the first
-    blocking event started its execution and the last one finished, or the event started.
-
-    Parameters
-    ----------
-        * `log`:   *an event log*
-
-    Returns
-    -------
-        * a mapping with pairs (`activity`, [`prioritization time`])
-    """
-    prioritization_time_per_activity: dict[str, list[timedelta]] = defaultdict(list)
-
-    for event in log:
-        blocking_events = [
-            evt for evt in log if evt.resource == event.resource and # same resource
-                                  # events enabled after this event but that began executing before this one
-                                  evt.enabled > event.enabled < evt.start < event.start
-        ]
-
-        if len(blocking_events) > 0:
-            prioritization_time_per_activity[event.activity].append(
-                # the prioritization time is the period between the first blocking event start and the last blocking event
-                # end or the current one start, whatever happens first
-                min(max(evt.end for evt in blocking_events), event.start) - min(evt.start for evt in blocking_events),
-                )
-        else:
-            # if no blocking events found, the prioritization is 0
-            prioritization_time_per_activity[event.activity].append(timedelta())
-
-    return prioritization_time_per_activity
+    return prioritized_activities_per_activity
 
 
 def compute_activity_resources(

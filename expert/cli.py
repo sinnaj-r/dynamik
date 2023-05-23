@@ -8,9 +8,9 @@ from datetime import timedelta
 
 from expert.drift import default_drift_detector_test_factory, detect_drift
 from expert.drift.features import DriftFeatures
-from expert.drift.plot import plot_features
 from expert.input import EventMapping
 from expert.logger import LOGGER, Level, setup_logger
+from expert.output import plot_features
 from expert.utils.log import infer_final_activities, infer_initial_activities
 
 __NOTICE = 0
