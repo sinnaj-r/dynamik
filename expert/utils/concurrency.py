@@ -6,7 +6,7 @@ import typing
 from collections import defaultdict
 from dataclasses import dataclass
 
-from expert.model import Event
+from expert.model import Event, Log, Trace
 
 
 @dataclass
@@ -49,23 +49,23 @@ class ConcurrencyOracle(abc.ABC):
 
 
 class _ConcurrencyOracle(ConcurrencyOracle):
-    __log: typing.Iterable[Event]
+    __log: Log
     __concurrency: typing.Mapping[str, typing.Mapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
 
     def __init__(
             self: typing.Self,
-            log: typing.Iterable[Event],
+            log: Log,
             concurrency: typing.Mapping[str, typing.Mapping[str, bool]],
     ) -> None:
         self.__log = log
         self.__concurrency = concurrency
 
-    def __find_enabler(self: typing.Self, trace: typing.Iterable[Event], event: Event) -> Event | None:
+    def __find_enabler(self: typing.Self, trace: Trace, event: Event) -> Event | None:
         # Get the list of previous events (events that ended before the current one started and that are not
         # concurrent with it).
         previous = sorted(
             [evt for evt in trace if evt.end <= event.start and not self.__concurrency[event.activity][evt.activity]],
-            key= lambda evt: evt.end,
+            key=lambda evt: evt.end,
         )
         # Return the last
         return previous[-1] if len(previous) > 0 else None
@@ -96,7 +96,7 @@ class _ConcurrencyOracle(ConcurrencyOracle):
                 else:
                     event.enabled = event.start
 
-        self.__log = sorted(self.__log, key = lambda evt: (evt.end, evt.start, evt.enabled))
+        self.__log = sorted(self.__log, key=lambda evt: (evt.end, evt.start, evt.enabled))
 
         return self.__log
 
@@ -104,18 +104,15 @@ class _ConcurrencyOracle(ConcurrencyOracle):
 class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
     """Concurrency oracle from the heuristics miner."""
 
-    __log: typing.Iterable[Event]
-    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(
-        lambda: defaultdict(lambda: False),
-    )
+    __log: Log
+    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
     __df_count: typing.Mapping[str, typing.Mapping[str, int]]
     __df_dependency: typing.Mapping[str, typing.Mapping[str, float]]
     __l2l_dependency: typing.Mapping[str, typing.Mapping[str, float]]
 
-
     def __init__(
             self: typing.Self,
-            log: typing.Iterable[Event],
+            log: Log,
             *,
             thresholds: HeuristicsThresholds = HeuristicsThresholds(),
     ) -> None:
@@ -129,7 +126,7 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
 
         # Create concurrency if there is a directly-follows relation in both directions
         for (activity_1, activity_2) in itertools.combinations(activities, 2):
-            if self.__df_count[activity_1][activity_2] > 0 and  self.__df_count[activity_2][activity_1] > 0:
+            if self.__df_count[activity_1][activity_2] > 0 and self.__df_count[activity_2][activity_1] > 0:
                 if (self.__l2l_dependency[activity_1][activity_2] < thresholds.l2l and  # 'A' and 'B' are not a length 2 loop
                         abs(self.__df_dependency[activity_1][activity_2] < thresholds.df)):  # The df relations are weak
                     # Concurrency relation AB, add it to A
@@ -140,7 +137,6 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
                     self.__concurrency[activity_2][activity_1] = True
 
         super().__init__(self.__log, self.__concurrency)
-
 
     def __build_matrices(
             self: typing.Self,
@@ -215,14 +211,13 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
 class OverlappingConcurrencyOracle(_ConcurrencyOracle):
     """Concurrency oracle from the split miner 2.0."""
 
-    __log: typing.Iterable[Event]
+    __log: Log
     __overlaps = defaultdict(lambda: defaultdict(lambda: 0))
-    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(
-        lambda: defaultdict(lambda: False),
-    )
+    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
 
     def __init__(
-            self: typing.Self, log: typing.Iterable[Event],
+            self: typing.Self,
+            log: Log,
             thresholds: OverlappingThresholds = OverlappingThresholds(),
     ) -> None:
         self.__log = list(log)
@@ -258,7 +253,7 @@ class OverlappingConcurrencyOracle(_ConcurrencyOracle):
 
     def __build_matrices(
             self: typing.Self,
-            cases: typing.Mapping[str, typing.Iterable[Event]],
+            cases: typing.Mapping[str, Trace],
     ) -> None:
         # Count overlapping relations
         for trace in cases.values():

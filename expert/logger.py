@@ -13,16 +13,16 @@ LOGGER: verboselogs.VerboseLogger = verboselogs.VerboseLogger("expert")
 class Level(enum.Enum):
     """The different configurable logging levels"""
 
-    SPAM=verboselogs.SPAM
-    DEBUG=logging.DEBUG
-    VERBOSE=verboselogs.VERBOSE
-    INFO=logging.INFO
-    NOTICE=verboselogs.NOTICE
-    WARNING=logging.WARNING
-    SUCCESS=verboselogs.SUCCESS
-    ERROR=logging.ERROR
-    CRITICAL=logging.CRITICAL
-    DISABLED=math.inf
+    SPAM = verboselogs.SPAM
+    DEBUG = logging.DEBUG
+    VERBOSE = verboselogs.VERBOSE
+    INFO = logging.INFO
+    NOTICE = verboselogs.NOTICE
+    WARNING = logging.WARNING
+    SUCCESS = verboselogs.SUCCESS
+    ERROR = logging.ERROR
+    CRITICAL = logging.CRITICAL
+    DISABLED = math.inf
 
 
 def setup_logger(verbosity: Level = Level.INFO, destination: str | None = None) -> None:
@@ -30,13 +30,12 @@ def setup_logger(verbosity: Level = Level.INFO, destination: str | None = None) 
     coloredlogs.install(level=verbosity.value, logger=LOGGER)
     LOGGER.setLevel(verbosity.value)
 
-    formatter = coloredlogs.ColoredFormatter(
-        "%(asctime)s %(name)s[%(process)d] %(levelname)8s %(message)s",
-    )
-
+    pattern = "%(asctime)s %(name)s[%(process)d] %(levelname)8s %(message)s"
+    formatter = coloredlogs.ColoredFormatter(pattern)
     for handler in LOGGER.handlers:
         handler.setFormatter(formatter)
 
     if destination is not None:
         file_handler = logging.FileHandler(destination, mode="w", encoding="utf-8")
+        file_handler.setFormatter(coloredlogs.BasicFormatter(pattern))
         LOGGER.addHandler(file_handler)

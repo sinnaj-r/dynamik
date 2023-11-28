@@ -3,49 +3,28 @@ import typing
 from collections import defaultdict
 from datetime import timedelta
 
-from expert.model import Event
+from expert.model import Log
 
 
-def compute_average_case_duration(log: typing.Iterable[Event]) -> timedelta:
-    """
-    Compute the average case duration for the given log
-
-    Parameters
-    ----------
-    * `log`:    *the event log*
-
-    Returns
-    -------
-    * the average case duration
-    """
-    cases = defaultdict(list)
-
+def compute_inter_arrival_times(log: Log) -> typing.Iterable[timedelta]:
+    """TODO DOCS"""
+    cases = {}
+    # get the start timestamp for each case
     for event in log:
-        cases[event.case].append(event)
+        if event.case not in cases or event.start < cases[event.case]:
+            cases[event.case] = event.start
 
-    for key in cases:
-        cases[key] = cases[key][-1].end - cases[key][0].start
-
-    return sum(cases.values(), timedelta()) / len(cases)
-
-
-def compute_average_inter_case_time(log: typing.Iterable[Event], initial_activities: typing.Iterable[str]) -> timedelta:
-    """
-    Compute the average time between new cases
-
-    Parameters
-    ----------
-    * `log`:                *the event log*
-    * `initial_activities`: *the list of initial activities*
-
-    Returns
-    -------
-    * the average time between cases
-    """
-    # get the start timestamps
-    starts = sorted([event.start for event in log if event.activity in initial_activities])
-    # compute the time between successive starts
-    distances = [event2 - event1 for (event1, event2) in zip(starts[:-1], starts[1:], strict=True)]
-    return sum(distances, timedelta()) / len(distances)
+    arrivals = sorted(cases.values())
+    # build pairs of start times for successive cases and compute the time elapsed between them
+    return sorted([t2-t1 for (t1, t2) in zip(arrivals, arrivals[1:], strict=False)])
 
 
+def compute_cases_length(log: Log) -> typing.Iterable[int]:
+    """TODO DOCS"""
+    cases = defaultdict(lambda: 0)
+
+    # count the events in each case
+    for event in log:
+        cases[event.case] += 1
+
+    return sorted(cases.values())

@@ -17,17 +17,38 @@ class Batch:
     """The activity performed during the batch"""
     resource: str
     """The resource executing the batch"""
-    size: int
-    """The batch size"""
-    accumulation: Interval[datetime]
-    """The batch accumulation interval"""
-    execution: Interval[datetime]
-    """The batch execution interval"""
+    events: typing.Iterable[Event]
+    """The events executed in this batch"""
+
+    @cached_property
+    def size(self: typing.Self) -> int:
+        """The batch size"""
+        return len(list(self.events))
+
+    @cached_property
+    def accumulation(self: typing.Self) -> Interval[datetime]:
+        """The batch accumulation interval"""
+        return Interval(
+            # the first enabled event
+            begin=min(event.enabled for event in self.events),
+            # the last enabled event
+            end=max(event.enabled for event in self.events),
+        )
+
+    @cached_property
+    def execution(self: typing.Self) -> Interval[datetime]:
+        """The batch execution interval"""
+        return Interval(
+            # the first started event
+            begin=min(event.start for event in self.events),
+            # the last ended event
+            end=max(event.end for event in self.events),
+        )
 
 
 @dataclass
 class IntervalTime:
-    """TODO"""
+    """TODO DOCS"""
 
     intervals: typing.Iterable[Interval] = ()
     duration: timedelta = timedelta()
@@ -37,29 +58,24 @@ class IntervalTime:
 class WaitingTime:
     """An object representing the waiting time for an event, with its decomposition"""
 
-    event: Event
-
-    batching: IntervalTime = field(default_factory= IntervalTime, init=False)
-    contention: IntervalTime = field(default_factory= IntervalTime, init=False)
-    prioritization: IntervalTime = field(default_factory= IntervalTime, init=False)
-    availability: IntervalTime = field(default_factory= IntervalTime, init=False)
-    extraneous: IntervalTime = field(default_factory= IntervalTime, init=False)
-
-    @cached_property
-    def total(self: typing.Self) -> IntervalTime:
-        """The total waiting time for an event"""
-        return IntervalTime(
-            intervals=[
-                Interval(
-                    begin=self.event.enabled,
-                    end=self.event.start,
-                ),
-            ],
-            duration=self.event.start - self.event.enabled,
-        )
+    batching: IntervalTime = field(default_factory=IntervalTime)
+    contention: IntervalTime = field(default_factory=IntervalTime)
+    prioritization: IntervalTime = field(default_factory=IntervalTime)
+    availability: IntervalTime = field(default_factory=IntervalTime)
+    extraneous: IntervalTime = field(default_factory=IntervalTime)
+    total: IntervalTime = field(default_factory=IntervalTime)
 
 
 @dataclass
+class ProcessingTime:
+    """An object representing the processing time for an event, with its decomposition"""
+
+    effective: IntervalTime = field(default_factory=IntervalTime)
+    idle: IntervalTime = field(default_factory=IntervalTime)
+    total: IntervalTime = field(default_factory=IntervalTime)
+
+
+@dataclass(slots=True)
 class Event:
     """
     `Event` provides a standardized representation of an event from a log.
@@ -72,31 +88,22 @@ class Event:
     """The case identifier for the event, which associates it with a specific process execution"""
     activity: str
     """The activity being executed"""
+    resource: str | None
+    """The resource in charge of the activity"""
     start: datetime
     """The time when the activity execution began"""
     end: datetime
     """The time when the activity execution ended"""
-    waiting_time: WaitingTime = field(init=False)
-    """The waiting time for the event, split in its components"""
-    resource: str | None
-    """The resource in charge of the activity"""
     enabled: datetime | None = None
     """The time when the activity was made available for execution"""
-    batch: Batch | None = None
+    batch: Batch | None = field(default=None, hash=False, compare=False, repr=False)
     """The batch this event belongs to"""
-
-    def __post_init__(self: typing.Self) -> None:
-        self.waiting_time = WaitingTime(self)
-
-    @cached_property
-    def execution_time(self: typing.Self) -> timedelta:
-        """The execution time elapsed between the event start end the event finalization"""
-        return self.end - self.start
-
-    @cached_property
-    def total_time(self: typing.Self) -> timedelta:
-        """The total event time, between its enablement and the finalization of the execution"""
-        return self.waiting_time.total.duration + self.execution_time
+    waiting_time: WaitingTime = field(default_factory=WaitingTime, hash=False, compare=False, repr=False)
+    """The waiting time for the event, split in its components"""
+    processing_time: ProcessingTime = field(default_factory=ProcessingTime, hash=False, compare=False, repr=False)
+    """The processing time for the event, split in its components"""
+    attributes: typing.Mapping[str, typing.Any] = field(default_factory=dict, hash=False, compare=False)
+    """The additional attributes for the event"""
 
     @property
     def violations(self: typing.Self) -> typing.Iterable[str]:
@@ -109,18 +116,27 @@ class Event:
         if self.start > self.end:
             result.append("start > end")
 
-
         return result
 
     def is_valid(self: typing.Self) -> bool:
         """Check if the event is valid or malformed"""
         return self.enabled <= self.start <= self.end
 
+    def __hash__(self: typing.Self) -> int:
+        return hash((self.case, self.activity, self.resource, self.start, self.end, self.enabled))
+
+    def asdict(self: typing.Self, *, fields: typing.Iterable[str] | None = None) -> dict:
+        if fields is None:
+            fields = self.__slots__
+        return {
+            _field: self.__getattribute__(_field) for _field in fields
+        }
+
+
 # type aliases
 Log: typing.TypeAlias = typing.Iterable[Event]
+Trace: typing.TypeAlias = typing.Iterable[Event]
 Activity: typing.TypeAlias = str
 Resource: typing.TypeAlias = str
 WeeklyCalendar: typing.TypeAlias = typing.Mapping[int, typing.Iterable[Interval]]
 Test: typing.TypeAlias = typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool]
-
-__all__ = ["Batch", "IntervalTime", "WaitingTime", "Event", "Log", "Activity", "Resource", "WeeklyCalendar", "Test"]

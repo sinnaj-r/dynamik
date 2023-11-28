@@ -4,22 +4,9 @@ from __future__ import annotations
 import typing
 from datetime import timedelta
 
-import scipy
-
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, DriftModel
 from expert.logger import LOGGER
-from expert.model import Activity, Log, Test
-
-
-def default_drift_detector_test_factory(alpha: float = 0.05) -> Test:
-    """Default statistical test factory used for comparing the reference and running distributions using the U test"""
-    def __test_drift(reference: typing.Iterable[float], running: typing.Iterable[float]) -> bool:
-        p_value = scipy.stats.mannwhitneyu(list(reference), list(running), alternative="less").pvalue
-
-        LOGGER.verbose("test(ct reference < ct running) p-value: %.4f", p_value)
-
-        return p_value < alpha
-    return __test_drift
+from expert.model import Activity, Log
 
 
 def detect_drift(
@@ -30,7 +17,6 @@ def detect_drift(
         timeframe_size: timedelta,
         warm_up: timedelta,
         overlap_between_models: timedelta = timedelta(),
-        test: Test = default_drift_detector_test_factory(),
         warnings_to_confirm: int = 5,
 ) -> typing.Generator[Drift, None, typing.Iterable[Drift]]:
     """Find and explain drifts in the performance of a process execution by monitoring its cycle time.
@@ -43,7 +29,7 @@ def detect_drift(
        changes.
     3. Events are read one by one, and the running model is updated, computing the cycle time for each completed
        case. This cycle time are monitored using a statistical test.
-    4. If a change is detected, the reference and running models are reset and the detection process starts again.
+    4. If a change is detected, reset the reference and running models and the detection process starts again.
 
     Parameters
     ----------
@@ -52,8 +38,6 @@ def detect_drift(
     * `warm_up`:                *the size of the warm-up where events will be discarded*
     * `overlap_between_models`: *the overlapping between running models (must be smaller than the timeframe size).
                                  Negative values imply leaving a space between successive models.*
-    * `test`:                   *the test for evaluating if there are any difference between the reference and the
-                                 running models*
     * `initial_activity`:       *the first activity of the process/process fragment to be monitored*
     * `final_activity`:         *the last activity of the process/process fragment to be monitored*
     * `warnings_to_confirm`:    *the number of consecutive drift warnings to confirm a change*
@@ -81,8 +65,7 @@ def detect_drift(
         initial_activities=initial_activities,
         final_activities=final_activities,
         warm_up=warm_up,
-        test=test,
-        warnings_to_confirm = warnings_to_confirm,
+        warnings_to_confirm=warnings_to_confirm,
         overlap_between_models=overlap_between_models,
     )
 

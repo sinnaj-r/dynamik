@@ -7,7 +7,7 @@ import time
 from datetime import timedelta
 
 from expert.drift import default_drift_detector_test_factory, detect_drift
-from expert.drift.features import DriftFeatures
+from expert.drift.model import TimesPerCase
 from expert.input import EventMapping
 from expert.logger import LOGGER, Level, setup_logger
 from expert.output import plot_features
@@ -19,6 +19,7 @@ __VERBOSE = __INFO + 1
 __DEBUG = __VERBOSE + 1
 __SPAM = __DEBUG + 1
 __QUIET = 1000
+
 
 def __parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -115,11 +116,11 @@ def run() -> None:
     )
 
     for index, drift in enumerate(detector):
-        metrics = DriftFeatures(drift)
+        metrics = TimesPerCase(drift)
         plots = plot_features(metrics)
         plots.savefig(f"causes-drift-{index}.svg")
 
     end = time.perf_counter_ns()
 
     LOGGER.success("drift detection finished")
-    LOGGER.success("execution took %s", timedelta(microseconds=(end - start)/1000))
+    LOGGER.success("execution took %s", timedelta(microseconds=(end - start) / 1000))

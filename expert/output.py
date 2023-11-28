@@ -1,209 +1,262 @@
 """This module contains the logic for plotting change causes"""
-import math
-from datetime import timedelta
+import datetime
+import json
+import typing
 from statistics import mean
 
 import numpy as np
-from anytree import Node, RenderTree
+import yaml
+from anytree import AnyNode, RenderTree
+from intervaltree import Interval, IntervalTree
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from sortedcontainers.sorteddict import SortedDict
 
-from expert.drift.causality import CAUSE_DETAILS_TYPE
-from expert.drift.features import DriftFeatures
+from expert.drift.model import Pair, TimesPerActivity, TimesPerCase
 from expert.logger import LOGGER
+from expert.model import Event
+from expert.utils.rules import ConfusionMatrix
 
 
-def __plot_bars(ax: Axes,
+def __plot_bars(axes: Axes,
+                reference: typing.Mapping[str, typing.Iterable[int]],
+                running: typing.Mapping[str, typing.Iterable[int]],
+                *,
+                aggregation: typing.Callable[[typing.Iterable[int]], float] = mean,
                 title: str,
-                keys: list[str],
-                reference: list[float],
-                running: list[float],
                 width: float = 0.3,
                 space: float = 0.0) -> Axes:
     # Build the list of indices where the bars will be print
+    keys = sorted(set(list(reference.keys()) + list(running.keys())))
     ticks = np.arange(len(keys))
     # Put the bars for the reference dataset on their positions
-    ax.bar(x=ticks, height=reference, width=width, color="tab:blue", label="Reference")
+    sorted_data = SortedDict(reference)
+
+    axes.bar(
+        x=ticks,
+        height=[aggregation(values) for values in sorted_data.values()],
+        width=width,
+        color="tab:blue",
+        label="Reference",
+    )
+
+    sorted_data = SortedDict(running)
+
     # Add the width plus the space between bars to offset the bar in the plot and prevent overlapping
-    ax.bar(x=ticks + width + space, height=running, width=width, color="tab:red", label="Running")
-    ax.set_title(title)
+    axes.bar(
+        x=ticks + width + space,
+        height=[aggregation(values) for values in sorted_data.values()],
+        width=width,
+        color="tab:red",
+        label="Running",
+    )
+    # Set the plot title
+    axes.set_title(title)
     # Put the ticks in their position + (width + space) / 2 to center them below the bars, and add the labels rotated
-    ax.set_xticks(ticks=ticks + (width + space) / 2, labels=keys, rotation=45, ha="right")
-    ax.legend(loc="upper left")
+    axes.set_xticks(ticks=ticks + (width + space) / 2, labels=keys, rotation=45, ha="right")
+    axes.legend(loc="upper left")
+    axes.set_ylim(ymin=0.0)
 
-    return ax
+    return axes
 
-def plot_features(causes: DriftFeatures) -> Figure:
-    """Generate a plot with the before and after of the drift causes to easily visualize what changed"""
-    fig, (ct, et, wt, ar, ru) = plt.subplots(nrows=5, ncols=1, layout="constrained", figsize=(8, 24))
 
-    # Plot cycle times
-    # Build the list of values for the cycle time and sort them
-    reference = causes.case_duration.reference
-    running = causes.case_duration.running
-
-    reference_count=len(list(reference))
-    running_count=len(list(running))
+def __plot_continuous(axes: Axes,
+                      reference: typing.Iterable[int],
+                      running: typing.Iterable[int],
+                      *,
+                      title: str) -> Axes:
+    reference_count = len(list(reference))
+    running_count = len(list(running))
     max_x = max(reference_count, running_count)
 
     ref_x = np.linspace(start=0, stop=max_x, num=reference_count)
     run_x = np.linspace(start=0, stop=max_x, num=running_count)
 
-    ct.plot(ref_x, reference, color="tab:blue", label="Reference")
-    ct.plot(run_x, running, color="tab:red", label="Running")
-    ct.set_title("Process cycle time")
-    ct.set_ylabel("time (s)")
-    ct.set_xticks([])
-    ct.set_xbound(lower=-0.5, upper=max_x+0.5)
-    ct.legend(loc="upper left")
+    axes.plot(ref_x, list(reference), color="tab:blue", label="Reference")
+    axes.plot(run_x, list(running), color="tab:red", label="Running")
+    axes.set_title(title, pad=10)
+    axes.set_ylabel("time (s)")
+    axes.set_xticks([])
+    axes.set_xbound(lower=-0.5, upper=max_x + 0.5)
+    axes.set_xlabel("\n")
+    axes.legend(loc="upper left")
+    axes.set_ylim(ymin=0.0)
 
-    # Plot execution times per activity
-    # Get the set of keys (they can be different in reference and running, so we concat and build a set)
-    keys = sorted(set(list(causes.execution_time.reference.keys()) + list(causes.execution_time.running.keys())))
-    # Compute the mean for each key, and assign 0.0 if the activity was not present
-    reference = [
-        mean([value.total_seconds() for value in causes.execution_time.reference[key]])
-        if key in causes.execution_time.reference else 0.0 for key in keys
-    ]
-    running = [
-        mean([value.total_seconds() for value in causes.execution_time.running[key]])
-        if key in causes.execution_time.running else 0.0 for key in keys
-    ]
-    __plot_bars(ax=et, title="execution time/activity", reference=reference, running=running, keys=keys)
+    return axes
 
-    # Plot waiting times per activity
-    # Get the set of keys (they can be different in reference and running, so we concat and build a set)
-    keys = sorted(set(list(causes.waiting_time.reference.keys()) + list(causes.waiting_time.running.keys())))
-    # Compute the mean for each key, and assign 0.0 if the activity was not present
-    reference = [
-        mean([value.total_seconds() for value in causes.waiting_time.reference[key]])
-        if key in causes.waiting_time.reference else 0.0 for key in keys
-    ]
-    running = [
-        mean([value.total_seconds() for value in causes.waiting_time.running[key]])
-        if key in causes.waiting_time.running else 0.0 for key in keys
-    ]
-    __plot_bars(ax= wt, title ="waiting time/activity", reference=reference, running=running, keys=keys)
 
-    # Plot arrival rate per activity
-    keys = sorted(set(list(causes.arrival_rate.reference.keys()) + list(causes.arrival_rate.running.keys())))
-    reference = [
-        mean(causes.arrival_rate.reference[key]) if key in causes.arrival_rate.reference else 0.0 for key in keys
-    ]
-    running = [
-        mean(causes.arrival_rate.running[key]) if key in causes.arrival_rate.running else 0.0 for key in keys
-    ]
-    __plot_bars(ax=ar, title="arrival rate/activity", reference=reference, running=running, keys=keys)
-
-    # Plot resource utilization rate
-    keys = sorted(
-        set(
-            list(causes.resource_utilization_rate.reference.keys()) +
-            list(causes.resource_utilization_rate.running.keys()),
-            ),
+def plot_case_features(features: TimesPerCase) -> Figure:
+    """Generate a plot with the before and after of the drift causes to easily visualize what changed"""
+    fig, (ct, pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
+        nrows=10,
+        ncols=1,
+        layout="constrained",
+        sharex="all",
+        figsize=(20, 40),
     )
-    reference = [
-        mean(causes.resource_utilization_rate.reference[key])
-        if key in causes.resource_utilization_rate.reference else 0.0 for key in keys
-    ]
-    running = [
-        mean(causes.resource_utilization_rate.running[key])
-        if key in causes.resource_utilization_rate.running else 0.0 for key in keys
-    ]
-    __plot_bars(ax=ru, title="utilization rate/resource", reference=reference, running=running, keys=keys)
 
-    # Set the figure title
-    fig.suptitle("Drift causes", size="xx-large")
-    # Modify the figure layout to increase the gap between subplots
-    fig.get_layout_engine().set(w_pad=8/72, h_pad=8/72)
+    # Plot cycle times
+    __plot_continuous(ct, features.cycle_time.reference, features.cycle_time.running, title="Cycle time")
+
+    # Plot processing times
+    __plot_continuous(pt, features.processing_time.reference, features.processing_time.running, title="Processing time")
+
+    # Plot effective processing times
+    __plot_continuous(ept, features.effective_time.reference, features.effective_time.running, title="Effective processing time")
+
+    # Plot idle processing times
+    __plot_continuous(ipt, features.idle_time.reference, features.idle_time.running, title="Idle processing time")
+
+    # Plot waiting times
+    __plot_continuous(wt, features.waiting_time.reference, features.waiting_time.running, title="Waiting time")
+
+    # Plot waiting times due to resource unavailability
+    __plot_continuous(ruwt, features.availability_time.reference, features.availability_time.running, title="Waiting time (resource unavailability)")
+
+    # Plot waiting times due to resource contention
+    __plot_continuous(rcwt, features.contention_time.reference, features.contention_time.running, title="Waiting time (contention)")
+
+    # Plot waiting times due to prioritization
+    __plot_continuous(pwt, features.prioritization_time.reference, features.prioritization_time.running, title="Waiting time (prioritization)")
+
+    # Plot waiting times due to batching
+    __plot_continuous(bwt, features.batching_time.reference, features.batching_time.running, title="Waiting time (batching)")
+
+    # Plot waiting times due to exogenous factors
+    __plot_continuous(ewt, features.extraneous_time.reference, features.extraneous_time.running, title="Waiting time (extraneous)")
 
     return fig
 
 
-def print_causes(drift_causes: Node) -> None:
+def plot_activity_features(features: TimesPerActivity) -> Figure:
+    """TODO docs"""
+    # Generate a plot with the before and after of the drift causes to easily visualize what changed
+    fig, (pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
+        nrows=9,
+        ncols=1,
+        layout="constrained",
+        figsize=(20, 40),
+    )
+
+    __plot_bars(pt, features.processing_time.reference, features.processing_time.running, title="Processing time (avg)")
+
+    # Plot effective processing times
+    __plot_bars(ept, features.effective_time.reference, features.effective_time.running, title="Effective processing time (avg)")
+
+    # Plot idle processing times
+    __plot_bars(ipt, features.idle_time.reference, features.idle_time.running, title="Idle processing time (avg)")
+
+    # Plot waiting times
+    __plot_bars(wt, features.waiting_time.reference, features.waiting_time.running, title="Waiting time (avg)")
+
+    # Plot waiting times due to resource unavailability
+    __plot_bars(ruwt, features.availability_time.reference, features.availability_time.running, title="Waiting time (resource unavailability) (avg)")
+
+    # Plot waiting times due to resource contention
+    __plot_bars(rcwt, features.contention_time.reference, features.contention_time.running, title="Waiting time (contention) (avg)")
+
+    # Plot waiting times due to prioritization
+    __plot_bars(pwt, features.prioritization_time.reference, features.prioritization_time.running, title="Waiting time (prioritization) (avg)")
+
+    # Plot waiting times due to batching
+    __plot_bars(bwt, features.batching_time.reference, features.batching_time.running, title="Waiting time (batching) (avg)")
+
+    # Plot waiting times due to exogenous factors
+    __plot_bars(ewt, features.extraneous_time.reference, features.extraneous_time.running, title="Waiting time (extraneous) (avg)")
+
+    return fig
+
+
+def print_causes(drift_causes: AnyNode) -> None:
     """Pretty-print the drift causes"""
     LOGGER.notice("drift causes:")
-    for pre, fill, node in RenderTree(drift_causes):
-        match node.type:
-            case CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR:
-                factor: float = (
-                    node.details.running.mean / node.details.reference.mean
-                    if node.details.running.mean != 0.0 and node.details.reference.mean != 0
-                    else math.inf
-                )
+    tree = RenderTree(drift_causes).by_attr('what')
+    for line in tree.splitlines():
+        LOGGER.notice(line)
 
-                LOGGER.notice("    %s%s x%.2f (from %s to %s)",
-                              pre, node.name.lower(), factor,
-                              timedelta(seconds=node.details.reference.mean),
-                              timedelta(seconds=node.details.running.mean))
-            case CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY:
-                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
 
-                for (activity, details) in node.details.items():
-                    factor: float = (
-                        details.running.mean/details.reference.mean
-                        if details.running.mean != 0.0 and details.reference.mean != 0
-                        else math.inf
-                    )
+def export_causes(drift_causes: AnyNode, *, excluded_fields: typing.Iterable[str] = ("data",), filename: str | None = None) -> dict:
+    """Export the current causes tree to a YAML representation"""
+    LOGGER.notice("exporting full causes tree")
+    # transform the tree to a dict and return it
+    tree = __to_dict(drift_causes, excluded_fields)
 
-                    LOGGER.info(
-                        "    %s    '%s' %s x%.2f (from %s to %s)",
-                        fill,
-                        activity,
-                        node.name.lower(),
-                        factor,
-                        timedelta(seconds=details.reference.mean),
-                        timedelta(seconds=details.running.mean),
-                    )
-            case CAUSE_DETAILS_TYPE.SIZE_SUMMARY_PAIR_PER_ACTIVITY:
-                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+    if filename is not None:
+        extension = filename.split(".")[-1]
+        with open(filename, mode="w") as file:
+            match extension:
+                case "json":
+                    json.dump(tree, file)
+                case "yaml":
+                    yaml.dump(tree, file, default_flow_style=False)
 
-                for (activity, details) in node.details.items():
-                    factor: float = (
-                        details.running.mean / details.reference.mean
-                        if details.running.mean != 0 and details.reference.mean != 0
-                        else math.inf
-                    )
+    return tree
 
-                    LOGGER.info(
-                        "    %s    '%s' %s x%.2f (from %s to %s)",
-                        fill,
-                        activity,
-                        node.name.lower(),
-                        factor,
-                        details.reference.mean,
-                        details.running.mean,
-                    )
 
-            case CAUSE_DETAILS_TYPE.DIFFERENCE_PER_ACTIVITY:
-                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+def __to_dict(data: typing.Any, excluded_fields: typing.Iterable[str]) -> typing.Any:
+    if isinstance(data, dict):
+        return {key: __to_dict(value, excluded_fields) for key, value in data.items() if key not in excluded_fields}
 
-                for (activity, details) in node.details.items():
-                    LOGGER.info("    %s    '%s' %s %s", fill, activity, node.name.lower(), ", ".join(details))
-            case CAUSE_DETAILS_TYPE.DURATION_SUMMARY_PAIR_PER_ACTIVITY_AND_RESOURCE:
-                LOGGER.notice("    %s%s for %d activities", pre, node.name.lower(), len(node.details))
+    if isinstance(data, AnyNode):
+        node = {}
+        if "what" not in excluded_fields:
+            node["what"] = data.what
 
-                for (activity, resources) in node.details.items():
-                    LOGGER.info(
-                        "    %s    '%s' %s",
-                        fill,
-                        activity,
-                        node.name.lower(),
-                    )
+        if "how" not in excluded_fields:
+            node["how"] = __to_dict(data.how, excluded_fields)
 
-                    for (resource, summary) in resources.items():
-                        LOGGER.info(
-                            "    %s        '%s' mean time is %s (reference mean time was %s)",
-                            fill,
-                            resource,
-                            timedelta(seconds=summary.running.mean),
-                            timedelta(seconds=summary.reference.mean),
-                        )
+        if "data" not in excluded_fields:
+            node["data"] = __to_dict(data.data, excluded_fields)
 
-            # case CAUSE_DETAILS_TYPE.FREQUENCY_SUMMARY_PAIR_PER_ACTIVITY:
-            # case CAUSE_DETAILS_TYPE.CALENDAR_PER_RESOURCE:
-            case _:
-                LOGGER.notice("    %s%s", pre, node.name.lower())
-                LOGGER.info("    %s    %s", fill, node.details)
+        if not data.is_leaf and "causes" not in excluded_fields:
+            node["causes"] = [__to_dict(child, excluded_fields) for child in data.children]
+
+        if "changes_per_activity" in data.__dict__ and "changes_per_activity" not in excluded_fields:
+            node["changes_per_activity"] = __to_dict(data.changes_per_activity, excluded_fields)
+
+        return node
+
+    if isinstance(data, Event):
+        return __to_dict(data.asdict(fields=("case", "activity", "resource", "attributes", "start", "end", "enabled")), excluded_fields)
+
+    if isinstance(data, ConfusionMatrix):
+        return __to_dict(data.__dict__, excluded_fields)
+
+    if isinstance(data, Pair):
+        return {
+            "reference": __to_dict(data.reference, excluded_fields),
+            "running": __to_dict(data.running, excluded_fields),
+            "unit": data.unit,
+        }
+
+    if type(data).__name__ == "DescribeResult":
+        return {
+            "observations": int(data.nobs),
+            "min": float(data.minmax[0]),
+            "max": float(data.minmax[-1]),
+            "mean": float(data.mean),
+            "variance": float(data.variance),
+            "skewness": float(data.skewness) if not np.isnan(data.skewness) else None,
+            "kurtosis": float(data.kurtosis) if not np.isnan(data.kurtosis) else None,
+        }
+
+    if isinstance(data, Interval):
+        return {
+            "begin": __to_dict(data.begin, excluded_fields),
+            "end": __to_dict(data.end, excluded_fields),
+        }
+
+    if isinstance(data, list | tuple | set | IntervalTree):
+        return [
+            __to_dict(value, excluded_fields) for value in data
+        ]
+
+    if isinstance(data, datetime.datetime):
+        return data.isoformat()
+
+    if isinstance(data, datetime.timedelta):
+        return data.__str__()
+
+    return data
 

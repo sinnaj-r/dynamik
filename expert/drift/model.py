@@ -4,13 +4,54 @@ from __future__ import annotations
 
 import enum
 import typing
-from collections import deque
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import cached_property
 from statistics import mean
 
+from anytree import AnyNode
+from sortedcontainers import SortedSet
+
 from expert.logger import LOGGER
-from expert.model import Event
+from expert.model import Event, Log
+from expert.utils.batching import compute_batches
+from expert.utils.processing import decompose_processing_times
+from expert.utils.statistical_tests import test
+from expert.utils.waiting import decompose_waiting_times
+
+_T = typing.TypeVar("_T")
+_K = typing.TypeVar("_K")
+_V = typing.TypeVar("_V")
+
+
+def _aggregate(
+        log: Log,
+        *,
+        key_extractor: typing.Callable[[Event], _K],
+        value_extractor: typing.Callable[[Event], _V],
+) -> typing.Mapping[_K, typing.Iterable[_V]]:
+    # group events by key and store the value for each event
+    grouped = defaultdict(list)
+    for event in log:
+        grouped[key_extractor(event)].append(value_extractor(event))
+
+    return grouped
+
+
+DriftCauses: typing.TypeAlias = AnyNode | None
+
+
+@dataclass
+class Pair(typing.Generic[_T]):
+    """A pair of measurement values, used as reference and running values for drift detection"""
+
+    reference: _T | None
+    """The reference values"""
+    running: _T | None
+    """The running values"""
+    unit: str = ""
+    """The unit of measurement"""
 
 
 @dataclass
@@ -22,6 +63,39 @@ class Drift:
     running_model: typing.Iterable[Event] | None = None
     reference_durations: typing.Iterable[float] | None = None
     running_durations: typing.Iterable[float] | None = None
+
+    def __post_init__(self: typing.Self) -> None:
+        # if the drift has been confirmed, compute the features
+        if self.level == DriftLevel.CONFIRMED:
+            # compute the batches
+            compute_batches(self.reference_model)
+            compute_batches(self.running_model)
+            # decompose processing times
+            decompose_processing_times(self.reference_model)
+            decompose_processing_times(self.running_model)
+            # decompose waiting times
+            decompose_waiting_times(self.reference_model)
+            decompose_waiting_times(self.running_model)
+
+    @cached_property
+    def case_features(self: typing.Self) -> TimesPerCase:
+        """TODO docs"""
+        return TimesPerCase(self)
+
+    @cached_property
+    def activity_features(self: typing.Self) -> TimesPerActivity:
+        """TODO docs"""
+        return TimesPerActivity(self)
+
+    @cached_property
+    def activities(self: typing.Self) -> typing.Iterable[str]:
+        """TODO DOCS"""
+        return SortedSet(event.activity for event in (list(self.reference_model) + list(self.running_model)) if event.activity is not None)
+
+    @cached_property
+    def resources(self: typing.Self) -> typing.Iterable[str]:
+        """TODO DOCS"""
+        return SortedSet(event.resource for event in (list(self.reference_model) + list(self.running_model)) if event.resource is not None)
 
 
 class DriftLevel(enum.Enum):
@@ -48,8 +122,6 @@ class DriftModel:
     __warnings_to_confirm: int = 0
     # The period considered as a warm-up
     __warm_up: timedelta
-    # The statistical test used to determine if the model presents a drift
-    __test: typing.Callable[[typing.Iterable[float], typing.Iterable[float]], bool]
     # The overlap between running models
     __overlap: timedelta = timedelta()
     # The collection of events used as the reference model
@@ -69,18 +141,16 @@ class DriftModel:
     # The start date and time for each complete case in the running model
     __running_cases_start: typing.MutableMapping[str, datetime] = {}
     # The duration of each complete case in the reference model
-    __reference_durations: typing.MutableMapping[str, float] = {}
+    __reference_durations: typing.MutableMapping[str, int] = {}
     # The duration of each complete case in the running model
-    __running_durations: typing.MutableMapping[str, float] = {}
+    __running_durations: typing.MutableMapping[str, int] = {}
     # The collection of detection results
     __drifts: typing.MutableSequence[Drift] = deque([NO_DRIFT], maxlen=1)
-
 
     def __init__(
             self: typing.Self,
             *,
             timeframe_size: timedelta,
-            test: typing.Callable[[typing.Iterable[typing.Any], typing.Iterable[typing.Any]], bool],
             initial_activities: typing.Iterable[str] = tuple("START"),
             final_activities: typing.Iterable[str] = tuple("END"),
             warm_up: timedelta = timedelta(),
@@ -97,49 +167,40 @@ class DriftModel:
         * `final_activities`:       *the list of activities marking the end of the subprocess to monitor*
         * `warm_up`:                *the warm-up period during which events will be discarded*
         * `overlap_between_models`: *the overlapping between running models (must be smaller than the timeframe size)*
-        * `test`:                   *the test used for evaluating if there are any difference between the reference and
-                                     the running models*
         * `warnings_to_confirm`:    *the number of consecutive detections needed for confirming a drift*
         """
         self.__timeframe_size = timeframe_size
         self.__initial_activities = initial_activities
         self.__final_activities = final_activities
         self.__warm_up = warm_up
-        self.__test = test
         self.__warnings_to_confirm = warnings_to_confirm
         self.__drifts = deque([NO_DRIFT] * warnings_to_confirm, maxlen=warnings_to_confirm)
         self.__overlap = overlap_between_models
 
-
     @property
     def reference_model(self: typing.Self) -> typing.Iterable[Event]:
         """The list of events that are used as a reference model against which changes are checked"""
-        return self.__reference_model
-
+        return [evt for evt in self.__reference_model if evt.case in self.__reference_durations]
 
     @property
     def running_model(self: typing.Self) -> typing.Iterable[Event]:
         """The list of events used as the running model being checked for changes"""
-        return self.__running_model
-
+        return [evt for evt in self.__running_model if evt.case in self.__running_durations]
 
     @property
     def reference_model_durations(self: typing.Self) -> typing.Mapping[str, float] | None:
         """The mapping of (case id, duration) for the reference model"""
         return self.__reference_durations
 
-
     @property
     def running_model_durations(self: typing.Self) -> typing.Mapping[str, float] | None:
         """The mapping of (case id, duration) for the running model"""
         return self.__running_durations
 
-
     @property
     def drift(self: typing.Self) -> Drift:
         """The last iteration drift status"""
         return self.__drifts[-1]
-
 
     def __update_reference_model(self: typing.Self, event: Event) -> None:
         LOGGER.debug("updating reference model")
@@ -155,8 +216,7 @@ class DriftModel:
             LOGGER.spam("adding case %s duration to reference model (timeframe %s - %s)",
                         event.case, self.__reference_model_start, self.__reference_model_end)
             case_start = self.__reference_cases_start[event.case]
-            self.__reference_durations[event.case] = (event.end - case_start).total_seconds()
-
+            self.__reference_durations[event.case] = round((event.end - case_start).total_seconds())
 
     def __update_running_model(self: typing.Self, event: Event) -> None:
         LOGGER.debug("updating running model")
@@ -172,8 +232,7 @@ class DriftModel:
             LOGGER.spam("adding case %s duration to running model (timeframe %s - %s)",
                         event.case, self.__reference_model_start, self.__reference_model_end)
             case_start = self.__running_cases_start[event.case]
-            self.__running_durations[event.case] = (event.end - case_start).total_seconds()
-
+            self.__running_durations[event.case] = round((event.end - case_start).total_seconds())
 
     def __prune_running(self: typing.Self) -> None:
         LOGGER.debug("pruning running log")
@@ -194,7 +253,6 @@ class DriftModel:
                             outdated.case, self.__reference_model_start, self.__reference_model_end)
                 del self.__running_durations[outdated.case]
 
-
     def __update_drifts(self: typing.Self) -> None:
         LOGGER.debug("updating drifts")
         if len(self.__running_durations.values()) == 0:
@@ -204,14 +262,16 @@ class DriftModel:
             return
 
         # If the model presents a drift add a warning
-        if self.__test(list(self.__reference_durations.values()), list(self.__running_durations.values())):
-            self.__drifts.append(Drift(
-                level=DriftLevel.WARNING,
-                reference_model=tuple(self.reference_model),
-                running_model=tuple(self.running_model),
-                reference_durations=tuple(sorted(self.__reference_durations.values())),
-                running_durations=tuple(sorted(self.__running_durations.values())),
-            ))
+        if test(list(self.__reference_durations.values()), list(self.__running_durations.values())):
+            self.__drifts.append(
+                Drift(
+                    level=DriftLevel.WARNING,
+                    reference_model=tuple(self.reference_model),
+                    running_model=tuple(self.running_model),
+                    reference_durations=tuple(sorted(self.__reference_durations.values())),
+                    running_durations=tuple(sorted(self.__running_durations.values())),
+                ),
+            )
             LOGGER.verbose(
                 "drift warning between reference timeframe (%s - %s) -> %s and running timeframe (%s, %s) -> %s",
                 self.__reference_model_start, self.__reference_model_end,
@@ -244,7 +304,6 @@ class DriftModel:
                            mean(list(self.__running_durations.values())))
             self.__drifts.append(NO_DRIFT)
 
-
     def reset(self: typing.Self) -> None:
         """Reset the model to the initial state"""
         self.__reference_model = []
@@ -263,7 +322,6 @@ class DriftModel:
         self.__running_durations = {}
 
         self.__drifts = deque([NO_DRIFT] * self.__warnings_to_confirm, maxlen=self.__warnings_to_confirm)
-
 
     def update(self: typing.Self, event: Event) -> None:
         """
@@ -336,3 +394,390 @@ class DriftModel:
             LOGGER.spam("updating running model (timeframe %s - %s) with event %r",
                         self.__running_model_start, self.__running_model_end, event)
             self.__update_running_model(event)
+
+
+@dataclass
+class TimesPerCase:
+    """
+    The features that describe the reference and running models for a given change at a case level.
+
+    Parameters
+    ----------
+    * `model`:    *the model containing the running and reference events for the drift*
+
+    Returns
+    -------
+    * the per-case features
+    """
+
+    model: Drift
+    """The drift model"""
+
+    @cached_property
+    def cycle_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the cycle time for the running and reference models, in seconds"""
+        return Pair(
+            reference=self.model.reference_durations,
+            running=self.model.running_durations,
+            unit="seconds",
+        )
+
+    @cached_property
+    def processing_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the set of processing times for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.processing_time.total.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.processing_time.total.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def effective_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the effective processing time for each case for the running and reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.processing_time.effective.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.processing_time.effective.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def idle_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the idle processing time (the processing time when the resource is not available) for each case for the running and reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.processing_time.idle.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.processing_time.idle.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def waiting_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the set of waiting times for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.total.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.total.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def batching_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the part of waiting times due to batching for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.batching.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.batching.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def contention_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the part of waiting times due to contention for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.contention.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.contention.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def prioritization_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the part of waiting times due to prioritization for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.prioritization.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.prioritization.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def availability_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the part of waiting times due to resources unavailability for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.availability.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.availability.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+    @cached_property
+    def extraneous_time(self: typing.Self) -> Pair[typing.Iterable[int]]:
+        """Get the part of waiting times due to extraneous factors for each activity for the running and the reference models"""
+        return Pair(
+            reference=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.reference_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.extraneous.duration.total_seconds()),
+                ).values()
+            ]),
+            running=sorted([
+                sum(values) for values in _aggregate(
+                    self.model.running_model,
+                    key_extractor=lambda event: event.case,
+                    value_extractor=lambda event: round(event.waiting_time.extraneous.duration.total_seconds()),
+                ).values()
+            ]),
+            unit="seconds",
+        )
+
+
+@dataclass
+class TimesPerActivity:
+    """
+    The features that describe the reference and running models for a given change at an activity level.
+
+    Parameters
+    ----------
+    * `model`:    *the model containing the running and reference events for the drift*
+
+    Returns
+    -------
+    * the per-activity features
+    """
+
+    model: Drift
+    """The drift model"""
+
+    @cached_property
+    def processing_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """Get the set of processing times for each activity for the running and the reference models"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.processing_time.total.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.processing_time.total.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def effective_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.processing_time.effective.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.processing_time.effective.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def idle_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.processing_time.idle.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.processing_time.idle.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def waiting_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.total.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.total.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def batching_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.batching.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.batching.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def contention_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.contention.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.contention.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def prioritization_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.prioritization.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.prioritization.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def availability_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.availability.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.availability.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
+
+    @cached_property
+    def extraneous_time(self: typing.Self) -> Pair[typing.Mapping[str, typing.Iterable[int]]]:
+        """TODO docs"""
+        return Pair(
+            reference=_aggregate(
+                self.model.reference_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.extraneous.duration.total_seconds()),
+            ),
+            running=_aggregate(
+                self.model.running_model,
+                key_extractor=lambda event: event.activity,
+                value_extractor=lambda event: round(event.waiting_time.extraneous.duration.total_seconds()),
+            ),
+            unit="seconds",
+        )
