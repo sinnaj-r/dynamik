@@ -85,15 +85,9 @@ def run() -> None:
     if args.format == "csv":
         from expert.input.csv import read_csv_log as parser
         if args.mapping is None:
-            from expert.input.csv import DEFAULT_CSV_MAPPING as mapping
+            from expert.input.csv import DEFAULT_CSV_MAPPING as MAPPING
         else:
-            mapping = __parse_mapping(args.mapping)
-    elif args.format == "json":
-        from expert.input.json import read_json_log as parser
-        if args.mapping is None:
-            from expert.input.json import DEFAULT_JSON_MAPPING as mapping
-        else:
-            mapping = __parse_mapping(args.mapping)
+            MAPPING = __parse_mapping(args.mapping)
     else:
         LOGGER.critical("log file format not supported!")
         sys.exit(-1)
@@ -102,7 +96,7 @@ def run() -> None:
 
     start = time.perf_counter_ns()
 
-    log = list(parser(args.log_file, attribute_mapping=mapping))
+    log = list(parser(args.log_file, attribute_mapping=MAPPING))
 
     detector = detect_drift(
         log=(event for event in log),

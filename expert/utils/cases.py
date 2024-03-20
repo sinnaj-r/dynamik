@@ -2,6 +2,7 @@
 import typing
 from collections import defaultdict
 from datetime import timedelta
+from itertools import pairwise
 
 from expert.model import Log
 
@@ -16,7 +17,7 @@ def compute_inter_arrival_times(log: Log) -> typing.Iterable[timedelta]:
 
     arrivals = sorted(cases.values())
     # build pairs of start times for successive cases and compute the time elapsed between them
-    return sorted([t2-t1 for (t1, t2) in zip(arrivals, arrivals[1:], strict=False)])
+    return sorted([t2-t1 for (t1, t2) in pairwise(arrivals)])
 
 
 def compute_cases_length(log: Log) -> typing.Iterable[int]:

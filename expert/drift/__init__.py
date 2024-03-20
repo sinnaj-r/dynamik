@@ -7,8 +7,10 @@ from datetime import timedelta
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, DriftModel
 from expert.logger import LOGGER
 from expert.model import Activity, Log
+from expert.timer import profile
 
 
+@profile("drift detection")
 def detect_drift(
         log: Log,
         *,

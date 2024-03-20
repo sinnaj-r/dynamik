@@ -48,7 +48,7 @@ class Batch:
 
 @dataclass
 class IntervalTime:
-    """TODO DOCS"""
+    """A collection of time intervals and its total duration."""
 
     intervals: typing.Iterable[Interval] = ()
     duration: timedelta = timedelta()
@@ -56,7 +56,7 @@ class IntervalTime:
 
 @dataclass
 class WaitingTime:
-    """An object representing the waiting time for an event, with its decomposition"""
+    """A representation of the waiting time for an event, with its decomposition"""
 
     batching: IntervalTime = field(default_factory=IntervalTime)
     contention: IntervalTime = field(default_factory=IntervalTime)

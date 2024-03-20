@@ -45,12 +45,12 @@ class ConfusionMatrix:
     @property
     def precision(self: typing.Self) -> float:
         """The precision computes how many detected positives are real"""
-        return self.true_positives / (self.true_positives + self.false_positives) if self.true_positives+self.false_positives != 0 else 0
+        return self.true_positives / div if (div := self.true_positives+self.false_positives) != 0 else 0
 
     @property
     def recall(self: typing.Self) -> float:
         """The recall computes how many real positives are detected"""
-        return self.true_positives / (self.true_positives + self.false_negatives) if self.true_positives+self.false_negatives != 0 else 0
+        return self.true_positives / div if (div := self.true_positives+self.false_negatives) != 0 else 0
 
     @property
     def classification_accuracy(self: typing.Self) -> float:
@@ -181,7 +181,7 @@ def __encode_categorical_features(features: pd.DataFrame) -> tuple[pd.DataFrame,
         feature_name_combiner=lambda feature, category: f"[__{feature}__]: {category}" if not pd.isna(
             category) else "__DELETE__",
         # we want to encode the categories as booleans (the category is present or not)
-        dtype=bool,
+        dtype=int,
     )
 
     # create a dataframe with the encoded features
@@ -438,26 +438,32 @@ def discover_rules(
     observations = features.loc[:, features.columns != class_attr]
     outcome = features.loc[:, class_attr]
 
+    encoder = None
+
+    # # encode categorical features if asked to
+    if encode_categorical:
+        (observations, encoder) = __encode_categorical_features(observations)
+
     # balance training data if asked
     if balance_data:
         (observations, outcome) = __balance_data(observations, outcome)
-
-    encoder = None
-
-    # encode categorical features if asked to
-    if encode_categorical:
-        (observations, encoder) = __encode_categorical_features(observations)
 
     # drop columns containing NA from the encoded DataFrame (they cannot be used for training the model)
     observations = observations.dropna(axis=1)
 
     # create the model for the tree ensemble, applying bootstrapping to the sample selection.
-    # also, prune the rules with less than 0.9 precision or 0.01 recall
+    # also, prune the rules with less than given precision and recall
     model = SkopeRulesClassifier(
         # extracted rules must have a minimum precision of min_rule_precision
         precision_min=min_rule_precision,
-        # extracted rules must have a minimum recall of 0.001 (at least 0.1% of the true positives must be covered by the rule)
+        # extracted rules must have a minimum recall of min_rule_recall
         recall_min=min_rule_recall,
+        # the maximum of estimators is set to the number of features in the observations
+        n_estimators=observations.columns.size,
+        # remove the max depth constraint for the trees
+        max_depth=None,
+        # no perform deduplication of rules
+        max_depth_duplication=None,
         # bootstrap the samples (i.e., extract samples with replacement) when building the ensemble
         bootstrap=True,
         # set a seed for rng for reproducible results

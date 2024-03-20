@@ -12,6 +12,7 @@ import pandas as pd
 from expert.input import EventMapping
 from expert.logger import LOGGER
 from expert.model import Event
+from expert.timer import profile
 
 DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", enablement="enabled", case="case",
                                                  activity="activity", resource="resource")
@@ -93,6 +94,7 @@ def __preprocess_and_sort(
     yield from (attribute_mapping.tuple_to_event(evt) for evt in event_log.itertuples(index=False))
 
 
+@profile("csv parsing")
 def read_csv_log(
         log_path: str,
         *,
@@ -139,6 +141,7 @@ def read_csv_log(
     yield from event_log
 
 
+@profile("csv parsing")
 def read_and_merge_csv_logs(
         logs: typing.Iterable[tuple],
         *,

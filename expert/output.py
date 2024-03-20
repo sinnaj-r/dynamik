@@ -130,7 +130,7 @@ def plot_case_features(features: TimesPerCase) -> Figure:
 
 
 def plot_activity_features(features: TimesPerActivity) -> Figure:
-    """TODO docs"""
+    """Generate a plot with the features at an activity level"""
     # Generate a plot with the before and after of the drift causes to easily visualize what changed
     fig, (pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
         nrows=9,

@@ -12,6 +12,7 @@ from pandas import CategoricalDtype
 
 from expert.drift.model import Drift, Pair
 from expert.model import Event
+from expert.timer import profile
 from expert.utils.batching import (
     build_batch_creation_features,
     build_batch_firing_features,
@@ -984,6 +985,7 @@ def __check_processing_times(drift: Drift) -> AnyNode | None:
     return None
 
 
+@profile("drift explanation")
 def explain_drift(drift: Drift) -> AnyNode | None:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
