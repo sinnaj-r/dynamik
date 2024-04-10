@@ -6,7 +6,7 @@ import scipy
 from expert.logger import LOGGER
 
 
-def test(
+def continuous_test(
         reference: typing.Iterable[float],
         running: typing.Iterable[float],
         *,

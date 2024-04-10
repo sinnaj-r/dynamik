@@ -35,18 +35,18 @@ def __preprocess_and_sort(
         start_events = event_log.groupby(attribute_mapping.case.lower(), as_index=False).agg(
             **{
                 attribute_mapping.activity.lower(): (attribute_mapping.activity.lower(), lambda _: "__SYNTHETIC_START_EVENT__"),
-                attribute_mapping.enablement.lower(): (attribute_mapping.start.lower(), "min"),
-                attribute_mapping.start.lower(): (attribute_mapping.start.lower(), "min"),
-                attribute_mapping.end.lower(): (attribute_mapping.start.lower(), "min"),
+                attribute_mapping.enablement.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - pd.to_timedelta(1, "s")),
+                attribute_mapping.start.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - pd.to_timedelta(1, "s")),
+                attribute_mapping.end.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - pd.to_timedelta(1, "s")),
             },
         )
 
         end_events = event_log.groupby(attribute_mapping.case.lower(), as_index=False).agg(
             **{
                 attribute_mapping.activity.lower(): (attribute_mapping.activity.lower(), lambda _: "__SYNTHETIC_END_EVENT__"),
-                attribute_mapping.enablement.lower(): (attribute_mapping.end.lower(), "max"),
-                attribute_mapping.start.lower(): (attribute_mapping.end.lower(), "max"),
-                attribute_mapping.end.lower(): (attribute_mapping.end.lower(), "max"),
+                attribute_mapping.enablement.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + pd.to_timedelta(1, "s")),
+                attribute_mapping.start.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + pd.to_timedelta(1, "s")),
+                attribute_mapping.end.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + pd.to_timedelta(1, "s")),
             },
         )
 

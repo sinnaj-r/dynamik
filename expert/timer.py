@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import typing
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
@@ -12,21 +13,21 @@ from functools import wraps
 class Timer:
     """A simple timer for profiling the code"""
 
-    __timers = {}
+    __timers = defaultdict(list)
 
     def start(self: typing.Self, name: str = "default") -> None:
         """Starts a new timer block with name 'name'"""
-        self.__timers[name] = {
+        self.__timers[name].append({
             "start": time.perf_counter_ns(),
-        }
+        })
 
     def end(self: typing.Self, name: str = "default") -> None:
         """Ends the timer block named 'name'"""
-        self.__timers[name]["end"] = time.perf_counter_ns()
+        self.__timers[name][-1]["end"] = time.perf_counter_ns()
 
     def elapsed(self: typing.Self, name: str = "default") -> timedelta:
         """Returns the elapsed time for the timer with the given name"""
-        return timedelta(microseconds=(self.__timers[name]["end"] - self.__timers[name]["start"]) / 1000)
+        return sum([timedelta(microseconds=(period["end"] - period["start"]) / 1000) for period in self.__timers[name]], start=timedelta())
 
     @contextmanager
     def profile(self: typing.Self, name: str = "default") -> typing.Generator[Timer, None, None]:

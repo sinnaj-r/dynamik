@@ -24,7 +24,7 @@ from expert.utils.cases import compute_cases_length, compute_inter_arrival_times
 from expert.utils.feature_selection import chained_selectors, from_model, select_relevant_features, univariate
 from expert.utils.prioritization import build_prioritization_features, discover_prioritization_policies
 from expert.utils.rules import Rule, compute_rule_score, filter_log
-from expert.utils.statistical_tests import categorical_test, test
+from expert.utils.statistical_tests import categorical_test, continuous_test
 
 
 def __check_policy(
@@ -53,7 +53,7 @@ def __check_policy(
     )
 
     # check if scores are equal
-    if test([score.f1_score for score in reference_score], [score.f1_score for score in running_score]):
+    if continuous_test([score.f1_score for score in reference_score], [score.f1_score for score in running_score]):
         return AnyNode(
             # what changed? the score for the prioritization policy
             what=f"score for {policy_type} policy '{policy.__repr__()}' changed!",
@@ -119,7 +119,7 @@ def __check_attributes(drift: Drift, *, class_extractor: typing.Callable[[Event]
                     ),
                 )
             # if the feature is numerical, compare the distribution of values and add a subtree with the differences
-            elif test(reference_features[feature].tolist(), running_features[feature].tolist()):
+            elif continuous_test(reference_features[feature].tolist(), running_features[feature].tolist()):
                 causes.append(
                     AnyNode(
                         # what changed? the distribution of values of a given feature
@@ -285,7 +285,7 @@ def __check_case_length(drift: Drift) -> AnyNode | None:
     running_cases_length = compute_cases_length(drift.running_model)
 
     # if the distribution of sizes is different, report the change
-    if test(reference_cases_length, running_cases_length):
+    if continuous_test(reference_cases_length, running_cases_length):
         return AnyNode(
             # what changed? the distribution of case lengths
             what="case length changed!",
@@ -314,7 +314,7 @@ def __check_inter_case_time(drift: Drift) -> AnyNode | None:
                                 compute_inter_arrival_times(drift.running_model)]
 
     # if the distributions are different, report the change
-    if test(reference_inter_case_times, running_inter_case_times):
+    if continuous_test(reference_inter_case_times, running_inter_case_times):
         return AnyNode(
             # what changed? the inter arrival time (the time between new cases arrive to the system)
             what="inter case arrival time changed",
@@ -335,6 +335,7 @@ def __check_inter_case_time(drift: Drift) -> AnyNode | None:
     return None
 
 
+# TODO CLEAN THIS METHOD
 def __check_resources_availability(drift: Drift, *, granularity: timedelta = timedelta(hours=1)) -> list[AnyNode]:
     # compute resource calendars for both reference and running periods
     reference_calendars = discover_calendars(drift.reference_model, granularity)
@@ -478,7 +479,7 @@ def __check_resources_availability(drift: Drift, *, granularity: timedelta = tim
 
 def __check_extraneous_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to extraneous factors changed at a case-level
-    if test(drift.case_features.extraneous_time.reference, drift.case_features.extraneous_time.running):
+    if continuous_test(drift.case_features.extraneous_time.reference, drift.case_features.extraneous_time.running):
         # a change in the extraneous times could be explained by changes in features that reflect the extraneous behaviour of the user
         extraneous_factors = __check_attributes(drift,
                                                 class_extractor=lambda event: event.waiting_time.extraneous.duration)
@@ -521,7 +522,7 @@ def __check_extraneous_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.extraneous_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.extraneous_time.reference[activity],
+                ) for activity in drift.activities if continuous_test(drift.activity_features.extraneous_time.reference[activity],
                                                            drift.activity_features.extraneous_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
@@ -533,7 +534,7 @@ def __check_extraneous_times(drift: Drift) -> AnyNode | None:
 
 def __check_batching_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to batching changed at a case-level
-    if test(drift.case_features.batching_time.reference, drift.case_features.batching_time.running):
+    if continuous_test(drift.case_features.batching_time.reference, drift.case_features.batching_time.running):
         # changes in the batching waiting time can be explained by changes in the batching policies (both creation and
         # firing) or by changes in the arrival rate
         batching_policies = __check_batching_policies(drift)
@@ -576,7 +577,7 @@ def __check_batching_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.batching_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.batching_time.reference[activity],
+                ) for activity in drift.activities if continuous_test(drift.activity_features.batching_time.reference[activity],
                                                            drift.activity_features.batching_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
@@ -588,7 +589,7 @@ def __check_batching_times(drift: Drift) -> AnyNode | None:
 
 def __check_prioritization_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to prioritization changed at a case-level
-    if test(drift.case_features.prioritization_time.reference, drift.case_features.prioritization_time.running):
+    if continuous_test(drift.case_features.prioritization_time.reference, drift.case_features.prioritization_time.running):
         # if a change in the prioritization times is found, it may be due to changes in the arrival rate (or the inter
         # case time), in the case length, in the weekly available hours (the "capacity" of the system) or in the
         # prioritization rules
@@ -635,7 +636,7 @@ def __check_prioritization_times(drift: Drift) -> AnyNode | None:
                     ),
                     # check every activity in the sublogs
                 ) for activity in drift.activities if
-                test(drift.activity_features.prioritization_time.reference[activity],
+                continuous_test(drift.activity_features.prioritization_time.reference[activity],
                      drift.activity_features.prioritization_time.running[activity])
             ],
             # include the causes of the drift as children ot the tree
@@ -650,7 +651,7 @@ def __check_prioritization_times(drift: Drift) -> AnyNode | None:
 
 def __check_contention_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to contention changed at a case-level
-    if test(drift.case_features.contention_time.reference, drift.case_features.contention_time.running):
+    if continuous_test(drift.case_features.contention_time.reference, drift.case_features.contention_time.running):
         # if there is a change in the contention time, maybe it comes from a change in the arrival rate (in this case
         # computed as the inter case time), the case length or the weekly available resource hours (i.e., the weekly "capacity").
         inter_case_time = __check_inter_case_time(drift)
@@ -695,7 +696,7 @@ def __check_contention_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.contention_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.contention_time.reference[activity],
+                ) for activity in drift.activities if continuous_test(drift.activity_features.contention_time.reference[activity],
                                                            drift.activity_features.contention_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
@@ -707,7 +708,7 @@ def __check_contention_times(drift: Drift) -> AnyNode | None:
 
 def __check_unavailability_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to resources unavailability changed at a case-level
-    if test(drift.case_features.availability_time.reference, drift.case_features.availability_time.running):
+    if continuous_test(drift.case_features.availability_time.reference, drift.case_features.availability_time.running):
         # if the time due to resource unavailability changed, maybe the resources availability calendars changed too
         resources_availability = __check_resources_availability(drift)
 
@@ -749,7 +750,7 @@ def __check_unavailability_times(drift: Drift) -> AnyNode | None:
                     ),
                     # check every activity in the sublogs
                 ) for activity in drift.activities if
-                test(drift.activity_features.availability_time.reference[activity],
+                continuous_test(drift.activity_features.availability_time.reference[activity],
                      drift.activity_features.availability_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
@@ -761,7 +762,7 @@ def __check_unavailability_times(drift: Drift) -> AnyNode | None:
 
 def __check_waiting_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time changed at a pre-case level
-    if test(drift.case_features.waiting_time.reference, drift.case_features.waiting_time.running):
+    if continuous_test(drift.case_features.waiting_time.reference, drift.case_features.waiting_time.running):
         # the causes for a change in the waiting time can be decomposed in changes in the resources availability time,
         # changes in the contention time, changes in the prioritization time, changes in the batching times and changes
         # in the extraneous times
@@ -809,7 +810,7 @@ def __check_waiting_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.waiting_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.waiting_time.reference[activity],
+                ) for activity in drift.activities if continuous_test(drift.activity_features.waiting_time.reference[activity],
                                                            drift.activity_features.waiting_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
@@ -823,7 +824,7 @@ def __check_waiting_times(drift: Drift) -> AnyNode | None:
 
 def __check_effective_times(drift: Drift) -> AnyNode | None:
     # check if the effective execution time changed at a case-level
-    if test(drift.case_features.effective_time.reference, drift.case_features.effective_time.running):
+    if continuous_test(drift.case_features.effective_time.reference, drift.case_features.effective_time.running):
         # if there is a change, maybe the cases are more complex, or maybe they require doing more tasks to finish them
         case_complexity = __check_attributes(drift,
                                              class_extractor=lambda event: event.processing_time.effective.duration)
@@ -867,7 +868,7 @@ def __check_effective_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.effective_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.effective_time.reference[activity],
+                ) for activity in drift.activities if continuous_test(drift.activity_features.effective_time.reference[activity],
                                                            drift.activity_features.effective_time.running[activity])
             ],
             # the causes of this change can be the changes in the case length or in the cases complexity
@@ -879,50 +880,26 @@ def __check_effective_times(drift: Drift) -> AnyNode | None:
 
 def __check_idle_times(drift: Drift) -> AnyNode | None:
     # check if the idle execution time changed at a per-case level
-    if test(drift.case_features.idle_time.reference, drift.case_features.idle_time.running):
+    if continuous_test(
+            [event.processing_time.idle.duration.total_seconds() for event in drift.reference_model],
+            [event.processing_time.idle.duration.total_seconds() for event in drift.running_model],
+    ):
         # if the idle time changed, maybe the resources availability changed
         resources_availability = __check_resources_availability(drift)
 
         return AnyNode(
             # what changed? the idle processing times
-            what="case idle processing time distribution changed!",
+            what="idle processing time distribution changed!",
             # how did it change? include the distributions for both pre- and post- drift data
             how=Pair(
-                reference=scipy.stats.describe(drift.case_features.idle_time.reference),
-                running=scipy.stats.describe(drift.case_features.idle_time.running),
-                unit=drift.case_features.idle_time.unit,
+                reference=scipy.stats.describe([event.processing_time.idle.duration.total_seconds() for event in drift.reference_model]),
+                running=scipy.stats.describe([event.processing_time.idle.duration.total_seconds() for event in drift.running_model]),
             ),
             # data contains the full data used for evaluating the change
             data=Pair(
-                reference=drift.case_features.idle_time.reference,
-                running=drift.case_features.idle_time.running,
-                unit=drift.case_features.idle_time.unit,
+                reference=[event.processing_time.idle.duration.total_seconds() for event in drift.reference_model],
+                running=[event.processing_time.idle.duration.total_seconds() for event in drift.running_model],
             ),
-            # include the detailed changes in processing time per activity
-            changes_per_activity=[
-                AnyNode(
-                    # what changed? the idle time distribution for activity "activity"
-                    what=f"activity '{activity}' idle processing time distribution changed!",
-                    # how did it change? include the distributions for both pre- and post- drift data
-                    how=Pair(
-                        # if no values present for the activity, return None instead of the distribution description
-                        reference=scipy.stats.describe(drift.activity_features.idle_time.reference[activity])
-                        if len(list(drift.activity_features.idle_time.reference[activity])) > 0 else None,
-                        # if no values present for the activity, return None instead of the distribution description
-                        running=scipy.stats.describe(drift.activity_features.idle_time.running[activity])
-                        if len(list(drift.activity_features.idle_time.running[activity])) > 0 else None,
-                        unit=drift.activity_features.idle_time.unit,
-                    ),
-                    # data contains the raw data used in the test
-                    data=Pair(
-                        reference=drift.activity_features.idle_time.reference[activity],
-                        running=drift.activity_features.idle_time.running[activity],
-                        unit=drift.activity_features.idle_time.unit,
-                    ),
-                    # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.idle_time.reference[activity],
-                                                           drift.activity_features.idle_time.running[activity])
-            ],
             # the causes for the change are the changes in the resources availability
             children=resources_availability if resources_availability is not None else [],
         )
@@ -931,53 +908,31 @@ def __check_idle_times(drift: Drift) -> AnyNode | None:
 
 
 def __check_processing_times(drift: Drift) -> AnyNode | None:
-    # check if the processing time changed at a per-case level
-    if test(drift.case_features.processing_time.reference, drift.case_features.processing_time.running):
+    # check if the processing time changed
+    if continuous_test(
+            [event.processing_time.total.duration.total_seconds() for event in drift.reference_model],
+            [event.processing_time.total.duration.total_seconds() for event in drift.running_model],
+    ):
         # if a drift is detected in the processing time, check for changes in the effective and idle times
         effective = __check_effective_times(drift)
         idle = __check_idle_times(drift)
 
         # add a node to the tree reporting the change in the processing times
         return AnyNode(
-            # what changed? the processing time per case
+            # what changed? the processing time
             what="processing time distribution changed!",
             # how did it change? include the distributions for both pre- and post- drift data
             how=Pair(
-                reference=scipy.stats.describe(drift.case_features.processing_time.reference),
-                running=scipy.stats.describe(drift.case_features.processing_time.running),
-                unit=drift.case_features.processing_time.unit,
+                reference=scipy.stats.describe([event.processing_time.total.duration.total_seconds() for event in drift.reference_model]),
+                running=scipy.stats.describe([event.processing_time.total.duration.total_seconds() for event in drift.running_model]),
+                unit="seconds",
             ),
             # data contains the raw data used in the test
             data=Pair(
-                reference=drift.case_features.processing_time.reference,
-                running=drift.case_features.processing_time.running,
-                unit=drift.case_features.processing_time.unit,
+                reference=[event.processing_time.total.duration.total_seconds() for event in drift.reference_model],
+                running=[event.processing_time.total.duration.total_seconds() for event in drift.running_model],
+                unit="seconds",
             ),
-            # include the detailed changes in processing time per activity
-            changes_per_activity=[
-                AnyNode(
-                    # what changed? the processing time distribution for activity "activity"
-                    what=f"activity '{activity}' processing time distribution changed!",
-                    # how did it change? include the distributions for both pre- and post- drift data
-                    how=Pair(
-                        # if no values present for the activity, return None instead of the distribution description
-                        reference=scipy.stats.describe(drift.activity_features.processing_time.reference[activity])
-                        if len(list(drift.activity_features.processing_time.reference[activity])) > 0 else None,
-                        # if no values present for the activity, return None instead of the distribution description
-                        running=scipy.stats.describe(drift.activity_features.processing_time.running[activity])
-                        if len(list(drift.activity_features.processing_time.running[activity])) > 0 else None,
-                        unit=drift.activity_features.processing_time.unit,
-                    ),
-                    # data contains the raw data used in the test
-                    data=Pair(
-                        reference=drift.activity_features.processing_time.reference[activity],
-                        running=drift.activity_features.processing_time.running[activity],
-                        unit=drift.activity_features.processing_time.unit,
-                    ),
-                    # check every activity in the sublogs
-                ) for activity in drift.activities if test(drift.activity_features.processing_time.reference[activity],
-                                                           drift.activity_features.processing_time.running[activity])
-            ],
             # the causes of the drift are the changes in the effective and the idle processing times
             children=[cause for cause in [effective, idle] if cause is not None],
         )
@@ -990,7 +945,10 @@ def explain_drift(drift: Drift) -> AnyNode | None:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
     # a tree accordingly, explaining the changes that occurred to the process
-    if test(drift.case_features.cycle_time.reference, drift.case_features.cycle_time.running):
+    if continuous_test(
+            [event.cycle_time.total_seconds() for event in drift.reference_model],
+            [event.cycle_time.total_seconds() for event in drift.running_model],
+    ):
         # check waiting and processing times for changes
         waiting = __check_waiting_times(drift)
         processing = __check_processing_times(drift)
@@ -1001,15 +959,13 @@ def explain_drift(drift: Drift) -> AnyNode | None:
             what="cycle time distribution changed!",
             # how did it change? include the distributions for both pre- and post- drift data
             how=Pair(
-                reference=scipy.stats.describe(drift.case_features.cycle_time.reference),
-                running=scipy.stats.describe(drift.case_features.cycle_time.running),
-                unit=drift.case_features.cycle_time.unit,
+                reference=scipy.stats.describe([event.cycle_time.total_seconds() for event in drift.reference_model]),
+                running=scipy.stats.describe([event.cycle_time.total_seconds() for event in drift.running_model]),
             ),
             # data contains the full data used for evaluating the change
             data=Pair(
-                reference=drift.case_features.cycle_time.reference,
-                running=drift.case_features.cycle_time.running,
-                unit=drift.case_features.cycle_time.unit,
+                reference=[event.cycle_time.total_seconds() for event in drift.reference_model],
+                running=[event.cycle_time.total_seconds() for event in drift.running_model],
             ),
             # what are the causes of the drift? the subtrees resulting from checking the waiting and processing times
             # they are added as children so the tree has a hierarchy

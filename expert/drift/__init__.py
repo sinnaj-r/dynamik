@@ -6,16 +6,13 @@ from datetime import timedelta
 
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, DriftModel
 from expert.logger import LOGGER
-from expert.model import Activity, Log
-from expert.timer import profile
+from expert.model import Log
+from expert.timer import DEFAULT_TIMER as TIMER
 
 
-@profile("drift detection")
 def detect_drift(
         log: Log,
         *,
-        initial_activities: typing.Iterable[Activity] = tuple("START"),
-        final_activities: typing.Iterable[Activity] = tuple("END"),
         timeframe_size: timedelta,
         warm_up: timedelta,
         overlap_between_models: timedelta = timedelta(),
@@ -36,12 +33,10 @@ def detect_drift(
     Parameters
     ----------
     * `log`:                    *the input event log*
-    * `timeframe_size`:         *the size of the timeframe for the reference and running models*
+    * `window_size`:            *the size of the timeframe for the reference and running models*
     * `warm_up`:                *the size of the warm-up where events will be discarded*
     * `overlap_between_models`: *the overlapping between running models (must be smaller than the timeframe size).
                                  Negative values imply leaving a space between successive models.*
-    * `initial_activity`:       *the first activity of the process/process fragment to be monitored*
-    * `final_activity`:         *the last activity of the process/process fragment to be monitored*
     * `warnings_to_confirm`:    *the number of consecutive drift warnings to confirm a change*
 
     Yields
@@ -52,6 +47,9 @@ def detect_drift(
     -------
     * the list of detected and confirmed drifts
     """
+    # start the profiler for measuring the execution time
+    TIMER.start("drift detection")
+
     LOGGER.info("detecting drift with params:")
     LOGGER.info("    timeframe size: %s", timeframe_size)
     LOGGER.info("    overlapping: %s", overlap_between_models)
@@ -64,8 +62,6 @@ def detect_drift(
     # Create the model with the given parameters
     drift_model = DriftModel(
         timeframe_size=timeframe_size,
-        initial_activities=initial_activities,
-        final_activities=final_activities,
         warm_up=warm_up,
         warnings_to_confirm=warnings_to_confirm,
         overlap_between_models=overlap_between_models,
@@ -104,5 +100,8 @@ def detect_drift(
             first_warning = None
             # Reset the model
             drift_model.reset()
+
+    # finish the method profiling
+    TIMER.end("drift detection")
 
     return drifts

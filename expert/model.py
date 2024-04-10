@@ -106,6 +106,11 @@ class Event:
     """The additional attributes for the event"""
 
     @property
+    def cycle_time(self: typing.Self) -> timedelta:
+        """The total time for the event"""
+        return self.end - self.enabled
+
+    @property
     def violations(self: typing.Self) -> typing.Iterable[str]:
         """Get the violations of the validity of the event"""
         result = []
