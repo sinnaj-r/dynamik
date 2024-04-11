@@ -6,7 +6,7 @@ import typing
 from collections import defaultdict
 from dataclasses import dataclass
 
-from expert.model import Event, Log, Trace
+from expert.process_model import Event, Log, Trace
 
 
 @dataclass

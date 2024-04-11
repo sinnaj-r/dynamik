@@ -1,9 +1,6 @@
-import typing
-
 import pandas as pd
 
-from expert.model import Log
-from expert.utils.rules import Rule, discover_rules
+from expert.process_model import Log
 
 
 def __find_prioritized_events(log: Log) -> list[dict]:
@@ -36,7 +33,7 @@ def __find_prioritized_events(log: Log) -> list[dict]:
             "attributes": {
                 attr.replace("prioritized.attributes.", ""): row[attr] for attr in row.axes[0].tolist() if attr.startswith("prioritized.attributes")
             },
-            "prioritized": True,
+            "class": True,
         })
 
     return prioritized
@@ -73,7 +70,7 @@ def __find_non_prioritized_events(log: Log) -> list[dict]:
             "attributes": {
                 attr.replace("prioritized.attributes.", ""): row[attr] for attr in row.axes[0].tolist() if attr.startswith("prioritized.attributes")
             },
-            "prioritized": False,
+            "class": False,
         })
 
     return non_prioritized
@@ -95,19 +92,3 @@ def build_prioritization_features(log: Log) -> pd.DataFrame:
     categorical_columns = features.select_dtypes(include=["object", "string", "category"]).columns
     # return the features dataframe with correct types
     return pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
-
-
-def discover_prioritization_policies(log: Log, min_precision: float = 0.9, min_recall: float = 0.01) -> typing.Iterable[Rule]:
-    """TODO"""
-    # build the features for prioritizing and delaying events
-    prioritization_features = build_prioritization_features(log)
-
-    # return the rules modeling the priorities
-    return discover_rules(
-        prioritization_features,
-        class_attr="prioritized",
-        encode_categorical=True,
-        balance_data=True,
-        min_rule_recall=min_recall,
-        min_rule_precision=min_precision,
-    )

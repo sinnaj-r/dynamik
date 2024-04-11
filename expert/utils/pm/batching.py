@@ -4,8 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from expert.model import Batch, Log
-from expert.utils.rules import Rule, discover_rules
+from expert.process_model import Batch, Log
 
 
 @dataclass
@@ -29,7 +28,7 @@ class __BatchCreationState:
     in_batch: bool
 
 
-def compute_batches(log: Log) -> Log:
+def discover_batches(log: Log) -> Log:
     """
     Compute the batches in the event log and add their descriptor to the events.
 
@@ -146,7 +145,8 @@ def build_batch_firing_features(log: Log) -> pd.DataFrame:
     # set correct type to categorical columns
     categorical_columns = features.select_dtypes(include=["object", "string", "category"]).columns
     # return the features dataframe with correct types
-    return pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
+    return (pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
+            .rename(columns={"fired": "class"}))
 
 
 def build_batch_creation_features(log: Log) -> pd.DataFrame:
@@ -172,36 +172,5 @@ def build_batch_creation_features(log: Log) -> pd.DataFrame:
     # set correct type to categorical columns
     categorical_columns = features.select_dtypes(include=["object", "string", "category"]).columns
     # return the features dataframe with correct types
-    return pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
-
-
-def discover_batch_firing_policies(log: Log, *, min_precision: float = 0.7, min_recall: float = 0.01) -> typing.Iterable[Rule]:
-    """Discovers the batch firing policies from the provided event log"""
-    # extract the features for the batch firing
-    features = build_batch_firing_features(log)
-    # discover the batch firing rules return
-    return discover_rules(
-        features,
-        class_attr="fired",
-        encode_categorical=True,
-        balance_data=True,
-        min_rule_precision=min_precision,
-        min_rule_recall=min_recall,
-    )
-
-
-def discover_batch_creation_policies(log: Log, *, min_precision: float = 0.9, min_recall: float = 0.01) -> typing.Iterable[Rule]:
-    """Discovers the batch creation policies from the provided event log"""
-    # build the features from the log
-    features = build_batch_creation_features(log)
-    # discover the rules from the encoded features
-    rules = discover_rules(
-        features,
-        class_attr="in_batch",
-        encode_categorical=True,
-        balance_data=True,
-        min_rule_precision=min_precision,
-        min_rule_recall=min_recall,
-    )
-
-    return sorted(rules, key=lambda rule: rule.score.f1_score, reverse=True)
+    return (pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
+            .rename(columns={"in_batch": "class"}))

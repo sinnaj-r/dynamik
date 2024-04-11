@@ -8,14 +8,12 @@ import numpy as np
 import yaml
 from anytree import AnyNode, RenderTree
 from intervaltree import Interval, IntervalTree
-from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 from sortedcontainers.sorteddict import SortedDict
 
-from expert.drift.model import Pair, TimesPerActivity, TimesPerCase
-from expert.logger import LOGGER
-from expert.model import Event
+from expert.process_model import Event
+from expert.utils.logger import LOGGER
+from expert.utils.model import Pair
 from expert.utils.rules import ConfusionMatrix
 
 
@@ -86,86 +84,86 @@ def __plot_continuous(axes: Axes,
     return axes
 
 
-def plot_case_features(features: TimesPerCase) -> Figure:
-    """Generate a plot with the before and after of the drift causes to easily visualize what changed"""
-    fig, (ct, pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
-        nrows=10,
-        ncols=1,
-        layout="constrained",
-        sharex="all",
-        figsize=(20, 40),
-    )
-
-    # Plot cycle times
-    __plot_continuous(ct, features.cycle_time.reference, features.cycle_time.running, title="Cycle time")
-
-    # Plot processing times
-    __plot_continuous(pt, features.processing_time.reference, features.processing_time.running, title="Processing time")
-
-    # Plot effective processing times
-    __plot_continuous(ept, features.effective_time.reference, features.effective_time.running, title="Effective processing time")
-
-    # Plot idle processing times
-    __plot_continuous(ipt, features.idle_time.reference, features.idle_time.running, title="Idle processing time")
-
-    # Plot waiting times
-    __plot_continuous(wt, features.waiting_time.reference, features.waiting_time.running, title="Waiting time")
-
-    # Plot waiting times due to resource unavailability
-    __plot_continuous(ruwt, features.availability_time.reference, features.availability_time.running, title="Waiting time (resource unavailability)")
-
-    # Plot waiting times due to resource contention
-    __plot_continuous(rcwt, features.contention_time.reference, features.contention_time.running, title="Waiting time (contention)")
-
-    # Plot waiting times due to prioritization
-    __plot_continuous(pwt, features.prioritization_time.reference, features.prioritization_time.running, title="Waiting time (prioritization)")
-
-    # Plot waiting times due to batching
-    __plot_continuous(bwt, features.batching_time.reference, features.batching_time.running, title="Waiting time (batching)")
-
-    # Plot waiting times due to exogenous factors
-    __plot_continuous(ewt, features.extraneous_time.reference, features.extraneous_time.running, title="Waiting time (extraneous)")
-
-    return fig
-
-
-def plot_activity_features(features: TimesPerActivity) -> Figure:
-    """Generate a plot with the features at an activity level"""
-    # Generate a plot with the before and after of the drift causes to easily visualize what changed
-    fig, (pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
-        nrows=9,
-        ncols=1,
-        layout="constrained",
-        figsize=(20, 40),
-    )
-
-    __plot_bars(pt, features.processing_time.reference, features.processing_time.running, title="Processing time (avg)")
-
-    # Plot effective processing times
-    __plot_bars(ept, features.effective_time.reference, features.effective_time.running, title="Effective processing time (avg)")
-
-    # Plot idle processing times
-    __plot_bars(ipt, features.idle_time.reference, features.idle_time.running, title="Idle processing time (avg)")
-
-    # Plot waiting times
-    __plot_bars(wt, features.waiting_time.reference, features.waiting_time.running, title="Waiting time (avg)")
-
-    # Plot waiting times due to resource unavailability
-    __plot_bars(ruwt, features.availability_time.reference, features.availability_time.running, title="Waiting time (resource unavailability) (avg)")
-
-    # Plot waiting times due to resource contention
-    __plot_bars(rcwt, features.contention_time.reference, features.contention_time.running, title="Waiting time (contention) (avg)")
-
-    # Plot waiting times due to prioritization
-    __plot_bars(pwt, features.prioritization_time.reference, features.prioritization_time.running, title="Waiting time (prioritization) (avg)")
-
-    # Plot waiting times due to batching
-    __plot_bars(bwt, features.batching_time.reference, features.batching_time.running, title="Waiting time (batching) (avg)")
-
-    # Plot waiting times due to exogenous factors
-    __plot_bars(ewt, features.extraneous_time.reference, features.extraneous_time.running, title="Waiting time (extraneous) (avg)")
-
-    return fig
+# def plot_case_features(features: TimesPerCase) -> Figure:
+#     """Generate a plot with the before and after of the drift causes to easily visualize what changed"""
+#     fig, (ct, pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
+#         nrows=10,
+#         ncols=1,
+#         layout="constrained",
+#         sharex="all",
+#         figsize=(20, 40),
+#     )
+#
+#     # Plot cycle times
+#     __plot_continuous(ct, features.cycle_time.reference, features.cycle_time.running, title="Cycle time")
+#
+#     # Plot processing times
+#     __plot_continuous(pt, features.processing_time.reference, features.processing_time.running, title="Processing time")
+#
+#     # Plot effective processing times
+#     __plot_continuous(ept, features.effective_time.reference, features.effective_time.running, title="Effective processing time")
+#
+#     # Plot idle processing times
+#     __plot_continuous(ipt, features.idle_time.reference, features.idle_time.running, title="Idle processing time")
+#
+#     # Plot waiting times
+#     __plot_continuous(wt, features.waiting_time.reference, features.waiting_time.running, title="Waiting time")
+#
+#     # Plot waiting times due to resource unavailability
+#     __plot_continuous(ruwt, features.availability_time.reference, features.availability_time.running, title="Waiting time (resource unavailability)")
+#
+#     # Plot waiting times due to resource contention
+#     __plot_continuous(rcwt, features.contention_time.reference, features.contention_time.running, title="Waiting time (contention)")
+#
+#     # Plot waiting times due to prioritization
+#     __plot_continuous(pwt, features.prioritization_time.reference, features.prioritization_time.running, title="Waiting time (prioritization)")
+#
+#     # Plot waiting times due to batching
+#     __plot_continuous(bwt, features.batching_time.reference, features.batching_time.running, title="Waiting time (batching)")
+#
+#     # Plot waiting times due to exogenous factors
+#     __plot_continuous(ewt, features.extraneous_time.reference, features.extraneous_time.running, title="Waiting time (extraneous)")
+#
+#     return fig
+#
+#
+# def plot_activity_features(features: TimesPerActivity) -> Figure:
+#     """Generate a plot with the features at an activity level"""
+#     # Generate a plot with the before and after of the drift causes to easily visualize what changed
+#     fig, (pt, ept, ipt, wt, ruwt, rcwt, pwt, bwt, ewt) = plt.subplots(
+#         nrows=9,
+#         ncols=1,
+#         layout="constrained",
+#         figsize=(20, 40),
+#     )
+#
+#     __plot_bars(pt, features.processing_time.reference, features.processing_time.running, title="Processing time (avg)")
+#
+#     # Plot effective processing times
+#     __plot_bars(ept, features.effective_time.reference, features.effective_time.running, title="Effective processing time (avg)")
+#
+#     # Plot idle processing times
+#     __plot_bars(ipt, features.idle_time.reference, features.idle_time.running, title="Idle processing time (avg)")
+#
+#     # Plot waiting times
+#     __plot_bars(wt, features.waiting_time.reference, features.waiting_time.running, title="Waiting time (avg)")
+#
+#     # Plot waiting times due to resource unavailability
+#     __plot_bars(ruwt, features.availability_time.reference, features.availability_time.running, title="Waiting time (resource unavailability) (avg)")
+#
+#     # Plot waiting times due to resource contention
+#     __plot_bars(rcwt, features.contention_time.reference, features.contention_time.running, title="Waiting time (contention) (avg)")
+#
+#     # Plot waiting times due to prioritization
+#     __plot_bars(pwt, features.prioritization_time.reference, features.prioritization_time.running, title="Waiting time (prioritization) (avg)")
+#
+#     # Plot waiting times due to batching
+#     __plot_bars(bwt, features.batching_time.reference, features.batching_time.running, title="Waiting time (batching) (avg)")
+#
+#     # Plot waiting times due to exogenous factors
+#     __plot_bars(ewt, features.extraneous_time.reference, features.extraneous_time.running, title="Waiting time (extraneous) (avg)")
+#
+#     return fig
 
 
 def print_causes(drift_causes: AnyNode) -> None:
@@ -174,6 +172,15 @@ def print_causes(drift_causes: AnyNode) -> None:
     tree = RenderTree(drift_causes).by_attr('what')
     for line in tree.splitlines():
         LOGGER.notice(line)
+
+    # plt.hist([value.total_seconds() for value in drift_causes.data.reference])
+    # plt.title("Reference waiting time histogram")
+    # plt.show()
+    #
+    # plt.hist([value.total_seconds() for value in drift_causes.data.running])
+    # plt.title("Running waiting time histogram")
+    # plt.show()
+    # histogram = plt.hist([value.total_seconds() for value in drift_causes.data.reference])
 
 
 def export_causes(drift_causes: AnyNode, *, excluded_fields: typing.Iterable[str] = ("data",), filename: str | None = None) -> dict:

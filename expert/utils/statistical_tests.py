@@ -3,7 +3,7 @@ from collections import Counter
 
 import scipy
 
-from expert.logger import LOGGER
+from expert.utils.logger import LOGGER
 
 
 def continuous_test(

@@ -6,12 +6,9 @@ import sys
 import time
 from datetime import timedelta
 
-from expert.drift import default_drift_detector_test_factory, detect_drift
-from expert.drift.model import TimesPerCase
+from expert.drift import detect_drift
 from expert.input import EventMapping
-from expert.logger import LOGGER, Level, setup_logger
-from expert.output import plot_features
-from expert.utils.log import infer_final_activities, infer_initial_activities
+from expert.utils.logger import LOGGER, Level, setup_logger
 
 __NOTICE = 0
 __INFO = __NOTICE + 1
@@ -102,9 +99,6 @@ def run() -> None:
         log=(event for event in log),
         timeframe_size=timedelta(days=args.timeframe),
         warm_up=timedelta(days=args.warmup),
-        initial_activities=infer_initial_activities(log),
-        final_activities=infer_final_activities(log),
-        test=default_drift_detector_test_factory(args.alpha),
         warnings_to_confirm=args.warnings,
         overlap_between_models=timedelta(days=args.overlap),
     )

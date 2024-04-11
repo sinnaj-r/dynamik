@@ -3,9 +3,9 @@ from datetime import timedelta
 
 from intervaltree import Interval, IntervalTree
 
-from expert.model import IntervalTime, Log
-from expert.utils.calendars import apply_calendar_to_timeframe, discover_calendars
-from expert.utils.log import find_log_end, find_log_start
+from expert.process_model import Log
+from expert.utils.model import TimeInterval
+from expert.utils.pm.calendars import discover_calendars
 
 
 def decompose_waiting_times(log: Log) -> Log:
@@ -36,7 +36,7 @@ def decompose_waiting_times(log: Log) -> Log:
 def __compute_total_times(log: Log) -> Log:
     # Save total waiting time for each event
     for event in log:
-        event.waiting_time.total = IntervalTime(
+        event.waiting_time.total = TimeInterval(
             intervals=[
                 Interval(
                     begin=event.enabled,
@@ -54,12 +54,12 @@ def __compute_batching_times(log: Log) -> Log:
     for event in log:
         # The batching time for an event is the time between it has been enabled and the batch accumulation is done
         if event.batch is None:
-            event.waiting_time.batching = IntervalTime(
+            event.waiting_time.batching = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )
         else:
-            event.waiting_time.batching = IntervalTime(
+            event.waiting_time.batching = TimeInterval(
                 intervals=[
                     Interval(
                         begin=event.enabled,
@@ -112,19 +112,19 @@ def __compute_contention_times(log: Log) -> Log:
                     )
 
                 # collect intervals and aggregate its durations
-                event.waiting_time.contention = IntervalTime(
+                event.waiting_time.contention = TimeInterval(
                     intervals=list(blocking_events_tree),
                     duration=sum([interval.end - interval.begin for interval in blocking_events_tree], start=timedelta()),
                 )
             else:
                 # no contention time
-                event.waiting_time.contention = IntervalTime(
+                event.waiting_time.contention = TimeInterval(
                     intervals=[],
                     duration=timedelta(),
                 )
         else:
             # no contention time
-            event.waiting_time.contention = IntervalTime(
+            event.waiting_time.contention = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )
@@ -178,40 +178,37 @@ def __compute_prioritization_times(log: Log) -> Log:
                     )
 
                 # collect intervals and aggregate its durations
-                event.waiting_time.prioritization = IntervalTime(
+                event.waiting_time.prioritization = TimeInterval(
                     intervals=list(blocking_events_tree),
                     duration=sum([interval.end - interval.begin for interval in blocking_events_tree], start=timedelta()),
                 )
 
             else:
                 # no prioritization time
-                event.waiting_time.prioritization = IntervalTime(
+                event.waiting_time.prioritization = TimeInterval(
                     intervals=[],
                     duration=timedelta(),
                 )
         else:
             # If the event has the same enablement and start timestamps, the waiting time is 0
-            event.waiting_time.prioritization = IntervalTime(
+            event.waiting_time.prioritization = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )
     return log
 
 
-def __compute_availability_times(log: Log, calendar_granularity: timedelta = timedelta(minutes=60)) -> Log:
+def __compute_availability_times(log: Log) -> Log:
     # build an interval for the log timeframe
     log_timeframe = Interval(
-        begin=find_log_start(log),
-        end=find_log_end(log),
+        begin=min(event.start for event in log),
+        end=max(event.end for event in log)
     )
     # compute the availability calendars for the resources
-    calendars = discover_calendars(log, calendar_granularity)
+    calendars = discover_calendars(log)
     # apply the calendars to the log timeframe
     applied_calendars = {
-        resource: apply_calendar_to_timeframe(
-            timeframe=log_timeframe,
-            weekly_calendar=weekly_calendar,
-        ) for (resource, weekly_calendar) in calendars.items()
+        resource: calendar.apply(log_timeframe) for (resource, calendar) in calendars.items()
     }
 
     # compute the unavailability times for each event in the log
@@ -251,12 +248,12 @@ def __compute_availability_times(log: Log, calendar_granularity: timedelta = tim
                 )
 
             # once all availability periods are processed, collect remaining intervals and aggregate its durations
-            event.waiting_time.availability = IntervalTime(
+            event.waiting_time.availability = TimeInterval(
                 intervals=list(tree),
                 duration=sum([interval.end - interval.begin for interval in tree], start=timedelta()),
             )
         else:
-            event.waiting_time.availability = IntervalTime(
+            event.waiting_time.availability = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )
@@ -302,12 +299,12 @@ def __compute_extraneous_times(log: Log) -> Log:
                 )
 
             # collect remaining intervals and aggregate its durations
-            event.waiting_time.prioritization = IntervalTime(
+            event.waiting_time.prioritization = TimeInterval(
                 intervals=list(tree),
                 duration=sum([interval.end - interval.begin for interval in tree], start=timedelta()),
             )
         else:
-            event.waiting_time.prioritization = IntervalTime(
+            event.waiting_time.prioritization = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )

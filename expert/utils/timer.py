@@ -40,7 +40,7 @@ class Timer:
 
     def __str__(self: typing.Self) -> str:
         sorted_keys = sorted(self.__timers.keys(), key=lambda k: self.elapsed(k), reverse=True)
-        return "\n".join([f"{name} execution took {self.elapsed(name)}" for name in sorted_keys])
+        return "\n".join([f"{name}(): {self.elapsed(name)}" for name in sorted_keys])
 
 
 DEFAULT_TIMER = Timer()
@@ -51,7 +51,7 @@ def profile(name: str | None = None, *, timer: Timer = DEFAULT_TIMER) -> typing.
     def decorator(func: typing.Callable) -> typing.Callable:
         @wraps(func)
         def _wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
-            with timer.profile(name if name is not None else func.__name__):
+            with timer.profile(name if name is not None else func.__qualname__):
                 return func(*args, **kwargs)
         return _wrapper
     return decorator

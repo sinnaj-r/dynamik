@@ -9,8 +9,8 @@ import typing
 from collections import namedtuple
 from dataclasses import dataclass, field
 
-from expert.logger import LOGGER
-from expert.model import Event
+from expert.process_model import Event
+from expert.utils.logger import LOGGER
 
 
 @dataclass

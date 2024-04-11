@@ -2,6 +2,7 @@
 import enum
 import logging
 import math
+import warnings
 
 import coloredlogs
 import verboselogs
@@ -25,8 +26,11 @@ class Level(enum.Enum):
     DISABLED = math.inf
 
 
-def setup_logger(verbosity: Level = Level.INFO, destination: str | None = None) -> None:
+def setup_logger(verbosity: Level = Level.INFO, *, destination: str | None = None, disable_third_party_warnings: bool = False) -> None:
     """Configure the log with the provided verbosity level and add colored output"""
+    if disable_third_party_warnings:
+        warnings.filterwarnings("ignore")
+
     coloredlogs.install(level=verbosity.value, logger=LOGGER)
     LOGGER.setLevel(verbosity.value)
 

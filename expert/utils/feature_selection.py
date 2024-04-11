@@ -7,7 +7,7 @@ from sklearn.feature_selection import RFECV, GenericUnivariateSelect, SelectFrom
 from sklearn.linear_model import LassoCV, LinearRegression
 from sklearn.preprocessing import MaxAbsScaler, OneHotEncoder
 
-from expert.model import Event, Log
+from expert.process_model import Event, Log
 
 
 def __build_features(

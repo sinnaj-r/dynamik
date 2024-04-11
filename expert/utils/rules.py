@@ -11,7 +11,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from imodels import SkopeRulesClassifier
 from sklearn.preprocessing import OneHotEncoder
 
-from expert.model import Event, Log
+from expert.process_model import Event, Log
 
 _operators = {
     "<": operator.lt,
@@ -400,12 +400,12 @@ def discover_rules(
         features: pd.DataFrame,
         *,
         class_attr: str = "class",
-        balance_data: bool = False,
-        encode_categorical: bool = False,
+        balance_data: bool = True,
+        encode_categorical: bool = True,
         simplify_rules: bool = True,
         remove_redundant_rules: bool = True,
-        min_rule_precision: float = 0.7,
-        min_rule_recall: float = 0.0,
+        min_rule_precision: float = 0.9,
+        min_rule_recall: float = 0.01,
 ) -> typing.Iterable[Rule]:
     """
     Discover the combination of rules that lead to the positive outcome from the features passed as an argument.
@@ -524,12 +524,16 @@ def discover_rules(
     return frozenset(rules)
 
 
-def filter_log(rule: Rule, log: Log) -> Log:
+def filter_log(rule: Rule) -> typing.Callable[[Log], Log]:
     """Filter a log applying the given rule"""
-    # build a dataframe from the log
-    log_dataframe = pd.json_normalize([event.asdict() for event in log], sep=".")
-    # apply the rule to the dataframe, and get the indices of the events that fulfill the conditions
-    indices_to_keep = log_dataframe.loc[rule.evaluate(log_dataframe), :].index.to_numpy()
-    # return the events from the log in the indices obtained before
-    filtered = itemgetter(*indices_to_keep)(log) if len(indices_to_keep) > 0 else []
-    return [filtered] if isinstance(filtered, Event) else filtered
+
+    def _filter(log: Log) -> Log:
+        # build a dataframe from the log
+        log_dataframe = pd.json_normalize([event.asdict() for event in log], sep=".")
+        # apply the rule to the dataframe, and get the indices of the events that fulfill the conditions
+        indices_to_keep = log_dataframe.loc[rule.evaluate(log_dataframe), :].index.to_numpy()
+        # return the events from the log in the indices obtained before
+        filtered = itemgetter(*indices_to_keep)(log) if len(indices_to_keep) > 0 else []
+        return [filtered] if isinstance(filtered, Event) else filtered
+
+    return _filter

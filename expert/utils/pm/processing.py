@@ -2,9 +2,9 @@ from datetime import timedelta
 
 from intervaltree import Interval, IntervalTree
 
-from expert.model import IntervalTime, Log
-from expert.utils.calendars import apply_calendar_to_timeframe, discover_calendars
-from expert.utils.log import find_log_end, find_log_start
+from expert.process_model import Log
+from expert.utils.model import TimeInterval
+from expert.utils.pm.calendars import discover_calendars
 
 
 def decompose_processing_times(log: Log) -> Log:
@@ -18,7 +18,7 @@ def decompose_processing_times(log: Log) -> Log:
 
 def __compute_total_times(log: Log) -> Log:
     for event in log:
-        event.processing_time.total = IntervalTime(
+        event.processing_time.total = TimeInterval(
             intervals=[
                 Interval(
                     begin=event.start,
@@ -31,20 +31,17 @@ def __compute_total_times(log: Log) -> Log:
     return log
 
 
-def __compute_idle_times(log: Log, calendar_granularity: timedelta = timedelta(minutes=60)) -> Log:
+def __compute_idle_times(log: Log) -> Log:
     # build an interval for the log timeframe
     log_timeframe = Interval(
-        begin=find_log_start(log),
-        end=find_log_end(log),
+        begin=min(event.start for event in log),
+        end=max(event.end for event in log),
     )
     # compute the availability calendars for the resources
-    calendars = discover_calendars(log, calendar_granularity)
+    calendars = discover_calendars(log)
     # apply the calendars to the log timeframe
     applied_calendars = {
-        resource: apply_calendar_to_timeframe(
-            timeframe=log_timeframe,
-            weekly_calendar=weekly_calendar,
-        ) for (resource, weekly_calendar) in calendars.items()
+        resource: calendar.apply(log_timeframe) for (resource, calendar) in calendars.items()
     }
 
     # compute the unavailability times for each event in the log
@@ -63,12 +60,12 @@ def __compute_idle_times(log: Log, calendar_granularity: timedelta = timedelta(m
                 )
 
             # once all availability periods are processed, collect remaining intervals and aggregate its durations
-            event.processing_time.idle = IntervalTime(
+            event.processing_time.idle = TimeInterval(
                 intervals=list(tree),
                 duration=sum([interval.end - interval.begin for interval in tree], start=timedelta()),
             )
         else:
-            event.processing_time.idle = IntervalTime(
+            event.processing_time.idle = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )
@@ -92,12 +89,12 @@ def __compute_effective_times(log: Log) -> Log:
                 )
 
             # collect remaining intervals and aggregate its durations
-            event.processing_time.effective = IntervalTime(
+            event.processing_time.effective = TimeInterval(
                 intervals=list(tree),
                 duration=sum([interval.end - interval.begin for interval in tree], start=timedelta()),
             )
         else:
-            event.processing_time.effective = IntervalTime(
+            event.processing_time.effective = TimeInterval(
                 intervals=[],
                 duration=timedelta(),
             )
