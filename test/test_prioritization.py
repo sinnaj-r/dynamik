@@ -1,7 +1,7 @@
 from expert.input import EventMapping
 from expert.input.csv import read_and_merge_csv_logs
 from expert.model import Log
-from expert.utils.batching import compute_batches
+from expert.utils.batching import discover_batches
 from expert.utils.concurrency import HeuristicsConcurrencyOracle
 from expert.utils.prioritization import discover_prioritization_policies
 
@@ -14,7 +14,7 @@ def __preprocess(event_log: Log) -> Log:
         if event.resource == "Fake_Resource":
             event.resource = None
 
-    return compute_batches(HeuristicsConcurrencyOracle(event_log).compute_enablement_timestamps())
+    return discover_batches(HeuristicsConcurrencyOracle(event_log).compute_enablement_timestamps())
 
 
 files = (

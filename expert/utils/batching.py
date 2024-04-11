@@ -29,7 +29,7 @@ class __BatchCreationState:
     in_batch: bool
 
 
-def compute_batches(log: Log) -> Log:
+def discover_batches(log: Log) -> Log:
     """
     Compute the batches in the event log and add their descriptor to the events.
 

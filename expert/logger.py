@@ -25,7 +25,7 @@ class Level(enum.Enum):
     DISABLED = math.inf
 
 
-def setup_logger(verbosity: Level = Level.INFO, destination: str | None = None) -> None:
+def setup_logger(verbosity: Level = Level.INFO, *, destination: str | None = None) -> None:
     """Configure the log with the provided verbosity level and add colored output"""
     coloredlogs.install(level=verbosity.value, logger=LOGGER)
     LOGGER.setLevel(verbosity.value)

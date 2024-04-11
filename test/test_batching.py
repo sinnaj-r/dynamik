@@ -2,7 +2,7 @@
 from expert.input import EventMapping
 from expert.input.csv import read_and_merge_csv_logs
 from expert.model import Log
-from expert.utils.batching import compute_batches, discover_batch_creation_policies, discover_batch_firing_policies
+from expert.utils.batching import discover_batches, discover_batch_creation_policies, discover_batch_firing_policies
 from expert.utils.rules import filter_log
 
 
@@ -14,7 +14,7 @@ def __preprocess(event_log: Log) -> Log:
         if event.resource == "Fake_Resource":
             event.resource = None
 
-    return compute_batches(event_log)
+    return discover_batches(event_log)
 
 
 files = (

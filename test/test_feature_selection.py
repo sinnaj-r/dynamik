@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 import scipy
 from pandas import CategoricalDtype
 
-from expert.model import Event, IntervalTime, Log, WaitingTime
+from expert.model import Event, TimeInterval, Log, WaitingTime
 from expert.utils.feature_selection import chained_selectors, from_model, select_relevant_features, univariate
 from expert.utils.statistical_tests import categorical_test, test
 
@@ -24,7 +24,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(5),
             ),
         ),
@@ -44,7 +44,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(3),
             ),
         ),
@@ -64,7 +64,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(2),
             ),
         ),
@@ -84,7 +84,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(17),
             ),
         ),
@@ -104,7 +104,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(15),
             ),
         ),
@@ -124,7 +124,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(12),
             ),
         ),
@@ -144,7 +144,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(57),
             ),
         ),
@@ -164,7 +164,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(55),
             ),
         ),
@@ -184,7 +184,7 @@ fake_log_1 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(51),
             ),
         ),
@@ -206,7 +206,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(5),
             ),
         ),
@@ -226,7 +226,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(3),
             ),
         ),
@@ -246,7 +246,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(2),
             ),
         ),
@@ -266,7 +266,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(17),
             ),
         ),
@@ -286,7 +286,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(15),
             ),
         ),
@@ -306,7 +306,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(12),
             ),
         ),
@@ -326,7 +326,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(57),
             ),
         ),
@@ -346,7 +346,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(55),
             ),
         ),
@@ -366,7 +366,7 @@ fake_log_2 = [
             "order": 1.456,
         },
         waiting_time=WaitingTime(
-            extraneous=IntervalTime(
+            extraneous=TimeInterval(
                 duration=timedelta(51),
             ),
         ),

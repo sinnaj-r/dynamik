@@ -47,7 +47,7 @@ class Batch:
 
 
 @dataclass
-class IntervalTime:
+class TimeInterval:
     """A collection of time intervals and its total duration."""
 
     intervals: typing.Iterable[Interval] = ()
@@ -58,21 +58,21 @@ class IntervalTime:
 class WaitingTime:
     """A representation of the waiting time for an event, with its decomposition"""
 
-    batching: IntervalTime = field(default_factory=IntervalTime)
-    contention: IntervalTime = field(default_factory=IntervalTime)
-    prioritization: IntervalTime = field(default_factory=IntervalTime)
-    availability: IntervalTime = field(default_factory=IntervalTime)
-    extraneous: IntervalTime = field(default_factory=IntervalTime)
-    total: IntervalTime = field(default_factory=IntervalTime)
+    batching: TimeInterval = field(default_factory=TimeInterval)
+    contention: TimeInterval = field(default_factory=TimeInterval)
+    prioritization: TimeInterval = field(default_factory=TimeInterval)
+    availability: TimeInterval = field(default_factory=TimeInterval)
+    extraneous: TimeInterval = field(default_factory=TimeInterval)
+    total: TimeInterval = field(default_factory=TimeInterval)
 
 
 @dataclass
 class ProcessingTime:
     """An object representing the processing time for an event, with its decomposition"""
 
-    effective: IntervalTime = field(default_factory=IntervalTime)
-    idle: IntervalTime = field(default_factory=IntervalTime)
-    total: IntervalTime = field(default_factory=IntervalTime)
+    effective: TimeInterval = field(default_factory=TimeInterval)
+    idle: TimeInterval = field(default_factory=TimeInterval)
+    total: TimeInterval = field(default_factory=TimeInterval)
 
 
 @dataclass(slots=True)

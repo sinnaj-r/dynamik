@@ -7,10 +7,10 @@ from datetime import timedelta
 import pandas as pd
 import scipy
 from anytree import AnyNode
-from intervaltree import IntervalTree
 from pandas import CategoricalDtype
 
-from expert.drift.model import Drift, Pair
+from expert.drift.model import Drift, DriftCause, Pair
+from expert.logger import LOGGER
 from expert.model import Event
 from expert.timer import profile
 from expert.utils.batching import (
@@ -19,7 +19,7 @@ from expert.utils.batching import (
     discover_batch_creation_policies,
     discover_batch_firing_policies,
 )
-from expert.utils.calendars import compute_weekly_available_time_per_resource, discover_calendars
+from expert.utils.calendars import Calendar, compute_weekly_available_time_per_resource, discover_calendars2
 from expert.utils.cases import compute_cases_length, compute_inter_arrival_times
 from expert.utils.feature_selection import chained_selectors, from_model, select_relevant_features, univariate
 from expert.utils.prioritization import build_prioritization_features, discover_prioritization_policies
@@ -200,7 +200,8 @@ def __check_batching_policies(drift: Drift) -> list[AnyNode | None]:
     # check reference creation policies against reference and running models
     for creation_policy in reference_creation_policies:
         # check the batching creation policy
-        causes.append(__check_policy(creation_policy, reference_creation_features, running_creation_features, policy_type="batch creation"))
+        causes.append(__check_policy(creation_policy, reference_creation_features, running_creation_features,
+                                     policy_type="batch creation"))
 
         # after evaluating the creation policy, evaluate its firing policies
         # filter events in the current batch
@@ -210,12 +211,14 @@ def __check_batching_policies(drift: Drift) -> list[AnyNode | None]:
 
         # check every reference firing rule score with running and reference models
         for firing_policy in firing_policies:
-            causes.append(__check_policy(firing_policy, reference_firing_features, running_firing_features, policy_type=f"batch '{creation_policy.__repr__()}' firing"))
+            causes.append(__check_policy(firing_policy, reference_firing_features, running_firing_features,
+                                         policy_type=f"batch '{creation_policy.__repr__()}' firing"))
 
     # check running creation policies against reference and running
     for creation_policy in running_creation_policies:
         # check the batching creation policy
-        causes.append(__check_policy(creation_policy, reference_creation_features, running_creation_features, policy_type="batch creation"))
+        causes.append(__check_policy(creation_policy, reference_creation_features, running_creation_features,
+                                     policy_type="batch creation"))
 
         # after evaluating the creation policy, evaluate its firing policies
         # filter events in the current batch
@@ -225,7 +228,8 @@ def __check_batching_policies(drift: Drift) -> list[AnyNode | None]:
 
         # check every firing rule score with running and reference models
         for firing_policy in firing_policies:
-            causes.append(__check_policy(firing_policy, reference_firing_features, running_firing_features, policy_type=f"batch '{creation_policy.__repr__()}' firing"))
+            causes.append(__check_policy(firing_policy, reference_firing_features, running_firing_features,
+                                         policy_type=f"batch '{creation_policy.__repr__()}' firing"))
     # return the list of drift causes
     return causes
 
@@ -335,148 +339,6 @@ def __check_inter_case_time(drift: Drift) -> AnyNode | None:
     return None
 
 
-# TODO CLEAN THIS METHOD
-def __check_resources_availability(drift: Drift, *, granularity: timedelta = timedelta(hours=1)) -> list[AnyNode]:
-    # compute resource calendars for both reference and running periods
-    reference_calendars = discover_calendars(drift.reference_model, granularity)
-    running_calendars = discover_calendars(drift.running_model, granularity)
-
-    # create a list that will contain the changes in the resources availability
-    causes = []
-
-    # check every resource present in the model
-    for resource in drift.resources:
-        # resources can be added, removed or common but with different availability, so we treat each case separately
-        # if a resource disappeared from the log
-        if resource in reference_calendars and resource not in running_calendars:
-            # resource is no longer available
-            causes.append(
-                AnyNode(
-                    # what changed? the resource "resource" is not available after the drift
-                    what=f"resource '{resource}' is no longer available",
-                    # how changed? include the reference availability calendar for the resource
-                    how=Pair(
-                        reference=reference_calendars[resource],
-                        running=None,
-                        unit="calendar",
-                    ),
-                    # data contains the data used to discover the calendars
-                    data=Pair(
-                        reference=drift.reference_model,
-                        running=drift.running_model,
-                        unit="events",
-                    ),
-                    # include the granularity used for computing the calendars
-                    granularity=granularity,
-                ),
-            )
-        # if a resource is added
-        elif resource in running_calendars and resource not in reference_calendars:
-            # resource is no longer available
-            causes.append(
-                AnyNode(
-                    # what changed? the new resource "resource" is now available
-                    what=f"resource '{resource}' is now available",
-                    # how changed? include the reference availability calendar for the resource
-                    how=Pair(
-                        reference=None,
-                        running=running_calendars[resource],
-                        unit="calendar",
-                    ),
-                    # data contains the data used to discover the calendars
-                    data=Pair(
-                        reference=drift.reference_model,
-                        running=drift.running_model,
-                        unit="events",
-                    ),
-                    # include the granularity used for computing the calendars
-                    granularity=granularity,
-                ),
-            )
-        # if the resource appears in the reference and the running periods, compare the calendars
-        else:
-            # compute added and removed availability intervals
-            # removed_intervals contains the intervals where the resource was available in reference model but
-            # not in running model
-            removed_intervals: dict[int, IntervalTree] = {}
-            # added_intervals contains the intervals where the resource was available in running model but
-            # not in reference model
-            added_intervals: dict[int, IntervalTree] = {}
-            # for each day in the weekly calendar
-            for day in range(7):
-                # initialize the interval for that day to the reference availability
-                removed_intervals[day] = IntervalTree(reference_calendars[resource][day])
-                # remove all intervals present in the running calendar for that day
-                for interval in running_calendars[resource][day]:
-                    removed_intervals[day].chop(interval.begin, interval.end)
-                # remove the entry for the day if it is empty
-                if len(removed_intervals[day]) == 0:
-                    del removed_intervals[day]
-
-                # initialize the interval for the day to the running availability
-                added_intervals[day] = IntervalTree(running_calendars[resource][day])
-                # remove the intervals where the resource was available in the reference model
-                for interval in reference_calendars[resource][day]:
-                    added_intervals[day].chop(interval.begin, interval.end)
-                # remove the entry for the day if it is empty
-                if len(added_intervals[day]) == 0:
-                    del added_intervals[day]
-
-            removed = AnyNode(
-                # what changed? availability intervals have been removed for a resource
-                what=f"removed availability slot for resource '{resource}'",
-                # how did it change? store the removed intervals
-                how=removed_intervals,
-                # data contains the calendars used to compute the difference
-                data=Pair(
-                    reference=reference_calendars[resource],
-                    running=running_calendars[resource],
-                    unit="calendar",
-                ),
-            ) if len(removed_intervals) > 0 else None
-
-            added = AnyNode(
-                # what changed? availability intervals have been added for a resource
-                what=f"added availability slot for resource '{resource}'",
-                # how did it change? store the added intervals
-                how=added_intervals,
-                # data contains the calendars used to compute the difference
-                data=Pair(
-                    reference=reference_calendars[resource],
-                    running=running_calendars[resource],
-                    unit="calendar",
-                ),
-            ) if len(added_intervals) > 0 else None
-
-            # add a cause if there is any difference in the availability calendars for the resource
-            if removed is not None or added is not None:
-                causes.append(
-                    AnyNode(
-                        # what changed? the availability for a resource that appears both before and after the change
-                        what=f"availability slots for resource '{resource}' changed",
-                        # how did it change? include the calendars for before and after the change
-                        how=Pair(
-                            reference=reference_calendars[resource],
-                            running=running_calendars[resource],
-                            unit="calendar",
-                        ),
-                        # data contains the raw data used to discover the calendars
-                        data=Pair(
-                            reference=drift.reference_model,
-                            running=drift.running_model,
-                            unit="events",
-                        ),
-                        # include the granularity used for computing the calendars
-                        granularity=granularity,
-                        # the causes of the drift includes the added and removed availability intervals
-                        children=[cause for cause in [added, removed] if cause is not None],
-                    ),
-                )
-
-    # return the list of diferences in the resources availability calendars
-    return causes
-
-
 def __check_extraneous_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to extraneous factors changed at a case-level
     if continuous_test(drift.case_features.extraneous_time.reference, drift.case_features.extraneous_time.running):
@@ -522,8 +384,9 @@ def __check_extraneous_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.extraneous_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if continuous_test(drift.activity_features.extraneous_time.reference[activity],
-                                                           drift.activity_features.extraneous_time.running[activity])
+                ) for activity in drift.activities if
+                continuous_test(drift.activity_features.extraneous_time.reference[activity],
+                                drift.activity_features.extraneous_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
             children=[cause for cause in extraneous_factors if cause is not None],
@@ -577,8 +440,9 @@ def __check_batching_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.batching_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if continuous_test(drift.activity_features.batching_time.reference[activity],
-                                                           drift.activity_features.batching_time.running[activity])
+                ) for activity in drift.activities if
+                continuous_test(drift.activity_features.batching_time.reference[activity],
+                                drift.activity_features.batching_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
             children=[cause for cause in [inter_case_time, *batching_policies] if cause is not None],
@@ -589,7 +453,8 @@ def __check_batching_times(drift: Drift) -> AnyNode | None:
 
 def __check_prioritization_times(drift: Drift) -> AnyNode | None:
     # check if the waiting time due to prioritization changed at a case-level
-    if continuous_test(drift.case_features.prioritization_time.reference, drift.case_features.prioritization_time.running):
+    if continuous_test(drift.case_features.prioritization_time.reference,
+                       drift.case_features.prioritization_time.running):
         # if a change in the prioritization times is found, it may be due to changes in the arrival rate (or the inter
         # case time), in the case length, in the weekly available hours (the "capacity" of the system) or in the
         # prioritization rules
@@ -637,7 +502,7 @@ def __check_prioritization_times(drift: Drift) -> AnyNode | None:
                     # check every activity in the sublogs
                 ) for activity in drift.activities if
                 continuous_test(drift.activity_features.prioritization_time.reference[activity],
-                     drift.activity_features.prioritization_time.running[activity])
+                                drift.activity_features.prioritization_time.running[activity])
             ],
             # include the causes of the drift as children ot the tree
             children=[cause for cause in [inter_case_times, case_length, weekly_available_hours, *priorities] if
@@ -696,8 +561,9 @@ def __check_contention_times(drift: Drift) -> AnyNode | None:
                         unit=drift.activity_features.contention_time.unit,
                     ),
                     # check every activity in the sublogs
-                ) for activity in drift.activities if continuous_test(drift.activity_features.contention_time.reference[activity],
-                                                           drift.activity_features.contention_time.running[activity])
+                ) for activity in drift.activities if
+                continuous_test(drift.activity_features.contention_time.reference[activity],
+                                drift.activity_features.contention_time.running[activity])
             ],
             # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
             children=[cause for cause in [inter_case_time, case_length, weekly_available_hours] if cause is not None],
@@ -706,271 +572,226 @@ def __check_contention_times(drift: Drift) -> AnyNode | None:
     return None
 
 
-def __check_unavailability_times(drift: Drift) -> AnyNode | None:
-    # check if the waiting time due to resources unavailability changed at a case-level
-    if continuous_test(drift.case_features.availability_time.reference, drift.case_features.availability_time.running):
-        # if the time due to resource unavailability changed, maybe the resources availability calendars changed too
-        resources_availability = __check_resources_availability(drift)
+class DriftExplainer:
+    """TODO docs"""
 
-        return AnyNode(
-            # what changed? the case waiting time due to resources unavailability
-            what="case waiting time distribution due to resource unavailability changed!",
-            # how did they change? include the distributions for both pre- and post- drift data
-            how=Pair(
-                reference=scipy.stats.describe(drift.case_features.availability_time.reference),
-                running=scipy.stats.describe(drift.case_features.availability_time.running),
-                unit=drift.case_features.availability_time.unit,
-            ),
-            # data contains the full data used in the test
-            data=Pair(
-                reference=drift.case_features.availability_time.reference,
-                running=drift.case_features.availability_time.running,
-                unit=drift.case_features.availability_time.unit,
-            ),
-            # store the changes per activity
-            changes_per_activity=[
-                AnyNode(
-                    # what changed? the waiting time distribution due to resource unavailability for activity "activity"
-                    what=f"activity '{activity}' waiting time distribution due to resource unavailability changed!",
-                    # how did it change? include the distributions for both pre- and post- drift data
-                    how=Pair(
-                        # if no values present for the activity, return None instead of the distribution description
-                        reference=scipy.stats.describe(drift.activity_features.availability_time.reference[activity])
-                        if len(list(drift.activity_features.availability_time.reference[activity])) > 0 else None,
-                        # if no values present for the activity, return None instead of the distribution description
-                        running=scipy.stats.describe(drift.activity_features.availability_time.running[activity])
-                        if len(list(drift.activity_features.availability_time.running[activity])) > 0 else None,
-                        unit=drift.activity_features.availability_time.unit,
-                    ),
-                    # data contains the raw data used in the test
-                    data=Pair(
-                        reference=drift.activity_features.availability_time.reference[activity],
-                        running=drift.activity_features.availability_time.running[activity],
-                        unit=drift.activity_features.availability_time.unit,
-                    ),
-                    # check every activity in the sublogs
-                ) for activity in drift.activities if
-                continuous_test(drift.activity_features.availability_time.reference[activity],
-                     drift.activity_features.availability_time.running[activity])
-            ],
-            # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
-            children=resources_availability,
+    drift: Drift
+
+    def __init__(
+            self: typing.Self,
+            drift: Drift,
+    ) -> None:
+        self.drift = drift
+
+    def __describe_distributions(self: typing.Self, extractor: typing.Callable[[Event], timedelta]) -> Pair:
+        return Pair(
+            reference=scipy.stats.describe(
+                [extractor(event).total_seconds() for event in self.drift.reference_model.data]),
+            running=scipy.stats.describe([extractor(event).total_seconds() for event in self.drift.running_model.data]),
         )
 
-    return None
+    def __describe_calendars(self: typing.Self) -> Pair:
+        reference_calendars = discover_calendars2(self.drift.reference_model.data)
+        running_calendars = discover_calendars2(self.drift.running_model.data)
 
-
-def __check_waiting_times(drift: Drift) -> AnyNode | None:
-    # check if the waiting time changed at a pre-case level
-    if continuous_test(drift.case_features.waiting_time.reference, drift.case_features.waiting_time.running):
-        # the causes for a change in the waiting time can be decomposed in changes in the resources availability time,
-        # changes in the contention time, changes in the prioritization time, changes in the batching times and changes
-        # in the extraneous times
-        unavailability = __check_unavailability_times(drift)
-        contention = __check_contention_times(drift)
-        prioritization = __check_prioritization_times(drift)
-        batching = __check_batching_times(drift)
-        extraneous = __check_extraneous_times(drift)
-
-        # create a tree with the change
-        return AnyNode(
-            # what changed? the case waiting time distribution
-            what="case waiting time distribution changed!",
-            # how did they change? include the distributions for both pre- and post- drift data
-            how=Pair(
-                reference=scipy.stats.describe(drift.case_features.waiting_time.reference),
-                running=scipy.stats.describe(drift.case_features.waiting_time.running),
-                unit=drift.case_features.waiting_time.unit,
+        return Pair(
+            reference=sum(
+                [calendar.transform(lambda value: min(value, 1)) for calendar in reference_calendars.values()],
+                Calendar(),
             ),
-            # data contains the full data used in the test
-            data=Pair(
-                reference=drift.case_features.waiting_time.reference,
-                running=drift.case_features.waiting_time.running,
-                unit=drift.case_features.waiting_time.unit,
+            running=sum(
+                [calendar.transform(lambda value: min(value, 1)) for calendar in running_calendars.values()],
+                Calendar(),
             ),
-            # store the changes per activity
-            changes_per_activity=[
-                AnyNode(
-                    # what changed? the waiting time distribution for activity "activity"
-                    what=f"activity '{activity}' waiting time distribution changed!",
-                    # how did it change? include the distributions for both pre- and post- drift data
-                    how=Pair(
-                        # if no values present for the activity, return None instead of the distribution description
-                        reference=scipy.stats.describe(drift.activity_features.waiting_time.reference[activity])
-                        if len(list(drift.activity_features.waiting_time.reference[activity])) > 0 else None,
-                        # if no values present for the activity, return None instead of the distribution description
-                        running=scipy.stats.describe(drift.activity_features.waiting_time.running[activity])
-                        if len(list(drift.activity_features.waiting_time.running[activity])) > 0 else None,
-                        unit=drift.activity_features.waiting_time.unit,
-                    ),
-                    # data contains the raw data used in the test
-                    data=Pair(
-                        reference=drift.activity_features.waiting_time.reference[activity],
-                        running=drift.activity_features.waiting_time.running[activity],
-                        unit=drift.activity_features.waiting_time.unit,
-                    ),
-                    # check every activity in the sublogs
-                ) for activity in drift.activities if continuous_test(drift.activity_features.waiting_time.reference[activity],
-                                                           drift.activity_features.waiting_time.running[activity])
-            ],
-            # the causes of the drift in the waiting time can be decomposed in the waiting time canvas components
-            children=[cause for cause in [unavailability, contention, prioritization, batching, extraneous] if
-                      cause is not None],
         )
 
-    # if no change is found, return None
-    return None
-
-
-def __check_effective_times(drift: Drift) -> AnyNode | None:
-    # check if the effective execution time changed at a case-level
-    if continuous_test(drift.case_features.effective_time.reference, drift.case_features.effective_time.running):
-        # if there is a change, maybe the cases are more complex, or maybe they require doing more tasks to finish them
-        case_complexity = __check_attributes(drift,
-                                             class_extractor=lambda event: event.processing_time.effective.duration)
-        case_length = __check_case_length(drift)
-
-        # add a node to the tree reporting the change in the effective processing time
-        return AnyNode(
-            # what changed? the effective time needed to finish a case execution
-            what="case effective processing time distribution changed!",
-            # how did it change? include the distributions for both pre- and post- drift data
-            how=Pair(
-                reference=scipy.stats.describe(drift.case_features.effective_time.reference),
-                running=scipy.stats.describe(drift.case_features.effective_time.running),
-                unit=drift.case_features.effective_time.unit,
-            ),
-            # data contains the full data used to perform the test
-            data=Pair(
-                reference=drift.case_features.effective_time.reference,
-                running=drift.case_features.effective_time.running,
-                unit=drift.case_features.effective_time.unit,
-            ),
-            # store the changes per activity
-            changes_per_activity=[
-                AnyNode(
-                    # what changed? the effective time distribution for activity "activity"
-                    what=f"activity '{activity}' idle processing time distribution changed!",
-                    # how did it change? include the distributions for both pre- and post- drift data
-                    how=Pair(
-                        # if no values present for the activity, return None instead of the distribution description
-                        reference=scipy.stats.describe(drift.activity_features.effective_time.reference[activity])
-                        if len(list(drift.activity_features.effective_time.reference[activity])) > 0 else None,
-                        # if no values present for the activity, return None instead of the distribution description
-                        running=scipy.stats.describe(drift.activity_features.effective_time.running[activity])
-                        if len(list(drift.activity_features.effective_time.running[activity])) > 0 else None,
-                        unit=drift.activity_features.effective_time.unit,
-                    ),
-                    # data contains the raw data used in the test
-                    data=Pair(
-                        reference=drift.activity_features.effective_time.reference[activity],
-                        running=drift.activity_features.effective_time.running[activity],
-                        unit=drift.activity_features.effective_time.unit,
-                    ),
-                    # check every activity in the sublogs
-                ) for activity in drift.activities if continuous_test(drift.activity_features.effective_time.reference[activity],
-                                                           drift.activity_features.effective_time.running[activity])
-            ],
-            # the causes of this change can be the changes in the case length or in the cases complexity
-            children=[cause for cause in [*case_complexity, case_length] if cause is not None],
+    def __get_calendars(self: typing.Self) -> Pair:
+        return Pair(
+            reference=discover_calendars2(self.drift.reference_model.data),
+            running=discover_calendars2(self.drift.running_model.data),
         )
-    # if no change is detected in the effective time, return None
-    return None
 
-
-def __check_idle_times(drift: Drift) -> AnyNode | None:
-    # check if the idle execution time changed at a per-case level
-    if continuous_test(
-            [event.processing_time.idle.duration.total_seconds() for event in drift.reference_model],
-            [event.processing_time.idle.duration.total_seconds() for event in drift.running_model],
-    ):
-        # if the idle time changed, maybe the resources availability changed
-        resources_availability = __check_resources_availability(drift)
-
-        return AnyNode(
-            # what changed? the idle processing times
-            what="idle processing time distribution changed!",
-            # how did it change? include the distributions for both pre- and post- drift data
-            how=Pair(
-                reference=scipy.stats.describe([event.processing_time.idle.duration.total_seconds() for event in drift.reference_model]),
-                running=scipy.stats.describe([event.processing_time.idle.duration.total_seconds() for event in drift.running_model]),
-            ),
-            # data contains the full data used for evaluating the change
-            data=Pair(
-                reference=[event.processing_time.idle.duration.total_seconds() for event in drift.reference_model],
-                running=[event.processing_time.idle.duration.total_seconds() for event in drift.running_model],
-            ),
-            # the causes for the change are the changes in the resources availability
-            children=resources_availability if resources_availability is not None else [],
+    def __get_data(self: typing.Self, extractor: typing.Callable[[Event], timedelta]) -> Pair:
+        """TODO docs"""
+        return Pair(
+            reference=[extractor(event) for event in self.drift.reference_model.data],
+            running=[extractor(event) for event in self.drift.running_model.data],
         )
-    # return None if no changes found in idle processing time
-    return None
 
+    def drift_in_time(self: typing.Self, extractor: typing.Callable[[Event], timedelta], *, significance: float = 0.05) -> bool:
+        """TODO docs"""
+        if len(self.drift.reference_model.data) > 0 and len(self.drift.running_model.data) > 0:
+            result = scipy.stats.kstest(
+                [extractor(event).total_seconds() for event in self.drift.reference_model.data],
+                [extractor(event).total_seconds() for event in self.drift.running_model.data],
+            )
 
-def __check_processing_times(drift: Drift) -> AnyNode | None:
-    # check if the processing time changed
-    if continuous_test(
-            [event.processing_time.total.duration.total_seconds() for event in drift.reference_model],
-            [event.processing_time.total.duration.total_seconds() for event in drift.running_model],
-    ):
-        # if a drift is detected in the processing time, check for changes in the effective and idle times
-        effective = __check_effective_times(drift)
-        idle = __check_idle_times(drift)
+            LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
 
-        # add a node to the tree reporting the change in the processing times
-        return AnyNode(
+            return result.pvalue < significance
+
+        return False
+
+    def drift_in_availability(self: typing.Self) -> bool:
+        """TODO docs"""
+        # discover calendars for reference and running models
+        reference_calendars = discover_calendars2(self.drift.reference_model.data)
+        running_calendars = discover_calendars2(self.drift.running_model.data)
+        # aggregate calendars by resource, so each slot contains the number of resources available
+        aggregated_reference_calendar = sum(
+            [calendar.transform(lambda value: min(value, 1)) for calendar in reference_calendars.values()],
+            Calendar(),
+        )
+        aggregated_running_calendar = sum(
+            [calendar.transform(lambda value: min(value, 1)) for calendar in running_calendars.values()],
+            Calendar(),
+        )
+        # compare aggregated calendars
+        results = []
+        for slot in aggregated_reference_calendar.slots:
+            results.append(aggregated_reference_calendar[slot] != aggregated_running_calendar[slot])
+            LOGGER.verbose(
+                "test(reference calendar[%s] != running calendar[%s]) result: %s",
+                slot, slot, results[-1],
+            )
+
+        return any(results)
+
+    def build_time_descriptor(
+            self: typing.Self,
+            title: str,
+            extractor: typing.Callable[[Event], timedelta],
+            parent: DriftCause | None = None,
+    ) -> DriftCause:
+        """TODO docs"""
+        return DriftCause(
             # what changed? the processing time
-            what="processing time distribution changed!",
+            what=title,
             # how did it change? include the distributions for both pre- and post- drift data
-            how=Pair(
-                reference=scipy.stats.describe([event.processing_time.total.duration.total_seconds() for event in drift.reference_model]),
-                running=scipy.stats.describe([event.processing_time.total.duration.total_seconds() for event in drift.running_model]),
-                unit="seconds",
-            ),
+            how=self.__describe_distributions(extractor),
             # data contains the raw data used in the test
-            data=Pair(
-                reference=[event.processing_time.total.duration.total_seconds() for event in drift.reference_model],
-                running=[event.processing_time.total.duration.total_seconds() for event in drift.running_model],
-                unit="seconds",
-            ),
+            data=self.__get_data(extractor),
             # the causes of the drift are the changes in the effective and the idle processing times
-            children=[cause for cause in [effective, idle] if cause is not None],
+            parent=parent,
         )
-    # return None if no changes found in processing time
-    return None
+
+    def build_calendar_descriptor(
+            self: typing.Self,
+            title: str,
+            parent: DriftCause | None = None,
+    ) -> DriftCause:
+        """TODO docs"""
+        return DriftCause(
+            # what changed? the processing time
+            what=title,
+            # how did it change? include the distributions for both pre- and post- drift data
+            how=self.__describe_calendars(),
+            # data contains the raw data used in the test
+            data=self.__get_calendars(),
+            # the causes of the drift are the changes in the effective and the idle processing times
+            parent=parent,
+        )
 
 
-@profile("drift explanation")
+@profile()
 def explain_drift(drift: Drift) -> AnyNode | None:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
     # a tree accordingly, explaining the changes that occurred to the process
-    if continuous_test(
-            [event.cycle_time.total_seconds() for event in drift.reference_model],
-            [event.cycle_time.total_seconds() for event in drift.running_model],
-    ):
-        # check waiting and processing times for changes
-        waiting = __check_waiting_times(drift)
-        processing = __check_processing_times(drift)
+    explainer = DriftExplainer(drift)
+    root_cause = explainer.build_time_descriptor(
+        "cycle time distribution changed!",
+        lambda event: event.cycle_time,
+    )
 
-        # create a tree with the change
-        return AnyNode(
-            # what changed? the cycle time distribution
-            what="cycle time distribution changed!",
-            # how did it change? include the distributions for both pre- and post- drift data
-            how=Pair(
-                reference=scipy.stats.describe([event.cycle_time.total_seconds() for event in drift.reference_model]),
-                running=scipy.stats.describe([event.cycle_time.total_seconds() for event in drift.running_model]),
-            ),
-            # data contains the full data used for evaluating the change
-            data=Pair(
-                reference=[event.cycle_time.total_seconds() for event in drift.reference_model],
-                running=[event.cycle_time.total_seconds() for event in drift.running_model],
-            ),
-            # what are the causes of the drift? the subtrees resulting from checking the waiting and processing times
-            # they are added as children so the tree has a hierarchy
-            children=[cause for cause in [waiting, processing] if cause is not None],
+    # check processing time
+    if explainer.drift_in_time(lambda event: event.processing_time.total.duration):
+        # add a node to the tree reporting the change in the processing times
+        processing_time = explainer.build_time_descriptor(
+            "processing time distribution changed!",
+            lambda event: event.processing_time.total.duration,
+            parent=root_cause,
         )
 
-    # if no change is found between both running and reference data, return None
-    return None
+        # check effective processing time
+        if explainer.drift_in_time(lambda event: event.processing_time.effective.duration):
+            effective_time = explainer.build_time_descriptor(
+                "effective processing time distribution changed!",
+                lambda event: event.processing_time.effective.duration,
+                parent=processing_time,
+            )
+            # TODO analyze causes
+
+        # check idle processing time
+        if explainer.drift_in_time(lambda event: event.processing_time.idle.duration):
+            idle_time = explainer.build_time_descriptor(
+                "idle processing time distribution changed!",
+                lambda event: event.processing_time.idle.duration,
+                parent=processing_time,
+            )
+
+            # check changes in the availability calendars
+            if explainer.drift_in_availability():
+                explainer.build_calendar_descriptor(
+                    "resource availability calendars changed!",
+                    parent=idle_time,
+                )
+
+    # check waiting time
+    if explainer.drift_in_time(lambda event: event.waiting_time.total.duration):
+        # add a node to the tree reporting the change in the waiting times
+        waiting_time = explainer.build_time_descriptor(
+            "waiting time distribution changed!",
+            lambda event: event.waiting_time.total.duration,
+            parent=root_cause,
+        )
+
+        # check waiting time due to unavailability
+        if explainer.drift_in_time(lambda event: event.waiting_time.availability.duration):
+            unavailability_time = explainer.build_time_descriptor(
+                "waiting time due to resource unavailability distribution changed!",
+                lambda event: event.waiting_time.availability.duration,
+                parent=waiting_time,
+            )
+
+            # check changes in the availability calendars
+            if explainer.drift_in_availability():
+                explainer.build_calendar_descriptor(
+                    "resource availability calendars changed!",
+                    parent=unavailability_time,
+                )
+
+        # check waiting time due to contention
+        if explainer.drift_in_time(lambda event: event.waiting_time.contention.duration):
+            contention_time = explainer.build_time_descriptor(
+                "waiting time due to resource contention distribution changed!",
+                lambda event: event.waiting_time.contention.duration,
+                parent=waiting_time,
+            )
+
+        # check waiting time due to prioritization
+        if explainer.drift_in_time(lambda event: event.waiting_time.prioritization.duration):
+            prioritization_time = explainer.build_time_descriptor(
+                "waiting time due to prioritization distribution changed!",
+                lambda event: event.waiting_time.prioritization.duration,
+                parent=waiting_time,
+            )
+
+        # check waiting time due to batching
+        if explainer.drift_in_time(lambda event: event.waiting_time.batching.duration):
+            batching_time = explainer.build_time_descriptor(
+                "waiting time due to batching distribution changed!",
+                lambda event: event.waiting_time.batching.duration,
+                parent=waiting_time,
+            )
+
+        # check waiting time due to extraneous
+        if explainer.drift_in_time(lambda event: event.waiting_time.extraneous.duration):
+            extraneous_time = explainer.build_time_descriptor(
+                "waiting time due to extraneous distribution changed!",
+                lambda event: event.waiting_time.extraneous.duration,
+                parent=waiting_time,
+            )
+
+    # create a tree with the change
+    return root_cause
