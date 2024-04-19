@@ -15,7 +15,7 @@ from expert.utils.pm.batching import build_batch_creation_features, build_batch_
 from expert.utils.pm.calendars import Calendar, discover_calendars
 from expert.utils.pm.event_distribution import compute_weekly_event_distribution
 from expert.utils.pm.prioritization import build_prioritization_features
-from expert.utils.pm.profiles import Profile, discover_activity_profiles, discover_resource_profiles
+from expert.utils.pm.profiles import ActivityProfile, Profile, ResourceProfile
 from expert.utils.rules import compute_rule_score, discover_rules, filter_log
 from expert.utils.timer import profile
 
@@ -35,10 +35,10 @@ class DriftExplainer:
     ) -> Pair:
         return Pair(
             reference=scipy.stats.describe(
-                [extractor(event).total_seconds() for event in self.drift.reference_model.data]
+                [extractor(event).total_seconds() for event in self.drift.reference_model.data],
             ),
             running=scipy.stats.describe(
-                [extractor(event).total_seconds() for event in self.drift.running_model.data]
+                [extractor(event).total_seconds() for event in self.drift.running_model.data],
             ),
         )
 
@@ -399,18 +399,18 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str) -> D
             )
 
             # check drifts in the activity profiles
-            if explainer.has_drift_in_profile(discover_activity_profiles):
+            if explainer.has_drift_in_profile(ActivityProfile.discover):
                 explainer.build_profile_descriptor(
                     "activity profiles changed!",
                     parent=effective_time,
-                    profile_builder=discover_activity_profiles,
+                    profile_builder=ActivityProfile.discover,
                 )
             # check drifts in the resource profiles
-            if explainer.has_drift_in_profile(discover_resource_profiles):
+            if explainer.has_drift_in_profile(ResourceProfile.discover):
                 explainer.build_profile_descriptor(
                     "resource profiles changed!",
                     parent=effective_time,
-                    profile_builder=discover_resource_profiles,
+                    profile_builder=ResourceProfile.discover,
                 )
 
         # check drift in processing time when the resource is not available
@@ -538,18 +538,18 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str) -> D
             )
 
             # check drifts in the activity profiles
-            if explainer.has_drift_in_profile(discover_activity_profiles):
+            if explainer.has_drift_in_profile(ActivityProfile.discover):
                 explainer.build_profile_descriptor(
                     "activity profiles changed!",
                     parent=extraneous_time,
-                    profile_builder=discover_activity_profiles,
+                    profile_builder=ActivityProfile.discover,
                 )
             # check drifts in the resource profiles
-            if explainer.has_drift_in_profile(discover_resource_profiles):
+            if explainer.has_drift_in_profile(ResourceProfile.discover):
                 explainer.build_profile_descriptor(
                     "resource profiles changed!",
                     parent=extraneous_time,
-                    profile_builder=discover_resource_profiles,
+                    profile_builder=ResourceProfile.discover,
                 )
 
     # create a tree with the change

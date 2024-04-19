@@ -1,3 +1,4 @@
+import functools
 import operator
 import re
 import typing
@@ -472,11 +473,26 @@ def discover_rules(
 
     # fit the model to the available observations in the data
     # specifying the feature names allows for generating more interpretable rules
-    model.fit(
-        observations,
-        outcome,
-        feature_names=observations.columns,
-    )
+    try:
+        model.fit(
+            observations,
+            outcome,
+            feature_names=observations.columns,
+        )
+    # A ValueError can be thrown by Dataframe.query if too many parameters are passed to some internal methods using numpy
+    # (see https://github.com/numpy/numpy/issues/4398)
+    except ValueError:
+        # monkey-patch Dataframe.query method to force the use of python engine instead of numpy, avoiding the error
+        original = pd.DataFrame.query
+        pd.DataFrame.query = functools.partialmethod(pd.DataFrame.query, engine="python")
+        # train the model with the patched version of the query method
+        model.fit(
+            observations,
+            outcome,
+            feature_names=observations.columns,
+        )
+        # restore the original behaviour
+        pd.DataFrame.query = original
 
     # transform the obtained rules to a more interpretable format
     rules = []

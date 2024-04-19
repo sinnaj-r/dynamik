@@ -10,6 +10,7 @@ import scipy
 from intervaltree import Interval, IntervalTree
 
 from expert.process_model import Log, Resource
+from expert.utils.timer import profile
 
 
 class Calendar:
@@ -39,6 +40,7 @@ class Calendar:
             },
         )
 
+    @profile()
     def transform(self: typing.Self, transformer: typing.Callable[[int], int]) -> Calendar:
         """TODO docs"""
         for slot in self.__calendar:
@@ -46,6 +48,7 @@ class Calendar:
 
         return self
 
+    @profile()
     def apply(self: typing.Self, timeframe: Interval) -> IntervalTree:
         """
         Apply a calendar to a specific timeframe, generating availability intervals for the given interval
@@ -98,6 +101,7 @@ class Calendar:
 
         return tree
 
+    @profile()
     def statistically_equals(self: typing.Self, other: Calendar, *, significance: float = 0.05) -> bool:
         """TODO docs"""
         results = {}
@@ -117,6 +121,7 @@ class Calendar:
         return set(self.__calendar.keys())
 
     @staticmethod
+    @profile()
     def discover(log: Log) -> Calendar:
         """TODO docs"""
         # the calendar owners are the resources present in the log
@@ -142,10 +147,10 @@ class Calendar:
                 slot: value if (average_observations_per_slot - 3 * standard_deviation) < value < (
                         average_observations_per_slot + 3 * standard_deviation) else 0
                 for (slot, value) in calendar.items()
-            }
+            },
         )
 
-
+@profile()
 def discover_calendars(
         log: Log,
 ) -> typing.Mapping[Resource, Calendar]:

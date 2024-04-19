@@ -22,6 +22,12 @@ from expert.utils.timer import profile
 class DriftCause(NodeMixin):
     """TODO docs"""
 
+    what: str
+    how: Pair
+    data: Pair
+    parent: DriftCause | None
+    children: DriftCause | None
+
     def __init__(
             self: typing.Self,
             what: str,

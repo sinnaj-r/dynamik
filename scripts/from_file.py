@@ -30,8 +30,8 @@ if __name__ == "__main__":
         files = (
             # ("work_orders", "../data/logs/real/work_orders.csv"),
             ("base", "../data/logs/base-sequence.csv"),
-            ("no-available-on-night", "../data/logs/base-sequence-with-unavailability.csv"),
-            # ("fast-exc", "../data/logs/base-sequence-fast-execution.csv"),
+            # ("no-available-on-night", "../data/logs/base-sequence-with-unavailability.csv"),
+            ("fast-exc", "../data/logs/base-sequence-fast-execution.csv"),
             # ("long-run", "../data/logs/base-sequence-long-run.csv"),
             # ("with-idle-time", "../data/logs/base-sequence-long-run-limited-avail-no-wait.csv"),
             # ("batching", "../data/logs/base-sequence-batching.csv"),
