@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import time
 import typing
 from collections import defaultdict
