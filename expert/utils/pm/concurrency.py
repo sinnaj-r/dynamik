@@ -33,38 +33,15 @@ class ConcurrencyOracle(abc.ABC):
     every event taking into account these relations.
     """
 
-    @abc.abstractmethod
-    def compute_enablement_timestamps(self: typing.Self) -> typing.Iterable[Event]:
-        """
-        Add the enabled time for every event in the log.
+    log: Log
+    concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
 
-        The enabler event is found based on the concurrency relations computed by the specific concurrency oracle.
-        Events without an enabler event get their enablement time from their own start time (so, its waiting time is 0).
-
-        Returns
-        -------
-        * the transformed event log, with the enablement timestamps computed
-        """
-        ...
-
-
-class _ConcurrencyOracle(ConcurrencyOracle):
-    __log: Log
-    __concurrency: typing.Mapping[str, typing.Mapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
-
-    def __init__(
-            self: typing.Self,
-            log: Log,
-            concurrency: typing.Mapping[str, typing.Mapping[str, bool]],
-    ) -> None:
-        self.__log = log
-        self.__concurrency = concurrency
-
-    def __find_enabler(self: typing.Self, trace: Trace, event: Event) -> Event | None:
+    def find_enabler(self: typing.Self, trace: Trace, event: Event) -> Event | None:
+        """Gets the event enabling the execution of this activity instance within the trace"""
         # Get the list of previous events (events that ended before the current one started and that are not
         # concurrent with it).
         previous = sorted(
-            [evt for evt in trace if evt.end <= event.start and not self.__concurrency[event.activity][evt.activity]],
+            [evt for evt in trace if evt.end <= event.start and not self.concurrency[event.activity][evt.activity]],
             key=lambda evt: evt.end,
         )
         # Return the last
@@ -83,29 +60,27 @@ class _ConcurrencyOracle(ConcurrencyOracle):
         """
         # Build traces
         traces = defaultdict(list)
-        for event in self.__log:
+        for event in self.log:
             traces[event.case].append(event)
 
         for trace in traces.values():
             for event in trace:
                 # Find the enabler for the current event
-                enabler: Event | None = self.__find_enabler(trace, event)
+                enabler: Event | None = self.find_enabler(trace, event)
                 # Set the enabled timestamp
                 if enabler is not None:
                     event.enabled = enabler.end
                 else:
                     event.enabled = event.start
 
-        self.__log = sorted(self.__log, key=lambda evt: (evt.end, evt.start, evt.enabled))
+        self.log = sorted(self.log, key=lambda evt: (evt.end, evt.start, evt.enabled))
 
-        return self.__log
+        return self.log
 
 
-class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
+class HeuristicsConcurrencyOracle(ConcurrencyOracle):
     """Concurrency oracle from the heuristics miner."""
 
-    __log: Log
-    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
     __df_count: typing.Mapping[str, typing.Mapping[str, int]]
     __df_dependency: typing.Mapping[str, typing.Mapping[str, float]]
     __l2l_dependency: typing.Mapping[str, typing.Mapping[str, float]]
@@ -116,27 +91,26 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
             *,
             thresholds: HeuristicsThresholds = HeuristicsThresholds(),
     ) -> None:
-        self.__log = list(log)
+        self.log = list(log)
 
         # Heuristics concurrency
-        activities: set[str] = {event.activity for event in self.__log}
+        activities: set[str] = {event.activity for event in self.log}
 
         # Build dependency matrices
         self.__build_matrices(activities, thresholds)
 
         # Create concurrency if there is a directly-follows relation in both directions
+        self.concurrency = defaultdict(lambda: defaultdict(lambda: False))
         for (activity_1, activity_2) in itertools.combinations(activities, 2):
             if self.__df_count[activity_1][activity_2] > 0 and self.__df_count[activity_2][activity_1] > 0:
                 if (self.__l2l_dependency[activity_1][activity_2] < thresholds.l2l and  # 'A' and 'B' are not a length 2 loop
                         abs(self.__df_dependency[activity_1][activity_2] < thresholds.df)):  # The df relations are weak
                     # Concurrency relation AB, add it to A
-                    self.__concurrency[activity_1][activity_2] = True
+                    self.concurrency[activity_1][activity_2] = True
                 if (self.__l2l_dependency[activity_2][activity_1] < thresholds.l2l and  # 'B' and 'A' are not a length 2 loop
                         abs(self.__df_dependency[activity_2][activity_1]) < thresholds.df):  # The df relations are weak
                     # Concurrency relation AB, add it to A
-                    self.__concurrency[activity_2][activity_1] = True
-
-        super().__init__(self.__log, self.__concurrency)
+                    self.concurrency[activity_2][activity_1] = True
 
     def __build_matrices(
             self: typing.Self,
@@ -155,7 +129,7 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
 
         # Build traces
         traces: typing.Mapping[str, list[Event]] = defaultdict(list)
-        for event in self.__log:
+        for event in self.log:
             traces[event.case].append(event)
 
         # Count directly-follows and l2l relations
@@ -163,7 +137,7 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
             previous_activity: str | None = None
 
             # Iterate the events of the trace in pairs: (e1, e2), (e2, e3), (e3, e4)...
-            for (event_1, event_2) in zip(trace[:-1], trace[1:], strict=True):
+            for (event_1, event_2) in itertools.pairwise(trace):
                 # Store df relation
                 df[event_1.activity][event_2.activity] = df[event_1.activity][event_2.activity] + 1
                 # Increase l2l value if there is a length 2 loop (A-B-A)
@@ -208,22 +182,20 @@ class HeuristicsConcurrencyOracle(_ConcurrencyOracle):
         self.__l2l_dependency = l2l_dependency
 
 
-class OverlappingConcurrencyOracle(_ConcurrencyOracle):
+class OverlappingConcurrencyOracle(ConcurrencyOracle):
     """Concurrency oracle from the split miner 2.0."""
 
-    __log: Log
     __overlaps = defaultdict(lambda: defaultdict(lambda: 0))
-    __concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
 
     def __init__(
             self: typing.Self,
             log: Log,
             thresholds: OverlappingThresholds = OverlappingThresholds(),
     ) -> None:
-        self.__log = list(log)
+        self.log = list(log)
 
         # build the activity set and the cases map
-        activities: set[str] = {event.activity for event in self.__log}
+        activities: set[str] = {event.activity for event in self.log}
         cases: typing.Mapping[str, typing.MutableSequence[Event]] = defaultdict(list)
         for event in log:
             cases[event.case].append(event)
@@ -232,6 +204,7 @@ class OverlappingConcurrencyOracle(_ConcurrencyOracle):
         self.__build_matrices(cases)
 
         # check overlapping for every pair of activities
+        self.concurrency = defaultdict(lambda: defaultdict(lambda: False))
         for (activity_a, activity_b) in itertools.combinations(activities, 2):
             # count instances of activity a
             activity_a_instances = len([
@@ -246,10 +219,8 @@ class OverlappingConcurrencyOracle(_ConcurrencyOracle):
 
             if overlap_factor > thresholds.overlapping_threshold:
                 # Concurrency relation AB, add it
-                self.__concurrency[activity_a][activity_b] = True
-                self.__concurrency[activity_b][activity_a] = True
-
-        super().__init__(self.__log, self.__concurrency)
+                self.concurrency[activity_a][activity_b] = True
+                self.concurrency[activity_b][activity_a] = True
 
     def __build_matrices(
             self: typing.Self,

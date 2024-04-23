@@ -1,4 +1,5 @@
-"""This module defines the logger used in the entire application."""
+from __future__ import annotations
+
 import enum
 import logging
 import math

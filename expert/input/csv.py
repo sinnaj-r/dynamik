@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from expert.input import EventMapping
-from expert.process_model import Event
+from expert.process_model import Event, Log
 from expert.utils.logger import LOGGER
 from expert.utils.timer import profile
 
@@ -18,6 +18,7 @@ DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", enabl
                                                  activity="activity", resource="resource")
 
 
+@profile()
 def __preprocess_and_sort(
         event_log: pd.DataFrame,
         attribute_mapping: EventMapping,
@@ -101,7 +102,7 @@ def read_csv_log(
         add_artificial_start_end_events: bool = False,
         attribute_mapping: EventMapping = DEFAULT_CSV_MAPPING,
         case_prefix: str = "",
-        preprocessor: typing.Callable[[typing.Iterable[Event]], typing.Iterable[Event]] = lambda log: log,
+        preprocessor: typing.Callable[[Log], Log] = lambda log: log,
 ) -> typing.Generator[Event, None, None]:
     """
     Read an event log from a CSV file.
@@ -143,11 +144,11 @@ def read_csv_log(
 
 @profile()
 def read_and_merge_csv_logs(
-        logs: typing.Iterable[tuple],
+        logs: typing.Iterable[str],
         *,
         add_artificial_start_end_events: bool = False,
         attribute_mapping: EventMapping = DEFAULT_CSV_MAPPING,
-        preprocessor: typing.Callable[[typing.Iterable[Event]], typing.Iterable[Event]] = lambda log: log,
+        preprocessor: typing.Callable[[Log], Log] = lambda log: log,
 ) -> typing.Generator[Event, None, None]:
     """
     Read a set of event logs from CSV files and combine them.
@@ -173,12 +174,12 @@ def read_and_merge_csv_logs(
     event_logs = []
 
     # Read logs
-    for name, file in logs:
+    for file in logs:
         log = pd.read_csv(file, skipinitialspace=True, na_values=["[NULL]", ""], engine="c")
         # Force column names to be lowercase
         log.columns = log.columns.str.lower()
         # Force case identifier to be a string and add prefix
-        log[attribute_mapping.case.lower()] = f"{name}/" + log[attribute_mapping.case.lower()].astype(str)
+        log[attribute_mapping.case.lower()] = log[attribute_mapping.case.lower()].astype(str)
         event_logs.append(log)
 
     LOGGER.info("parsed logs from %s:", logs)

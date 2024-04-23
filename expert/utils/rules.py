@@ -63,6 +63,16 @@ class ConfusionMatrix:
         """F1 score measures the harmonic mean between precision and recall"""
         return 2 / ((1 / self.precision) + (1 / self.recall)) if self.precision != 0 and self.recall != 0 else 0
 
+    def asdict(self: typing.Self) -> dict:
+        return {
+            "true_positives": self.true_positives,
+            "true_negatives": self.true_negatives,
+            "false_positives": self.false_positives,
+            "false_negatives": self.false_negatives,
+            "f1_score": self.f1_score,
+            "classification_accuracy": self.classification_accuracy,
+        }
+
 
 @dataclass(frozen=True)
 class Clause:
@@ -103,6 +113,13 @@ class Clause:
             op=self.op,
             value=self.value,
         )
+
+    def asdict(self: typing.Self) -> dict:
+        return {
+            "feature": self.feature,
+            "op": self.op,
+            "value": self.value,
+        }
 
     def __repr__(self: typing.Self) -> str:
         return f"{self.feature} {self.op} {self.value}"
@@ -161,6 +178,12 @@ class Rule:
             training_data=self.training_data,
             training_class=self.training_class,
         )
+
+    def asdict(self: typing.Self) -> dict:
+        return {
+            "clauses": [clause.asdict() for clause in self.clauses],
+            "reducer": self.reducer,
+        }
 
     def __repr__(self: typing.Self) -> str:
         if len(list(self.clauses)) > 1:

@@ -1,3 +1,3 @@
-from .cli import run
+from expert.cli import run
 
 run()

@@ -47,6 +47,46 @@ class Batch:
             end=max(event.end for event in self.events),
         )
 
+    def asdict(self: typing.Self) -> dict:
+        return {
+            "activity": self.activity,
+            "resource": self.resource,
+            "events": [
+                {
+                    "case": event.case,
+                    "activity": event.activity,
+                    "resource": event.resource,
+                    "start": {
+                        "year": event.start.year,
+                        "month": event.start.month,
+                        "day": event.start.day,
+                        "hour": event.start.hour,
+                        "minute": event.start.minute,
+                        "second": event.start.second,
+                        "microsecond": event.start.microsecond,
+                    },
+                    "end": {
+                        "year": event.end.year,
+                        "month": event.end.month,
+                        "day": event.end.day,
+                        "hour": event.end.hour,
+                        "minute": event.end.minute,
+                        "second": event.end.second,
+                        "microsecond": event.end.microsecond,
+                    },
+                    "enabled": {
+                        "year": event.enabled.year,
+                        "month": event.enabled.month,
+                        "day": event.enabled.day,
+                        "hour": event.enabled.hour,
+                        "minute": event.enabled.minute,
+                        "second": event.enabled.second,
+                        "microsecond": event.enabled.microsecond,
+                    },
+                } for event in self.events
+            ],
+        }
+
 
 @dataclass
 class WaitingTime:
@@ -59,6 +99,16 @@ class WaitingTime:
     extraneous: TimeInterval = field(default_factory=TimeInterval)
     total: TimeInterval = field(default_factory=TimeInterval)
 
+    def asdict(self: typing.Self) -> dict:
+        return {
+            "batching": self.batching.asdict(),
+            "contention": self.contention.asdict(),
+            "prioritization": self.prioritization.asdict(),
+            "availability": self.availability.asdict(),
+            "extraneous": self.extraneous.asdict(),
+            "total": self.total.asdict(),
+        }
+
 
 @dataclass
 class ProcessingTime:
@@ -67,6 +117,13 @@ class ProcessingTime:
     effective: TimeInterval = field(default_factory=TimeInterval)
     idle: TimeInterval = field(default_factory=TimeInterval)
     total: TimeInterval = field(default_factory=TimeInterval)
+
+    def asdict(self: typing.Self) -> dict:
+        return {
+            "effective": self.effective.asdict(),
+            "idle": self.idle.asdict(),
+            "total": self.total.asdict(),
+        }
 
 
 @dataclass(slots=True)
@@ -80,9 +137,9 @@ class Event:
 
     case: str
     """The case identifier for the event, which associates it with a specific process execution"""
-    activity: str
+    activity: Activity
     """The activity being executed"""
-    resource: str | None
+    resource: Resource | None
     """The resource in charge of the activity"""
     start: datetime
     """The time when the activity execution began"""
@@ -124,12 +181,46 @@ class Event:
     def __hash__(self: typing.Self) -> int:
         return hash((self.case, self.activity, self.resource, self.start, self.end, self.enabled))
 
-    def asdict(self: typing.Self, *, fields: typing.Iterable[str] | None = None) -> dict:
-        if fields is None:
-            fields = self.__slots__
-        return {
-            _field: self.__getattribute__(_field) for _field in fields
+    def asdict(self: typing.Self) -> dict:
+        """Convert the object to a dict"""
+        result = {
+            "case": self.case,
+            "activity": self.activity,
+            "resource": self.resource,
+            "start": {
+                "year": self.start.year,
+                "month": self.start.month,
+                "day": self.start.day,
+                "hour": self.start.hour,
+                "minute": self.start.minute,
+                "second": self.start.second,
+                "microsecond": self.start.microsecond,
+            },
+            "end": {
+                "year": self.end.year,
+                "month": self.end.month,
+                "day": self.end.day,
+                "hour": self.end.hour,
+                "minute": self.end.minute,
+                "second": self.end.second,
+                "microsecond": self.end.microsecond,
+            },
+            "enabled": {
+                "year": self.enabled.year,
+                "month": self.enabled.month,
+                "day": self.enabled.day,
+                "hour": self.enabled.hour,
+                "minute": self.enabled.minute,
+                "second": self.enabled.second,
+                "microsecond": self.enabled.microsecond,
+            },
+            "batch": self.batch.asdict(),
+            "waiting_time": self.waiting_time.asdict(),
+            "processing_time": self.processing_time.asdict(),
+            "attributes": self.activity,
         }
+
+        return result
 
 
 # type aliases

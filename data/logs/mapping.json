@@ -1,0 +1,8 @@
+{
+  "start": "start_time",
+  "end": "end_time",
+  "enablement": "enable_time",
+  "case": "case_id",
+  "activity": "activity",
+  "resource": "resource"
+}

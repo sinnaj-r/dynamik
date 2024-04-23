@@ -6,307 +6,137 @@ from intervaltree import Interval, IntervalTree
 from expert.process_model import Log
 from expert.utils.model import TimeInterval
 from expert.utils.pm.calendars import discover_calendars
+from expert.utils.timer import profile
 
 
-def decompose_waiting_times(log: Log) -> Log:
-    """
-    Decompose the waiting time in its separated components
+class WaitingTimeCanvas:
+    """TODO docs"""
 
-    Parameters
-    ----------
-    * `log`: the input event log which waiting times will be decomposed
+    @staticmethod
+    @profile()
+    def apply(log: Log) -> Log:
+        """Decompose the waiting times from given log applying the waiting time canvas."""
+        # build an intervaltree with the log for each resource
+        busy_resource_tree = defaultdict(IntervalTree)
+        for event in log:
+            busy_resource_tree[event.resource][event.start:event.end] = event
 
-    Returns
-    -------
-    * the updated log with the event waiting times decomposed
-    """
-    return __compute_extraneous_times(
-        __compute_availability_times(
-            __compute_prioritization_times(
-                __compute_contention_times(
-                    __compute_batching_times(
-                        __compute_total_times(log),
-                    ),
-                ),
-            ),
-        ),
-    )
-
-
-def __compute_total_times(log: Log) -> Log:
-    # Save total waiting time for each event
-    for event in log:
-        event.waiting_time.total = TimeInterval(
-            intervals=[
-                Interval(
-                    begin=event.enabled,
-                    end=event.start,
-                ),
-            ],
-            duration=event.start - event.enabled,
+        # build an interval for the log timeframe
+        log_timeframe = Interval(
+            begin=min(event.start for event in log),
+            end=max(event.end for event in log),
         )
 
-    return log
+        # discover and apply the calendars for the resources to the log timeframe
+        applied_calendars = {
+            resource: calendar.apply(log_timeframe) for (resource, calendar) in discover_calendars(log).items()
+        }
 
+        # compute the waiting times for each event
+        for event in log:
+            # create a new list to keep track of the already explained intervals
+            already_explained = []
 
-def __compute_batching_times(log: Log) -> Log:
-    # Save batching times for each event
-    for event in log:
-        # The batching time for an event is the time between it has been enabled and the batch accumulation is done
-        if event.batch is None:
-            event.waiting_time.batching = TimeInterval(
-                intervals=[],
-                duration=timedelta(),
-            )
-        else:
-            event.waiting_time.batching = TimeInterval(
-                intervals=[
-                    Interval(
-                        begin=event.enabled,
-                        end=event.batch.accumulation.end,
-                    ),
-                ],
-                duration=event.batch.accumulation.end - event.enabled,
-            )
-
-    return log
-
-
-def __compute_contention_times(log: Log) -> Log:
-    # build an interval tree with the events for each resource to find overlapping events later
-    log_tree = defaultdict(IntervalTree)
-    for event in log:
-        # only for the events with waiting time
-        if event.enabled != event.start:
-            log_tree[event.resource][event.enabled:event.end] = event
-
-    # compute the contention time for each event in the log
-    for event in log:
-        if event.enabled != event.start:
-            # get the events that overlap the current one ---i.e., those that overlap the interval [event.enabled: event.start]
-            overlapping_events = log_tree[event.resource][event.enabled:event.start]
-            # blocking events are the overlapping events that have been both enabled and started executing before the current one
-            blocking_events = [
-                evt.data for evt in overlapping_events
-                if evt.data.enabled < event.enabled and evt.data.start < event.start and evt.data != event
-            ]
-
-            if len(blocking_events) > 0:
-                blocking_events_tree = IntervalTree()
-
-                # add intervals where blocking events are being executed (trimmed to the start of the event)
-                for blocking_evt in blocking_events:
-                    blocking_events_tree[blocking_evt.start: min(blocking_evt.end, event.start)] = blocking_evt
-
-                # merge adjacent intervals (adjacent intervals = those separated less than 1 second or overlapping)
-                blocking_events_tree.merge_neighbors(
-                    distance=timedelta(seconds=1),
-                    strict=False,
+            # compute only for events that have a waiting time
+            if event.enabled != event.start:
+                ##################################
+                # compute the total waiting time #
+                ##################################
+                event.waiting_time.total = TimeInterval(
+                    intervals=[
+                        Interval(
+                            begin=event.enabled,
+                            end=event.start,
+                        ),
+                    ],
                 )
+                #############################
+                # compute the batching time #
+                #############################
+                if event.batch is not None:
+                    event.waiting_time.batching = TimeInterval(
+                        intervals=[
+                            # The batching time for an event is the interval between it has been enabled and the batch accumulation is done
+                            Interval(
+                                begin=event.enabled,
+                                end=event.batch.accumulation.end,
+                            ),
+                        ],
+                    )
+                # store batching intervals as already explained
+                already_explained.extend(event.waiting_time.batching.intervals)
 
-                # remove intervals covered by the batching time
-                for interval in event.waiting_time.batching.intervals:
-                    blocking_events_tree.chop(
+                # get the events that overlap the current one ---i.e., those that overlap the interval [event.enabled: event.start]
+                overlapping_events = [interval.data for interval in busy_resource_tree[event.resource][event.enabled:event.start]]
+
+                ############################
+                # compute contention times #
+                ############################
+                contention_tree: IntervalTree = IntervalTree()
+                for evt in overlapping_events:
+                    if evt.enabled < event.enabled and evt != event:
+                        # evt causes contention between its start and its end or the next event starts
+                        contention_tree[evt.start: min(evt.end, event.start)] = evt
+                # remove already explained waiting intervals
+                for interval in already_explained:
+                    contention_tree.chop(interval.begin, interval.end)
+                # merge adjacent intervals in contention tree
+                contention_tree.merge_neighbors(distance=timedelta(seconds=1), strict=False)
+                # collect contention intervals
+                event.waiting_time.contention = TimeInterval(intervals=list(contention_tree))
+                # store contention intervals as already explained
+                already_explained.extend(event.waiting_time.contention.intervals)
+
+                ################################
+                # compute prioritization times #
+                ################################
+                prioritization_tree: IntervalTree = IntervalTree()
+                for evt in overlapping_events:
+                    if evt.enabled > event.enabled and evt != event:
+                        # event causes prioritization between its start and its end or the next event starts
+                        prioritization_tree[evt.start: min(evt.end, event.start)] = evt
+                # remove already explained waiting intervals
+                for interval in already_explained:
+                    prioritization_tree.chop(interval.begin, interval.end)
+                # merge adjacent intervals in prioritization tree
+                prioritization_tree.merge_neighbors(distance=timedelta(seconds=1), strict=False)
+                # collect contention intervals
+                event.waiting_time.prioritization = TimeInterval(intervals=list(prioritization_tree))
+                # store prioritization intervals as already explained
+                already_explained.extend(event.waiting_time.prioritization.intervals)
+
+                ##################################
+                # compute the availability times #
+                ##################################
+                # create a new interval tree with a single interval representing the complete event waiting time
+                unavailability_tree = IntervalTree([Interval(begin=event.enabled, end=event.start)])
+                # remove the intervals where the resource was available
+                for interval in applied_calendars[event.resource][event.enabled:event.start]:
+                    unavailability_tree.chop(
                         begin=interval.begin,
                         end=interval.end,
                     )
+                # remove already explained waiting intervals
+                for interval in already_explained:
+                    unavailability_tree.chop(interval.begin, interval.end)
+                # merge adjacent intervals in availability tree
+                unavailability_tree.merge_neighbors(distance=timedelta(seconds=1), strict=False)
+                # collect unavailability intervals
+                event.waiting_time.availability = TimeInterval(intervals=list(unavailability_tree))
+                # store prioritization intervals as already explained
+                already_explained.extend(event.waiting_time.availability.intervals)
 
-                # collect intervals and aggregate its durations
-                event.waiting_time.contention = TimeInterval(
-                    intervals=list(blocking_events_tree),
-                    duration=sum([interval.end - interval.begin for interval in blocking_events_tree], start=timedelta()),
-                )
-            else:
-                # no contention time
-                event.waiting_time.contention = TimeInterval(
-                    intervals=[],
-                    duration=timedelta(),
-                )
-        else:
-            # no contention time
-            event.waiting_time.contention = TimeInterval(
-                intervals=[],
-                duration=timedelta(),
-            )
-    return log
+                ############################
+                # compute extraneous times #
+                ############################
+                # create an intervaltree with the full waiting time
+                extraneous_tree = IntervalTree([Interval(begin=event.enabled, end=event.start)])
+                # remove the already explained intervals
+                for interval in already_explained:
+                    extraneous_tree.chop(interval.begin, interval.end)
+                # merge adjacent intervals in extraneous tree
+                extraneous_tree.merge_neighbors(distance=timedelta(seconds=1), strict=False)
+                # collect unavailability intervals
+                event.waiting_time.extraneous = TimeInterval(intervals=list(extraneous_tree))
 
-
-def __compute_prioritization_times(log: Log) -> Log:
-    # build an interval tree with the events for each resource to find overlapping events later
-    log_tree = defaultdict(IntervalTree)
-    for event in log:
-        if event.enabled != event.start:
-            log_tree[event.resource][event.enabled:event.start] = event
-
-    # compute the prioritization time for each event in the log
-    for event in log:
-        if event.enabled != event.start:
-            # blocking events ---i.e., events causing prioritization times--- are those that are enveloped by the current
-            # one--- i.e., those that have been enabled after the current one and started executing before it did
-            enveloped_events = log_tree[event.resource].envelop(
-                begin=event.enabled,
-                end=event.start,
-            )
-            # Ensure the current event is not part of its own blocking events
-            blocking_events = [interval.data for interval in enveloped_events if interval.data != event]
-
-            if len(blocking_events) > 0:
-                blocking_events_tree = IntervalTree()
-
-                # add intervals where blocking events are being executed
-                for blocking_evt in blocking_events:
-                    blocking_events_tree[blocking_evt.start: blocking_evt.end] = blocking_evt
-
-                # merge adjacent intervals (adjacent intervals = those separated less than 5 minutes or overlapping)
-                blocking_events_tree.merge_neighbors(
-                    distance=timedelta(minutes=5),
-                    strict=False,
-                )
-
-                # remove intervals covered by the batching time
-                for interval in event.waiting_time.batching.intervals:
-                    blocking_events_tree.chop(
-                        begin=interval.begin,
-                        end=interval.end,
-                    )
-
-                # remove intervals covered by the contention time
-                for interval in event.waiting_time.contention.intervals:
-                    blocking_events_tree.chop(
-                        begin=interval.begin,
-                        end=interval.end,
-                    )
-
-                # collect intervals and aggregate its durations
-                event.waiting_time.prioritization = TimeInterval(
-                    intervals=list(blocking_events_tree),
-                    duration=sum([interval.end - interval.begin for interval in blocking_events_tree], start=timedelta()),
-                )
-
-            else:
-                # no prioritization time
-                event.waiting_time.prioritization = TimeInterval(
-                    intervals=[],
-                    duration=timedelta(),
-                )
-        else:
-            # If the event has the same enablement and start timestamps, the waiting time is 0
-            event.waiting_time.prioritization = TimeInterval(
-                intervals=[],
-                duration=timedelta(),
-            )
-    return log
-
-
-def __compute_availability_times(log: Log) -> Log:
-    # build an interval for the log timeframe
-    log_timeframe = Interval(
-        begin=min(event.start for event in log),
-        end=max(event.end for event in log)
-    )
-    # compute the availability calendars for the resources
-    calendars = discover_calendars(log)
-    # apply the calendars to the log timeframe
-    applied_calendars = {
-        resource: calendar.apply(log_timeframe) for (resource, calendar) in calendars.items()
-    }
-
-    # compute the unavailability times for each event in the log
-    for event in log:
-        # only for the events with waiting time
-        if event.enabled != event.start:
-            # create a new interval tree with a single interval representing the complete event waiting time
-            tree = IntervalTree()
-            tree[event.enabled:event.start] = event
-
-            # remove intervals covered by the batching time
-            for interval in event.waiting_time.batching.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # remove intervals covered by the contention time
-            for interval in event.waiting_time.contention.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # remove intervals covered by the prioritization time
-            for interval in event.waiting_time.prioritization.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # remove the intervals where the resource was available
-            for interval in applied_calendars[event.resource][event.enabled:event.start]:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # once all availability periods are processed, collect remaining intervals and aggregate its durations
-            event.waiting_time.availability = TimeInterval(
-                intervals=list(tree),
-                duration=sum([interval.end - interval.begin for interval in tree], start=timedelta()),
-            )
-        else:
-            event.waiting_time.availability = TimeInterval(
-                intervals=[],
-                duration=timedelta(),
-            )
-
-    return log
-
-
-def __compute_extraneous_times(log: Log) -> Log:
-    for event in log:
-        # only for events with waiting times
-        if event.enabled != event.start:
-            tree = IntervalTree()
-
-            # initialize the tree with the complete waiting time
-            tree[event.enabled:event.start] = event
-
-            # remove intervals covered by the batching time
-            for interval in event.waiting_time.batching.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # remove intervals covered by the contention time
-            for interval in event.waiting_time.contention.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # remove intervals covered by the prioritization time
-            for interval in event.waiting_time.prioritization.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # remove intervals covered by the availability time
-            for interval in event.waiting_time.availability.intervals:
-                tree.chop(
-                    begin=interval.begin,
-                    end=interval.end,
-                )
-
-            # collect remaining intervals and aggregate its durations
-            event.waiting_time.prioritization = TimeInterval(
-                intervals=list(tree),
-                duration=sum([interval.end - interval.begin for interval in tree], start=timedelta()),
-            )
-        else:
-            event.waiting_time.prioritization = TimeInterval(
-                intervals=[],
-                duration=timedelta(),
-            )
-
-    return log
+        return log

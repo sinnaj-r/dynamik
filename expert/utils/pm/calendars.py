@@ -4,12 +4,12 @@ import itertools
 import typing
 from collections import defaultdict
 from datetime import datetime, time, timedelta
-from statistics import mean, stdev
 
 import scipy
 from intervaltree import Interval, IntervalTree
 
-from expert.process_model import Log, Resource
+from expert.process_model import Event, Log, Resource
+from expert.utils.model import TestResult
 from expert.utils.timer import profile
 
 
@@ -19,9 +19,11 @@ class Calendar:
     owner: set[str]
     __calendar: dict[tuple[int, int], int]
 
-    def __init__(self: typing.Self, owner: set[str] = frozenset(), calendar: dict[tuple[int, int], int] | None = None) -> None:
+    def __init__(self: typing.Self, owner: set[str] = frozenset(),
+                 calendar: dict[tuple[int, int], int] | None = None) -> None:
         self.owner = owner
-        self.__calendar = calendar if calendar is not None else {slot: 0 for slot in itertools.product(range(7), range(24))}
+        self.__calendar = calendar if calendar is not None else {slot: 0 for slot in
+                                                                 itertools.product(range(7), range(24))}
 
     def __getitem__(self: typing.Self, key: int | tuple[int, int]) -> dict[int, int] | int:
         # if the key is an int, return all the slots for that weekday
@@ -37,6 +39,14 @@ class Calendar:
             owner=set(self.owner).union(other.owner),
             calendar={
                 slot: self[slot] + other[slot] for slot in self.__calendar
+            },
+        )
+
+    def __sub__(self: typing.Self, other: Calendar) -> Calendar:
+        return Calendar(
+            owner=set(self.owner) - set(other.owner),
+            calendar={
+                slot: self[slot] - other[slot] for slot in self.__calendar
             },
         )
 
@@ -102,7 +112,7 @@ class Calendar:
         return tree
 
     @profile()
-    def statistically_equals(self: typing.Self, other: Calendar, *, significance: float = 0.05) -> bool:
+    def statistically_equals(self: typing.Self, other: Calendar) -> TestResult:
         """TODO docs"""
         results = {}
         for slot in self.slots:
@@ -113,7 +123,7 @@ class Calendar:
                 len(set(self.owner).union(other.owner)),
             )
 
-        return all(result.pvalue >= significance for result in results.values())
+        return scipy.stats.combine_pvalues([value.pvalue for value in results.values()])
 
     @property
     def slots(self: typing.Self) -> set[tuple[int, int]]:
@@ -122,7 +132,10 @@ class Calendar:
 
     @staticmethod
     @profile()
-    def discover(log: Log) -> Calendar:
+    def discover(
+            log: Log,
+            time_extractor: typing.Callable[[Event], typing.Iterable[datetime]] = lambda event: (event.start, event.end),
+    ) -> Calendar:
         """TODO docs"""
         # the calendar owners are the resources present in the log
         owner = {event.resource for event in log}
@@ -133,22 +146,29 @@ class Calendar:
         # check intervals for each event in the log
         # we consider a resource is available in a given slot if any activity is recorded in that slot (start or end of activity instance)
         for event in log:
-            calendar[(event.start.weekday(), event.start.time().hour)] += 1
-            calendar[(event.end.weekday(), event.end.time().hour)] += 1
-
-        # clean calendar by removing slots where value not in [avg-3sd, avg+3sd]
-        average_observations_per_slot = mean(calendar.values())
-        standard_deviation = stdev(calendar.values())
+            for instant in time_extractor(event):
+                calendar[(instant.weekday(), instant.time().hour)] += 1
 
         # set as calendar the clean calendar
         return Calendar(
             owner=owner,
-            calendar={
-                slot: value if (average_observations_per_slot - 3 * standard_deviation) < value < (
-                        average_observations_per_slot + 3 * standard_deviation) else 0
-                for (slot, value) in calendar.items()
-            },
+            calendar=calendar,
         )
+
+    def asdict(self: typing.Self) -> dict:
+        weekdays = ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+
+        return {
+            "owner": self.owner,
+            "calendar": [
+                {
+                    "weekday": weekdays[weekday],
+                    "hour": hour,
+                    "value": value,
+                } for ((weekday, hour), value) in self.__calendar.items()
+            ],
+        }
+
 
 @profile()
 def discover_calendars(

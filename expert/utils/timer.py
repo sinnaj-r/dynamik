@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import time
 import typing
 from collections import defaultdict
@@ -55,4 +54,5 @@ def profile(name: str | None = None, *, timer: Timer = DEFAULT_TIMER) -> typing.
             with timer.profile(name if name is not None else func.__qualname__):
                 return func(*args, **kwargs)
         return _wrapper
+
     return decorator

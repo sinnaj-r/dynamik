@@ -14,8 +14,8 @@ from expert.process_model import Event
 from expert.utils.logger import LOGGER
 from expert.utils.model import Pair
 from expert.utils.pm.batching import discover_batches
-from expert.utils.pm.processing import decompose_processing_times
-from expert.utils.pm.waiting import decompose_waiting_times
+from expert.utils.pm.processing import ProcessingTimeCanvas
+from expert.utils.pm.waiting import WaitingTimeCanvas
 from expert.utils.timer import profile
 
 
@@ -26,7 +26,7 @@ class DriftCause(NodeMixin):
     how: Pair
     data: Pair
     parent: DriftCause | None
-    children: DriftCause | None
+    children: typing.Iterable[DriftCause] | None
 
     def __init__(
             self: typing.Self,
@@ -34,7 +34,7 @@ class DriftCause(NodeMixin):
             how: Pair,
             data: Pair,
             parent: DriftCause | None = None,
-            children: DriftCause | None = None,
+            children:  typing.Iterable[DriftCause] | None = None,
     ) -> None:
         super().__init__()
         self.what = what
@@ -43,6 +43,18 @@ class DriftCause(NodeMixin):
         self.parent = parent
         if children:
             self.children = children
+
+    def __str__(self: typing.Self) -> str:
+        return f"{self.what}"
+
+    def asdict(self: typing.Self) -> dict:
+        """Return a dictionary representation of the object."""
+        return {
+            "what": self.what,
+            "how": self.how.asdict(),
+            "data": self.data.asdict(),
+            "causes": [children.asdict() for children in self.children],
+        }
 
 
 class DriftLevel(enum.Enum):
@@ -70,11 +82,11 @@ class Drift:
             discover_batches(self.reference_model.data)
             discover_batches(self.running_model.data)
             # decompose processing times
-            decompose_processing_times(self.reference_model.data)
-            decompose_processing_times(self.running_model.data)
+            ProcessingTimeCanvas.apply(self.reference_model.data)
+            ProcessingTimeCanvas.apply(self.running_model.data)
             # decompose waiting times
-            decompose_waiting_times(self.reference_model.data)
-            decompose_waiting_times(self.running_model.data)
+            WaitingTimeCanvas.apply(self.reference_model.data)
+            WaitingTimeCanvas.apply(self.running_model.data)
 
 
 NO_DRIFT: Drift = Drift(level=DriftLevel.NONE)

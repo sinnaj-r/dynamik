@@ -8,15 +8,14 @@ import pandas as pd
 import scipy
 
 from expert.drift.model import Drift, DriftCause
-from expert.process_model import Event, Log
+from expert.process_model import Event, Log, Resource
 from expert.utils.logger import LOGGER
-from expert.utils.model import Pair
+from expert.utils.model import DistributionDescription, Pair
 from expert.utils.pm.batching import build_batch_creation_features, build_batch_firing_features
 from expert.utils.pm.calendars import Calendar, discover_calendars
-from expert.utils.pm.event_distribution import compute_weekly_event_distribution
 from expert.utils.pm.prioritization import build_prioritization_features
 from expert.utils.pm.profiles import ActivityProfile, Profile, ResourceProfile
-from expert.utils.rules import compute_rule_score, discover_rules, filter_log
+from expert.utils.rules import ConfusionMatrix, Rule, compute_rule_score, discover_rules, filter_log
 from expert.utils.timer import profile
 
 
@@ -24,26 +23,34 @@ class DriftExplainer:
     """TODO docs"""
 
     drift: Drift
+    significance: float
 
-    def __init__(self: typing.Self, drift: Drift) -> None:
+    def __init__(self: typing.Self, drift: Drift, significance: float) -> None:
         self.drift = drift
+        self.significance = significance
 
     @profile()
     def __describe_distributions(
             self: typing.Self,
             extractor: typing.Callable[[Event], timedelta],
-    ) -> Pair:
+    ) -> Pair[DistributionDescription]:
         return Pair(
-            reference=scipy.stats.describe(
-                [extractor(event).total_seconds() for event in self.drift.reference_model.data],
+            reference=DistributionDescription(
+                scipy.stats.describe(
+                    [extractor(event).total_seconds() for event in self.drift.reference_model.data],
+                ),
             ),
-            running=scipy.stats.describe(
-                [extractor(event).total_seconds() for event in self.drift.running_model.data],
+            running=DistributionDescription(
+                scipy.stats.describe(
+                    [extractor(event).total_seconds() for event in self.drift.running_model.data],
+                ),
             ),
         )
 
     @profile()
-    def __describe_calendars(self: typing.Self) -> Pair:
+    def __describe_calendars(
+            self: typing.Self,
+    ) -> Pair[Calendar]:
         reference_calendars = discover_calendars(self.drift.reference_model.data)
         running_calendars = discover_calendars(self.drift.running_model.data)
 
@@ -63,12 +70,12 @@ class DriftExplainer:
             self: typing.Self,
             filter_: typing.Callable[[Event], bool],
             extractor: typing.Callable[[Event], datetime],
-    ) -> Pair:
+    ) -> Pair[Calendar]:
         data = self.__get_rate_data(filter_, extractor)
 
         return Pair(
-            reference={key: data.reference[key] - data.running[key] for key in data.reference},
-            running={key: data.running[key] - data.reference[key] for key in data.running},
+            reference=data.reference - data.running,
+            running=data.running - data.reference,
         )
 
     @profile()
@@ -76,7 +83,7 @@ class DriftExplainer:
             self: typing.Self,
             feature_extractor: typing.Callable[[Log], pd.DataFrame],
             filter_: typing.Callable[[Log], Log] = lambda _: _,
-    ) -> Pair:
+    ) -> Pair[typing.Mapping[Rule, ConfusionMatrix]]:
         # extract features for pre- and post-drift
         reference_features = feature_extractor(filter_(self.drift.reference_model.data))
         running_features = feature_extractor(filter_(self.drift.running_model.data))
@@ -96,11 +103,17 @@ class DriftExplainer:
     def __describe_profiles(
             self: typing.Self,
             profile_builder: typing.Callable[[Log], Profile],
-    ) -> Pair:
-        ...
+    ) -> Pair[Profile]:
+        reference_profile = profile_builder(self.drift.reference_model.data)
+        running_profile = profile_builder(self.drift.running_model.data)
+
+        return Pair(
+            reference=reference_profile,
+            running=running_profile,
+        )
 
     @profile()
-    def __get_calendars_data(self: typing.Self) -> Pair:
+    def __get_calendars(self: typing.Self) -> Pair[typing.Mapping[Resource, Calendar]]:
         return Pair(
             reference=discover_calendars(self.drift.reference_model.data),
             running=discover_calendars(self.drift.running_model.data),
@@ -110,7 +123,7 @@ class DriftExplainer:
     def __get_time_data(
             self: typing.Self,
             time_extractor: typing.Callable[[Event], timedelta],
-    ) -> Pair:
+    ) -> Pair[typing.Iterable[timedelta]]:
         """TODO docs"""
         return Pair(
             reference=[time_extractor(event) for event in self.drift.reference_model.data],
@@ -122,36 +135,33 @@ class DriftExplainer:
             self: typing.Self,
             filter_: typing.Callable[[Event], bool],
             extractor: typing.Callable[[Event], datetime],
-    ) -> Pair:
+    ) -> Pair[Calendar]:
         return Pair(
-            reference=compute_weekly_event_distribution(
-                self.drift.reference_model.data,
-                filter_=filter_,
-                extractor=extractor,
+            reference=Calendar.discover(
+                [event for event in self.drift.reference_model.data if filter_(event)],
+                lambda event: [extractor(event)],
             ),
-            running=compute_weekly_event_distribution(
-                self.drift.reference_model.data,
-                filter_=filter_,
-                extractor=extractor,
+            running=Calendar.discover(
+                [event for event in self.drift.running_model.data if filter_(event)],
+                lambda event: [extractor(event)],
             ),
         )
 
     @profile()
     def __get_policies_data(
             self: typing.Self,
-            feature_extractor: typing.Callable[[Log], pd.DataFrame],
             filter_: typing.Callable[[Log], Log] = lambda _: _,
-    ) -> Pair:
+    ) -> Pair[Log]:
         return Pair(
-            reference=feature_extractor(filter_(self.drift.reference_model.data)),
-            running=feature_extractor(filter_(self.drift.running_model.data)),
+            reference=filter_(self.drift.reference_model.data),
+            running=filter_(self.drift.running_model.data),
         )
 
     @profile()
     def __get_profiles(
             self: typing.Self,
             profile_builder: typing.Callable[[Log], Profile],
-    ) -> Pair:
+    ) -> Pair[Profile]:
         return Pair(
             reference=profile_builder(self.drift.reference_model.data),
             running=profile_builder(self.drift.running_model.data),
@@ -161,8 +171,6 @@ class DriftExplainer:
     def has_drift_in_time(
             self: typing.Self,
             time_extractor: typing.Callable[[Event], timedelta],
-            *,
-            significance: float = 0.05,
     ) -> bool:
         """TODO docs"""
         if len(self.drift.reference_model.data) > 0 and len(self.drift.running_model.data) > 0:
@@ -173,12 +181,14 @@ class DriftExplainer:
 
             LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
 
-            return result.pvalue < significance
+            return result.pvalue < self.significance
 
         return False
 
     @profile()
-    def has_drift_in_calendar(self: typing.Self) -> bool:
+    def has_drift_in_calendar(
+            self: typing.Self,
+    ) -> bool:
         """TODO docs"""
         # discover calendars for reference and running models
         reference_calendars = discover_calendars(self.drift.reference_model.data)
@@ -193,7 +203,7 @@ class DriftExplainer:
             Calendar(),
         )
         # compare aggregated calendars
-        return not aggregated_reference_calendar.statistically_equals(aggregated_running_calendar)
+        return aggregated_reference_calendar.statistically_equals(aggregated_running_calendar).pvalue < self.significance
 
     @profile()
     def has_drift_in_rate(
@@ -203,34 +213,35 @@ class DriftExplainer:
     ) -> bool:
         """TODO docs"""
         # compute the average reference rate distribution per hour and day of week
-        reference_arrival_rates = compute_weekly_event_distribution(
-            self.drift.reference_model.data,
-            filter_=filter_,
-            extractor=extractor,
+        reference_arrival_rates = Calendar.discover(
+            [event for event in self.drift.reference_model.data if filter_(event)],
+            lambda event: [extractor(event)],
         )
+
         # compute the average running arrival distribution per hour and day of week
-        running_arrival_rates = compute_weekly_event_distribution(
-            self.drift.reference_model.data,
-            filter_=filter_,
-            extractor=extractor,
+        running_arrival_rates = Calendar.discover(
+            [event for event in self.drift.running_model.data if filter_(event)],
+            lambda event: [extractor(event)],
         )
 
-        reference_size = sum(reference_arrival_rates.values())
-        running_size = sum(running_arrival_rates.values())
-        results: dict[tuple[int, int], tuple[float, float]] = {}
+        reference_size = sum(reference_arrival_rates[slot] for slot in reference_arrival_rates.slots)
+        running_size = sum(running_arrival_rates[slot] for slot in running_arrival_rates.slots)
+        results = {}
 
-        for key in set(reference_arrival_rates.keys()):
+        for key in set(reference_arrival_rates.slots):
+            # we use the combined size for assessing differences in the total also
+            # (otherwise if the changes are proportional to the sample size nothing will be detected)
             results[key] = scipy.stats.poisson_means_test(
                 reference_arrival_rates[key],
+                reference_size + running_size,
                 running_arrival_rates[key],
-                # we use the combined size for assessing differences in the total also (otherwise if the changes are proportional
-                # to the sample size nothing will be detected)
                 reference_size + running_size,
-                reference_size + running_size,
-            )
+                )
             LOGGER.verbose("test(reference(%s) != running(%s)) p-value: %.4f", key, key, results[key].pvalue)
 
-        return any(result.pvalue < 0.05 for result in results.values())
+        return scipy.stats.combine_pvalues([
+            value.pvalue for value in results.values()
+        ]).pvalue < self.significance
 
     @profile()
     def has_drift_in_policies(
@@ -259,7 +270,9 @@ class DriftExplainer:
             )
             LOGGER.verbose("test(reference != running) p-value: %.4f", results[-1].pvalue)
 
-        return any(result.pvalue < 0.05 for result in results)
+        return scipy.stats.combine_pvalues([
+            result.pvalue for result in results
+        ]).pvalue < self.significance
 
     @profile()
     def has_drift_in_profile(
@@ -270,7 +283,7 @@ class DriftExplainer:
         reference_profile = profile_builder(self.drift.reference_model.data)
         running_profile = profile_builder(self.drift.running_model.data)
 
-        return not reference_profile.statistically_equals(running_profile)
+        return reference_profile.statistically_equals(running_profile).pvalue < self.significance
 
     @profile()
     def build_time_descriptor(
@@ -304,7 +317,7 @@ class DriftExplainer:
             # how did it change? include the distributions for both pre- and post- drift data
             how=self.__describe_calendars(),
             # data contains the raw data used in the test
-            data=self.__get_calendars_data(),
+            data=self.__get_calendars(),
             # the causes of the drift are the changes in the effective and the idle processing times
             parent=parent,
         )
@@ -346,7 +359,7 @@ class DriftExplainer:
             # how did it change? include the policies for both pre- and post- drift data
             how=self.__describe_policies(feature_extractor, filter_),
             # data contains the evaluation of policies for before and after
-            data=self.__get_policies_data(feature_extractor, filter_),
+            data=self.__get_policies_data(filter_),
             parent=parent,
         )
 
@@ -371,11 +384,11 @@ class DriftExplainer:
 
 
 @profile()
-def explain_drift(drift: Drift, *, first_activity: str, last_activity: str) -> DriftCause:
+def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, significance: float = 0.05) -> DriftCause:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
     # a tree accordingly, explaining the changes that occurred to the process
-    explainer = DriftExplainer(drift)
+    explainer = DriftExplainer(drift, significance)
     root_cause = explainer.build_time_descriptor(
         "cycle time changed!",
         lambda event: event.cycle_time,
@@ -437,20 +450,35 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str) -> D
             parent=root_cause,
         )
 
-        # check waiting time due to unavailability
-        if explainer.has_drift_in_time(lambda event: event.waiting_time.availability.duration):
-            unavailability_time = explainer.build_time_descriptor(
-                "waiting time due to resource unavailability changed!",
-                lambda event: event.waiting_time.availability.duration,
+        # check waiting time due to batching
+        if explainer.has_drift_in_time(lambda event: event.waiting_time.batching.duration):
+            batching_time = explainer.build_time_descriptor(
+                "waiting time due to batching changed!",
+                lambda event: event.waiting_time.batching.duration,
                 parent=waiting_time,
             )
 
-            # check changes in the availability calendars
-            if explainer.has_drift_in_calendar():
-                explainer.build_calendar_descriptor(
-                    "resource availability calendars changed!",
-                    parent=unavailability_time,
+            # check changes in the batch creation policies
+            if explainer.has_drift_in_policies(build_batch_creation_features):
+                explainer.build_policies_descriptor(
+                    "batch creation policies changed!",
+                    parent=batching_time,
+                    feature_extractor=build_batch_creation_features,
                 )
+
+            # get the creation policies from the descriptor
+            creation_policies = explainer.build_policies_descriptor("",
+                                                                    feature_extractor=build_batch_creation_features).how.reference.keys()
+
+            # check changes in the firing policies for each creation policy
+            for creation_policy in creation_policies:
+                if explainer.has_drift_in_policies(build_batch_firing_features, filter_log(creation_policy)):
+                    explainer.build_policies_descriptor(
+                        f"batch firing policies for '{creation_policy}' changed!",
+                        parent=batching_time,
+                        feature_extractor=build_batch_firing_features,
+                        filter_=filter_log(creation_policy),
+                    )
 
         # check waiting time due to contention
         if explainer.has_drift_in_time(lambda event: event.waiting_time.contention.duration):
@@ -500,34 +528,20 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str) -> D
                     feature_extractor=build_prioritization_features,
                 )
 
-        # check waiting time due to batching
-        if explainer.has_drift_in_time(lambda event: event.waiting_time.batching.duration):
-            batching_time = explainer.build_time_descriptor(
-                "waiting time due to batching changed!",
-                lambda event: event.waiting_time.batching.duration,
+        # check waiting time due to unavailability
+        if explainer.has_drift_in_time(lambda event: event.waiting_time.availability.duration):
+            unavailability_time = explainer.build_time_descriptor(
+                "waiting time due to resource unavailability changed!",
+                lambda event: event.waiting_time.availability.duration,
                 parent=waiting_time,
             )
 
-            # check changes in the batch creation policies
-            if explainer.has_drift_in_policies(build_batch_creation_features):
-                explainer.build_policies_descriptor(
-                    "batch creation policies changed!",
-                    parent=batching_time,
-                    feature_extractor=build_batch_creation_features,
+            # check changes in the availability calendars
+            if explainer.has_drift_in_calendar():
+                explainer.build_calendar_descriptor(
+                    "resource availability calendars changed!",
+                    parent=unavailability_time,
                 )
-
-            # get the creation policies from the descriptor
-            creation_policies = explainer.build_policies_descriptor("", feature_extractor=build_batch_creation_features).how.reference.keys()
-
-            # check changes in the firing policies for each creation policy
-            for creation_policy in creation_policies:
-                if explainer.has_drift_in_policies(build_batch_firing_features, filter_log(creation_policy)):
-                    explainer.build_policies_descriptor(
-                        f"batch firing policies for '{creation_policy}' changed!",
-                        parent=batching_time,
-                        feature_extractor=build_batch_firing_features,
-                        filter_=filter_log(creation_policy),
-                    )
 
         # check waiting time due to extraneous
         if explainer.has_drift_in_time(lambda event: event.waiting_time.extraneous.duration):
