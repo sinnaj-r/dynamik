@@ -59,7 +59,7 @@ class ActivityProfile(Profile):
     def statistically_equals(self: typing.Self, other: ActivityProfile) -> TestResult:
         """TODO docs"""
         # compute the sets of all activities and resources present in any of the profiles
-        all_activities = set(itertools.chain(self.activities, other.activities))
+        activities = set(itertools.chain(self.activities, other.activities))
 
         instance_count_drift = {}
         demand_drift = {}
@@ -67,7 +67,7 @@ class ActivityProfile(Profile):
         complexity_deviation_drift = {}
         co_occurrence_index_drift = {}
 
-        for activity in all_activities:
+        for activity in activities:
             # check activity count
             instance_count_drift[activity] = scipy.stats.poisson_means_test(
                 # check the count of instances for an activity in self
@@ -106,23 +106,31 @@ class ActivityProfile(Profile):
             )
 
             # check co-occurrence index
-            for activity2 in all_activities:
-                co_occurrence_index_drift[(activity, activity2)] = scipy.stats.poisson_means_test(
-                    # check the count of co-occurrences in self
-                    self.co_occurrence_index[(activity, activity2)],
-                    # wrt. the sum of cases where any of the activities is executed in self
-                    # (A1 + A2 - A1A2, subtract the co-occurrences to not count them twice), vs
-                    self.co_occurrence_index[(activity, activity)]
-                    + self.co_occurrence_index[(activity2, activity2)]
-                    - self.co_occurrence_index[(activity, activity2)],
-                    # the count of co-occurrences in other
-                    other.co_occurrence_index[(activity, activity2)],
-                    # wrt. the sum of cases where any of the activities is executed in other
-                    # (A1 + A2 - A1A2, subtract the co-occurrences to not count them twice)
-                    other.co_occurrence_index[(activity, activity)]
-                    + other.co_occurrence_index[(activity2, activity2)]
-                    - other.co_occurrence_index[(activity, activity2)],
-                )
+            for activity2 in activities:
+                # check only activities that are present in both models
+                # (the addition of new activities is already contemplated in the activity frequency aspect)
+                if (
+                        activity in self.activities and
+                        activity in other.activities and
+                        activity2 in self.activities and
+                        activity2 in other.activities
+                ):
+                    co_occurrence_index_drift[(activity, activity2)] = scipy.stats.poisson_means_test(
+                        # check the count of co-occurrences in self
+                        self.co_occurrence_index[(activity, activity2)],
+                        # wrt. the sum of cases where any of the activities is executed in self
+                        # (A1 + A2 - A1A2, subtract the co-occurrences to not count them twice), vs
+                        self.co_occurrence_index[(activity, activity)]
+                        + self.co_occurrence_index[(activity2, activity2)]
+                        - self.co_occurrence_index[(activity, activity2)],
+                        # the count of co-occurrences in other
+                        other.co_occurrence_index[(activity, activity2)],
+                        # wrt. the sum of cases where any of the activities is executed in other
+                        # (A1 + A2 - A1A2, subtract the co-occurrences to not count them twice)
+                        other.co_occurrence_index[(activity, activity)]
+                        + other.co_occurrence_index[(activity2, activity2)]
+                        - other.co_occurrence_index[(activity, activity2)],
+                    )
 
         # combine the results from each component
         instance_count_drift = scipy.stats.combine_pvalues(
@@ -290,20 +298,28 @@ class ResourceProfile(Profile):
 
             # check collaboration index
             for resource2 in all_resources:
-                collaboration_index_drift[(resource, resource2)] = scipy.stats.poisson_means_test(
-                    # check the count of collaborations in self
-                    self.collaboration_index[(resource, resource2)],
-                    # wrt. the sum of cases executed by resource 1 or resource 2 in self, vs
-                    self.collaboration_index[(resource, resource)]
-                    + self.collaboration_index[(resource2, resource2)]
-                    - self.collaboration_index[(resource, resource2)],
-                    # the count of instances for an activity in other
-                    other.collaboration_index[(resource, resource2)],
-                    # wrt. the total instances executed by resource 1 or resource 2 in other
-                    other.collaboration_index[(resource, resource)]
-                    + other.collaboration_index[(resource2, resource2)]
-                    - other.collaboration_index[(resource, resource2)],
-                )
+                # check only common resources that are present in both models
+                # (the addition of new resources is already contemplated in the resource frequency aspect)
+                if (
+                        resource in self.resources and
+                        resource in other.resources and
+                        resource2 in self.resources and
+                        resource2 in other.resources
+                ):
+                    collaboration_index_drift[(resource, resource2)] = scipy.stats.poisson_means_test(
+                        # check the count of collaborations in self
+                        self.collaboration_index[(resource, resource2)],
+                        # wrt. the sum of cases executed by resource 1 or resource 2 in self, vs
+                        self.collaboration_index[(resource, resource)]
+                        + self.collaboration_index[(resource2, resource2)]
+                        - self.collaboration_index[(resource, resource2)],
+                        # the count of instances for an activity in other
+                        other.collaboration_index[(resource, resource2)],
+                        # wrt. the total instances executed by resource 1 or resource 2 in other
+                        other.collaboration_index[(resource, resource)]
+                        + other.collaboration_index[(resource2, resource2)]
+                        - other.collaboration_index[(resource, resource2)],
+                    )
 
         instance_count_drift = scipy.stats.combine_pvalues([
             value.pvalue for value in instance_count_drift.values()
@@ -336,13 +352,13 @@ class ResourceProfile(Profile):
     def asdict(self: typing.Self) -> dict:
         return {
             'resources': self.resources,
-            'instance_count_drift': self.instance_count_drift,
-            'utilization_index_drift': self.utilization_index_drift,
-            'effort_distribution_drift': {
-                key: value.asdict() for (key, value) in self.effort_distribution_drift.items()
+            'instance_count': self.instance_count,
+            'utilization_index': self.utilization_index,
+            'effort_distribution': {
+                key: value.asdict() for (key, value) in self.effort_distribution.items()
             },
-            'performance_deviation_drift': self.performance_deviation_drift,
-            'collaboration_index_drift': self.collaboration_index_drift,
+            'performance_deviation': self.performance_deviation,
+            'collaboration_index': self.collaboration_index,
         }
 
     @staticmethod
@@ -381,13 +397,15 @@ class ResourceProfile(Profile):
             # compute the performance deviation
             deviations = []
             for activity in activities:
-                all_events = [event for event in log if event.activity == activity]
                 self_events = [event for event in events_by_resource if event.activity == activity]
-                # compute mean execution time for events executed by anyone and self events
-                mean_self_time = sum([event.processing_time.effective.duration for event in self_events], timedelta()) / len(self_events)
-                mean_execution_time = sum([event.processing_time.effective.duration for event in all_events], timedelta()) / len(all_events)
-                # the deviation is the factor of self time vs total time (<1.0 means over performance, >1.0 means under performance)
-                deviations.append(mean_self_time / mean_execution_time)
+                all_events = [event for event in log if event.activity == activity]
+                # check deviations only when any event is present for the resource
+                if len(self_events) > 0 and len(all_events) > 0:
+                    # compute mean execution time for events executed by anyone and self events
+                    mean_self_time = sum([event.processing_time.effective.duration for event in self_events], timedelta()) / len(self_events)
+                    mean_execution_time = sum([event.processing_time.effective.duration for event in all_events], timedelta()) / len(all_events)
+                    # the deviation is the factor of self time vs total time (<1.0 means over performance, >1.0 means under performance)
+                    deviations.append(mean_self_time / mean_execution_time)
             # the mean performance deviation for a resource is the mean of the performance deviations for each activity by that resource
             resource_profile.performance_deviation[resource] = mean(deviations)
 
