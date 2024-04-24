@@ -34,7 +34,9 @@ class ConcurrencyOracle(abc.ABC):
     """
 
     log: Log
-    concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(lambda: defaultdict(lambda: False))
+    concurrency: typing.MutableMapping[str, typing.MutableMapping[str, bool]] = defaultdict(
+        lambda: defaultdict(lambda: False)
+    )
 
     def find_enabler(self: typing.Self, trace: Trace, event: Event) -> Event | None:
         """Gets the event enabling the execution of this activity instance within the trace"""
@@ -155,7 +157,7 @@ class HeuristicsConcurrencyOracle(ConcurrencyOracle):
         for (activity_1, activity_2) in itertools.combinations_with_replacement(activities, 2):
             if activity_1 == activity_2:
                 # Process length 1 loop value
-                l1l_dependency[activity_1] = df[activity_1][activity_1]/(df[activity_1][activity_1] + 1.0)
+                l1l_dependency[activity_1] = df[activity_1][activity_1] / (df[activity_1][activity_1] + 1.0)
             else:
                 ab: float = df[activity_1][activity_2]
                 ba: float = df[activity_2][activity_1]
@@ -197,7 +199,7 @@ class OverlappingConcurrencyOracle(ConcurrencyOracle):
         # build the activity set and the cases map
         activities: set[str] = {event.activity for event in self.log}
         cases: typing.Mapping[str, typing.MutableSequence[Event]] = defaultdict(list)
-        for event in log:
+        for event in self.log:
             cases[event.case].append(event)
 
         # build overlapping relations
@@ -208,14 +210,15 @@ class OverlappingConcurrencyOracle(ConcurrencyOracle):
         for (activity_a, activity_b) in itertools.combinations(activities, 2):
             # count instances of activity a
             activity_a_instances = len([
-                event for event in log if event.activity == activity_a
+                event for event in self.log if event.activity == activity_a
             ])
             # count instances of activity b
             activity_b_instances = len([
-                event for event in log if event.activity == activity_b
+                event for event in self.log if event.activity == activity_b
             ])
 
-            overlap_factor = 2 * self.__overlaps[activity_a][activity_b] / (activity_a_instances + activity_b_instances)
+            overlap_factor = (0 if (activity_a_instances + activity_b_instances == 0)
+                              else 2 * self.__overlaps[activity_a][activity_b] / (activity_a_instances + activity_b_instances))
 
             if overlap_factor > thresholds.overlapping_threshold:
                 # Concurrency relation AB, add it

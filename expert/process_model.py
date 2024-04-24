@@ -183,7 +183,7 @@ class Event:
 
     def asdict(self: typing.Self) -> dict:
         """Convert the object to a dict"""
-        result = {
+        return {
             "case": self.case,
             "activity": self.activity,
             "resource": self.resource,
@@ -217,10 +217,8 @@ class Event:
             "batch": self.batch.asdict(),
             "waiting_time": self.waiting_time.asdict(),
             "processing_time": self.processing_time.asdict(),
-            "attributes": self.activity,
+            "attributes": self.attributes,
         }
-
-        return result
 
 
 # type aliases
