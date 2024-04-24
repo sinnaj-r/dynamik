@@ -1,29 +1,46 @@
+import janitor
 import pandas as pd
+from janitor import col
 
-from expert.process_model import Log
+from expert.process_model import Event, Log
+from expert.utils.timer import profile
 
 
+def __event_as_dict(event: Event) -> dict:
+    return {
+        "case": event.case,
+        "activity": event.activity,
+        "resource": event.resource,
+        "start": event.start,
+        "enabled": event.enabled,
+        "attributes": event.attributes,
+    }
+
+
+@profile()
 def __find_prioritized_events(log: Log) -> list[dict]:
     # a list of pairs (delayed event, prioritized event)
     prioritized = []
 
     # create a list of dicts representing the event log
-    events_as_dict = [event.asdict() for event in log]
+    events_as_dict = [__event_as_dict(event) for event in log]
 
     # build two dataframes with "reference" and "prioritized" events
-    reference_events = pd.json_normalize(events_as_dict).add_prefix("reference.")
-    alternative_events = pd.json_normalize(events_as_dict).add_prefix("prioritized.")
+    events = pd.json_normalize(events_as_dict)
+    events["start"] = events["start"].dt.tz_convert(None)
+    events["enabled"] = events["enabled"].dt.tz_convert(None)
 
-    event_pairs = reference_events.join(alternative_events, how="cross")
+    reference_events = events.add_prefix("reference.")
+    alternative_events = events.add_prefix("prioritized.")
 
-    # build a rule for filtering the pairs that show prioritization (those that have been enabled after the reference
-    # one and started executing before it did)
-    query = ((event_pairs["reference.resource"] == event_pairs["prioritized.resource"]) &
-             (event_pairs["reference.enabled"] < event_pairs["prioritized.enabled"]) &
-             (event_pairs["reference.start"] > event_pairs["prioritized.start"]))
-
-    # get the list of prioritized event pairs
-    prioritized_events = event_pairs.loc[query, :]
+    # merge events with that show prioritization (those that have been executed by the same resource,
+    # enabled after the reference one and started executing before it did)
+    prioritized_events = reference_events.conditional_join(
+        alternative_events,
+        col("reference.resource") == col("prioritized.resource"),
+        col("reference.enabled") < col("prioritized.enabled"),
+        col("reference.start") > col("prioritized.start"),
+    )
 
     # build the features list from the dataframe
     for _, row in prioritized_events.iterrows():
@@ -39,28 +56,31 @@ def __find_prioritized_events(log: Log) -> list[dict]:
     return prioritized
 
 
+@profile()
 def __find_non_prioritized_events(log: Log) -> list[dict]:
     # a list of pairs (delayed event, prioritized event)
     non_prioritized = []
 
     # create a list of dicts representing the event log
-    events_as_dict = [event.asdict() for event in log]
+    events_as_dict = [__event_as_dict(event) for event in log]
 
     # build two dataframes with "reference" and "prioritized" events
-    reference_events = pd.json_normalize(events_as_dict).add_prefix("reference.")
-    alternative_events = pd.json_normalize(events_as_dict).add_prefix("prioritized.")
+    events = pd.json_normalize(events_as_dict)
+    events["start"] = events["start"].dt.tz_convert(None)
+    events["enabled"] = events["enabled"].dt.tz_convert(None)
 
-    event_pairs = reference_events.join(alternative_events, how="cross")
+    reference_events = events.add_prefix("reference.")
+    alternative_events = events.add_prefix("prioritized.")
 
-    # build a rule for filtering the pairs that do not show prioritization (those that have been enabled before the reference
-    # one and also started executing before it did)
-    query = ((event_pairs["reference.resource"] == event_pairs["prioritized.resource"]) &
-             (event_pairs["reference.enabled"] < event_pairs["prioritized.enabled"]) &
-             (event_pairs["reference.start"] > event_pairs["prioritized.enabled"]) &
-             (event_pairs["reference.start"] < event_pairs["prioritized.start"]))
-
-    # get the list of non-prioritized event pairs
-    non_prioritized_events = event_pairs.loc[query, :]
+    # merge events with that do not show prioritization (those that have been executed by the same resource,
+    # enabled after the reference one and started executing after it did)
+    non_prioritized_events = reference_events.conditional_join(
+        alternative_events,
+        col("reference.resource") == col("prioritized.resource"),
+        col("reference.enabled") < col("prioritized.enabled"),
+        col("reference.start") > col("prioritized.enabled"),
+        col("reference.start") < col("prioritized.start"),
+    )
 
     # build the features list from the dataframe
     for _, row in non_prioritized_events.iterrows():

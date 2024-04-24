@@ -819,6 +819,32 @@ files = [
 ]
 
 [[package]]
+name = "multipledispatch"
+version = "1.0.0"
+description = "Multiple dispatch"
+optional = false
+python-versions = "*"
+files = [
+    {file = "multipledispatch-1.0.0-py3-none-any.whl", hash = "sha256:0c53cd8b077546da4e48869f49b13164bebafd0c2a5afceb6bb6a316e7fb46e4"},
+    {file = "multipledispatch-1.0.0.tar.gz", hash = "sha256:5c839915465c68206c3e9c473357908216c28383b425361e5d144594bf85a7e0"},
+]
+
+[[package]]
+name = "natsort"
+version = "8.4.0"
+description = "Simple yet flexible natural sorting in Python."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "natsort-8.4.0-py3-none-any.whl", hash = "sha256:4732914fb471f56b5cce04d7bae6f164a592c7712e1c85f9ef585e197299521c"},
+    {file = "natsort-8.4.0.tar.gz", hash = "sha256:45312c4a0e5507593da193dedd04abb1469253b601ecaf63445ad80f0a1ea581"},
+]
+
+[package.extras]
+fast = ["fastnumbers (>=2.0.0)"]
+icu = ["PyICU (>=1.0.0)"]
+
+[[package]]
 name = "numba"
 version = "0.59.1"
 description = "compiling Python code using LLVM"
@@ -1017,6 +1043,21 @@ test = ["hypothesis (>=6.46.1)", "pytest (>=7.3.2)", "pytest-xdist (>=2.2.0)"]
 xml = ["lxml (>=4.8.0)"]
 
 [[package]]
+name = "pandas-flavor"
+version = "0.6.0"
+description = "The easy way to write your own Pandas flavor."
+optional = false
+python-versions = "*"
+files = [
+    {file = "pandas_flavor-0.6.0-py3-none-any.whl", hash = "sha256:a32c9e2e0da702579320cf2bd0078cee91807713bc9c65ff522f6b0289899893"},
+    {file = "pandas_flavor-0.6.0.tar.gz", hash = "sha256:9fb8735102dcb65dae7ee5cda12b393ca134a909ebcfc0262c5cdc1d79ba007f"},
+]
+
+[package.dependencies]
+pandas = ">=0.23"
+xarray = "*"
+
+[[package]]
 name = "pdoc3"
 version = "0.10.0"
 description = "Auto-generate API documentation for Python projects."
@@ -1159,6 +1200,33 @@ files = [
 [package.extras]
 plugins = ["importlib-metadata"]
 windows-terminal = ["colorama (>=0.4.6)"]
+
+[[package]]
+name = "pyjanitor"
+version = "0.27.0"
+description = "Tools for cleaning pandas DataFrames"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pyjanitor-0.27.0-py3-none-any.whl", hash = "sha256:762adb744d9e9dde8377b1117f6a2cd1574d4f8d8eaaf4d783d4af7ccb4fa04d"},
+    {file = "pyjanitor-0.27.0.tar.gz", hash = "sha256:f9543eef325a7e139d125adeacb8bb1280d0db8370850f92c0bf39ac3c2fe418"},
+]
+
+[package.dependencies]
+multipledispatch = "*"
+natsort = "*"
+pandas-flavor = "*"
+scipy = "*"
+
+[package.extras]
+all = ["biopython", "black (>=19.3b0)", "darglint", "flake8", "hypothesis (>=4.4.0)", "interrogate", "ipython (>7.31.1)", "isort (>=4.3.18)", "mkdocs", "mkdocs-material", "mkdocstrings (>=0.19.0)", "mkdocstrings-python", "pandas-vet", "pip-tools", "pre-commit", "py (>=1.10.0)", "pyspark", "pytest (>=3.4.2)", "pytest-cov", "pytest-xdist", "tqdm", "unyt"]
+biology = ["biopython"]
+chemistry = ["tqdm"]
+dev = ["black (>=19.3b0)", "darglint", "flake8", "isort (>=4.3.18)", "pip-tools", "pre-commit"]
+docs = ["biopython", "ipython (>7.31.1)", "mkdocs", "mkdocs-material", "mkdocstrings (>=0.19.0)", "mkdocstrings-python", "pyspark", "tqdm", "unyt"]
+engineering = ["unyt"]
+spark = ["pyspark"]
+test = ["hypothesis (>=4.4.0)", "interrogate", "pandas-vet", "py (>=1.10.0)", "pytest (>=3.4.2)", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "pyparsing"
@@ -1553,7 +1621,31 @@ files = [
     {file = "verboselogs-1.7.tar.gz", hash = "sha256:e33ddedcdfdafcb3a174701150430b11b46ceb64c2a9a26198c76a156568e427"},
 ]
 
+[[package]]
+name = "xarray"
+version = "2024.3.0"
+description = "N-D labeled arrays and datasets in Python"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "xarray-2024.3.0-py3-none-any.whl", hash = "sha256:ca2bc4da2bf2e7879e15862a7a7c3fc76ad19f6a08931d030220cef39a29118d"},
+    {file = "xarray-2024.3.0.tar.gz", hash = "sha256:5c1db19efdde61db7faedad8fc944f4e29698fb6fbd578d352668b63598bd1d8"},
+]
+
+[package.dependencies]
+numpy = ">=1.23"
+packaging = ">=22"
+pandas = ">=1.5"
+
+[package.extras]
+accel = ["bottleneck", "flox", "numbagg", "opt-einsum", "scipy"]
+complete = ["xarray[accel,dev,io,parallel,viz]"]
+dev = ["hypothesis", "pre-commit", "pytest", "pytest-cov", "pytest-env", "pytest-timeout", "pytest-xdist", "ruff", "xarray[complete]"]
+io = ["cftime", "fsspec", "h5netcdf", "netCDF4", "pooch", "pydap", "scipy", "zarr"]
+parallel = ["dask[complete]"]
+viz = ["matplotlib", "nc-time-axis", "seaborn"]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "303bedbf065414dc9c21844acdd76cd31328a543af3b1d54f9840ab97f701901"
+content-hash = "0f490653f3a1052c2f22e254e706b44e768f1ff89a570591e674f8aa4ee2c416"
