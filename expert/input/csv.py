@@ -178,7 +178,7 @@ def read_and_merge_csv_logs(
         log = pd.read_csv(file, skipinitialspace=True, na_values=["[NULL]", ""], engine="c")
         # Force column names to be lowercase
         log.columns = log.columns.str.lower()
-        # Force case identifier to be a string and add prefix
+        # Force case identifier to be a string
         log[attribute_mapping.case.lower()] = log[attribute_mapping.case.lower()].astype(str)
         event_logs.append(log)
 
