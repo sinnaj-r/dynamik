@@ -1,6 +1,5 @@
 import janitor
 import pandas as pd
-from janitor import col
 
 from expert.process_model import Event, Log
 from expert.utils.timer import profile
@@ -37,9 +36,9 @@ def __find_prioritized_events(log: Log) -> list[dict]:
     # enabled after the reference one and started executing before it did)
     prioritized_events = reference_events.conditional_join(
         alternative_events,
-        col("reference.resource") == col("prioritized.resource"),
-        col("reference.enabled") < col("prioritized.enabled"),
-        col("reference.start") > col("prioritized.start"),
+        janitor.col("reference.resource") == janitor.col("prioritized.resource"),
+        janitor.col("reference.enabled") < janitor.col("prioritized.enabled"),
+        janitor.col("reference.start") > janitor.col("prioritized.start"),
     )
 
     # build the features list from the dataframe
@@ -76,10 +75,10 @@ def __find_non_prioritized_events(log: Log) -> list[dict]:
     # enabled after the reference one and started executing after it did)
     non_prioritized_events = reference_events.conditional_join(
         alternative_events,
-        col("reference.resource") == col("prioritized.resource"),
-        col("reference.enabled") < col("prioritized.enabled"),
-        col("reference.start") > col("prioritized.enabled"),
-        col("reference.start") < col("prioritized.start"),
+        janitor.col("reference.resource") == janitor.col("prioritized.resource"),
+        janitor.col("reference.enabled") < janitor.col("prioritized.enabled"),
+        janitor.col("reference.start") > janitor.col("prioritized.enabled"),
+        janitor.col("reference.start") < janitor.col("prioritized.start"),
     )
 
     # build the features list from the dataframe
