@@ -92,7 +92,7 @@ def __preprocess_and_sort(
         LOGGER.error("    %d malformed events have been detected! Results may be inaccurate", malformed_events)
 
     # Yield parsed events
-    yield from (attribute_mapping.tuple_to_event(evt) for evt in event_log.itertuples(index=False))
+    yield from list(event_log.apply(attribute_mapping.tuple_to_event, axis=1))
 
 
 @profile()
