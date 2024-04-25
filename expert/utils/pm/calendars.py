@@ -8,7 +8,7 @@ from datetime import datetime, time, timedelta
 import scipy
 from intervaltree import Interval, IntervalTree
 
-from expert.process_model import Event, Log, Resource
+from expert.model import Event, Log, Resource
 from expert.utils.model import TestResult
 from expert.utils.timer import profile
 
@@ -159,7 +159,7 @@ class Calendar:
         weekdays = ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
 
         return {
-            "owner": self.owner,
+            "owner": list(self.owner),
             "calendar": [
                 {
                     "weekday": weekdays[weekday],

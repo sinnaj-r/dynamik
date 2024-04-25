@@ -8,7 +8,7 @@ import pandas as pd
 import scipy
 
 from expert.drift.model import Drift, DriftCause
-from expert.process_model import Event, Log, Resource
+from expert.model import Event, Log, Resource
 from expert.utils.logger import LOGGER
 from expert.utils.model import DistributionDescription, Pair
 from expert.utils.pm.batching import build_batch_creation_features, build_batch_firing_features
@@ -228,6 +228,12 @@ class DriftExplainer:
         running_size = sum(running_arrival_rates[slot] for slot in running_arrival_rates.slots)
         results = {}
 
+        if reference_size == 0 or running_size == 0:
+            LOGGER.warning("can not check rate in models")
+            LOGGER.warning("no cases start or end in this window")
+            LOGGER.warning("try increasing the window size")
+            return False
+
         for key in set(reference_arrival_rates.slots):
             # we use the combined size for assessing differences in the total also
             # (otherwise if the changes are proportional to the sample size nothing will be detected)
@@ -236,7 +242,7 @@ class DriftExplainer:
                 reference_size + running_size,
                 running_arrival_rates[key],
                 reference_size + running_size,
-                )
+            )
             LOGGER.verbose("test(reference(%s) != running(%s)) p-value: %.4f", key, key, results[key].pvalue)
 
         return scipy.stats.combine_pvalues([

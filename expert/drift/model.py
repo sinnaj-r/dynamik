@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import scipy
 from anytree import NodeMixin
 
-from expert.process_model import Event
+from expert.model import Event
 from expert.utils.logger import LOGGER
 from expert.utils.model import Pair
 from expert.utils.pm.batching import discover_batches

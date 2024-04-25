@@ -5,11 +5,12 @@ Log parsers are expected to return a generator, which will be consumed later by 
 """
 from __future__ import annotations
 
+import json
 import typing
 from collections import namedtuple
 from dataclasses import dataclass, field
 
-from expert.process_model import Event
+from expert.model import Event
 from expert.utils.logger import LOGGER
 
 
@@ -44,15 +45,13 @@ class EventMapping:
         -------
         * the `expert.model.Event` instance resulting from applying this mapping to the *dictionary-like* source
         """
-        additional_attrs = {}
-
         instance = Event(
             case=getattr(source, self.case.lower()),
             activity=getattr(source, self.activity.lower()),
-            start=getattr(source, self.start.lower()).to_pydatetime(),
-            end=getattr(source, self.end.lower()).to_pydatetime(),
+            start=getattr(source, self.start.lower()),
+            end=getattr(source, self.end.lower()),
             resource=getattr(source, self.resource.lower()) if self.resource is not None else None,
-            enabled=getattr(source, self.enablement.lower()).to_pydatetime() if self.enablement is not None else None,
+            enabled=getattr(source, self.enablement.lower()) if self.enablement is not None else None,
             attributes={
                 attr.lower(): getattr(source, attr_in_df.lower()) for (attr, attr_in_df) in self.attributes.items()
             },
@@ -61,3 +60,19 @@ class EventMapping:
         LOGGER.spam("transforming %(source)r to %(instance)r", {"source": source, "instance": instance})
 
         return instance
+
+    @staticmethod
+    def parse(filepath: str) -> EventMapping:
+        """Parse an event mapping from a JSON file"""
+        with open(filepath) as _file:
+            source = json.load(_file)
+
+            return EventMapping(
+                start=source["start"],
+                end=source["end"],
+                enablement=source["enablement"] if "enablement" in source else None,
+                resource=source["resource"],
+                activity=source["activity"],
+                case=source["case"],
+                attributes=source["attributes"] if "attributes" in source else {},
+            )

@@ -1,6 +1,6 @@
 from intervaltree import Interval, IntervalTree
 
-from expert.process_model import Log
+from expert.model import Log
 from expert.utils.model import TimeInterval
 from expert.utils.pm.calendars import discover_calendars
 from expert.utils.timer import profile

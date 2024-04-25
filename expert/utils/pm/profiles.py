@@ -10,7 +10,7 @@ from statistics import mean
 import scipy
 from intervaltree import Interval
 
-from expert.process_model import Activity, Log, Resource
+from expert.model import Activity, Log, Resource
 from expert.utils.model import TestResult
 from expert.utils.pm.calendars import Calendar
 from expert.utils.timer import profile

@@ -1,7 +1,7 @@
 import janitor
 import pandas as pd
 
-from expert.process_model import Event, Log
+from expert.model import Event, Log
 from expert.utils.timer import profile
 
 
@@ -110,4 +110,4 @@ def build_prioritization_features(log: Log) -> pd.DataFrame:
     # set correct type to categorical columns
     categorical_columns = features.select_dtypes(include=["object", "string", "category"]).columns
     # return the features dataframe with correct types
-    return pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
+    return pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1).drop_duplicates()

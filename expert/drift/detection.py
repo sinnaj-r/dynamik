@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import scipy
 
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, Model
-from expert.process_model import Event, Log
+from expert.model import Event, Log
 from expert.utils.logger import LOGGER
 from expert.utils.timer import DEFAULT_TIMER as TIMER
 

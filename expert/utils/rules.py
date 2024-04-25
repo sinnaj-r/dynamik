@@ -12,7 +12,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from imodels import SkopeRulesClassifier
 from sklearn.preprocessing import OneHotEncoder
 
-from expert.process_model import Event, Log
+from expert.model import Event, Log
 
 _operators = {
     "<": operator.lt,

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from expert.process_model import Batch, Log
+from expert.model import Batch, Log
 
 
 @dataclass
@@ -146,7 +146,7 @@ def build_batch_firing_features(log: Log) -> pd.DataFrame:
     categorical_columns = features.select_dtypes(include=["object", "string", "category"]).columns
     # return the features dataframe with correct types
     return (pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
-            .rename(columns={"fired": "class"}))
+            .rename(columns={"fired": "class"})).drop_duplicates()
 
 
 def build_batch_creation_features(log: Log) -> pd.DataFrame:
@@ -173,4 +173,4 @@ def build_batch_creation_features(log: Log) -> pd.DataFrame:
     categorical_columns = features.select_dtypes(include=["object", "string", "category"]).columns
     # return the features dataframe with correct types
     return (pd.concat([features.drop(categorical_columns, axis=1), features[categorical_columns].astype("category")], axis=1)
-            .rename(columns={"in_batch": "class"}))
+            .rename(columns={"in_batch": "class"})).drop_duplicates()
