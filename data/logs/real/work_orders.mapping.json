@@ -1,0 +1,17 @@
+{
+  "start": "start_time",
+  "end": "end_time",
+  "case": "case_id",
+  "activity": "activity",
+  "resource": "resource",
+  "attributes": {
+    "role": "Role",
+    "work_type": "Work_Type_Name",
+    "estimated_duration": "Work_Type_Estimated_Duration",
+    "classification": "Work_Order_Classification_Custom_",
+    "state": "Work_Order_State_Custom_",
+    "origin": "Case_Origin",
+    "priority": "Work_Order_Priority",
+    "cancellation_reason": "SA_Cancellation_Reason_Custom_"
+  }
+}
