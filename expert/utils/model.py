@@ -2,6 +2,7 @@ import datetime
 import typing
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import cached_property
 
 from intervaltree import Interval
 
@@ -63,7 +64,7 @@ class TimeInterval:
 
     intervals: typing.Iterable[Interval] = ()
 
-    @property
+    @cached_property
     def duration(self: typing.Self) -> timedelta:
         return sum([interval.end - interval.begin for interval in self.intervals], timedelta())
 
