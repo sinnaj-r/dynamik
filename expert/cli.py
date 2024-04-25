@@ -15,6 +15,7 @@ from expert.input.csv import DEFAULT_CSV_MAPPING as MAPPING
 from expert.input.csv import read_and_merge_csv_logs as parse
 from expert.output import export_causes, print_causes
 from expert.utils.logger import LOGGER, Level, setup_logger
+from expert.utils.pm.concurrency import OverlappingConcurrencyOracle
 from expert.utils.timer import DEFAULT_TIMER as TIMER
 
 LEVELS = [Level.NOTICE, Level.INFO, Level.VERBOSE, Level.DEBUG, Level.SPAM]
@@ -44,26 +45,14 @@ def __parse_arg() -> argparse.Namespace:
                         help="provide the overlap between reference and running models, in days")
     parser.add_argument("-w", "--warnings", metavar="WARNINGS", type=int, default=3,
                         help="provide a number of warnings to wait after confirming a drift")
+    parser.add_argument("-e", "--explain", action="store_true", default=False,
+                        help="explain the found drifts")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="enable verbose output. WARNING: high verbosity levels can drastically decrease performance!")
     parser.add_argument("-q", "--quiet", action="store_true", default=False,
                         help="disable all output")
 
     return parser.parse_args()
-
-
-def __parse_mapping(path: str) -> EventMapping:
-    with open(path) as file:
-        source = json.load(file)
-
-        return EventMapping(
-            start=source["start"],
-            end=source["end"],
-            enablement=source["enablement"],
-            resource=source["resource"],
-            activity=source["activity"],
-            case=source["case"],
-        )
 
 
 def run() -> None:
@@ -82,7 +71,7 @@ def run() -> None:
             disable_third_party_warnings=True,
         )
 
-    mapping = __parse_mapping(args.mapping) if args.mapping is not None else MAPPING
+    mapping = EventMapping.parse(args.mapping) if args.mapping is not None else MAPPING
 
     LOGGER.notice("applying expert drift detector to files %s", ", ".join(args.log_files))
     LOGGER.notice("results will be saved to %s", args.output)
@@ -91,6 +80,8 @@ def run() -> None:
         log = parse(
             args.log_files,
             attribute_mapping=mapping,
+            add_artificial_start_end_events=True,
+            preprocessor=lambda _log: _log if mapping.enablement is not None else OverlappingConcurrencyOracle(_log).compute_enablement_timestamps(),
         )
 
         detector = detect_drift(
@@ -102,12 +93,13 @@ def run() -> None:
         )
 
         for index, drift in enumerate(detector):
-            causes = explain_drift(drift, first_activity="Sequence A", last_activity="Sequence C")
+            if args.explain:
+                causes = explain_drift(drift, first_activity="__SYNTHETIC_START_EVENT__", last_activity="__SYNTHETIC_END_EVENT__")
 
-            with open(os.path.join(args.output, f"drift_{index}.json"), "w") as file:
-                json.dump(export_causes(causes), file, indent=4)
+                with open(os.path.join(args.output, f"drift_{index}.json"), "w") as file:
+                    json.dump(export_causes(causes), file, indent=4)
 
-            LOGGER.notice("causes:")
-            print_causes(causes)
+                LOGGER.notice("causes:")
+                print_causes(causes)
 
     LOGGER.success("execution took %s", TIMER.elapsed(__name__))

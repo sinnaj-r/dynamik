@@ -3,31 +3,43 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
-from expert.drift.detection import detect_drift
 from expert.drift.causality import explain_drift
+from expert.drift.detection import detect_drift
 from expert.input import EventMapping
 from expert.input.csv import read_and_merge_csv_logs
 from expert.output import print_causes, export_causes
 from expert.utils.logger import LOGGER, Level, setup_logger
+from expert.utils.pm.concurrency import OverlappingConcurrencyOracle
 from expert.utils.timer import DEFAULT_TIMER as TIMER
+
 
 if __name__ == "__main__":
     with TIMER.profile(__name__):
         setup_logger(Level.NOTICE, destination="output.log", disable_third_party_warnings=True)
 
         files = (
-            # "../data/logs/real/work_orders.csv",
-            "../data/logs/base-sequence.csv",
+            "../data/logs/real/work_orders.csv",
+            # "../data/logs/base-sequence.csv",
             # "../data/logs/base-sequence-with-unavailability.csv",
             # "../data/logs/base-sequence-fast-execution.csv",
             # "../data/logs/base-sequence-long-run.csv",
             # "../data/logs/base-sequence-long-run-limited-avail-no-wait.csv",
-            "../data/logs/base-sequence-batching.csv",
+            # "../data/logs/base-sequence-batching.csv",
         )
 
         log = read_and_merge_csv_logs(
             files,
-            attribute_mapping=EventMapping(start="start_time", end="end_time", enablement="enable_time", case="case_id", activity="activity", resource="resource"),
+            # attribute_mapping=EventMapping(
+            #     start="start_time",
+            #     end="end_time",
+            #     enablement="enable_time",
+            #     case="case_id",
+            #     activity="activity",
+            #     resource="resource"
+            # ),
+            attribute_mapping=EventMapping.parse("C:/Users/Victor/explainable-performance-drift/data/logs/real/work_orders.mapping.json"),
+            add_artificial_start_end_events=True,
+            preprocessor=lambda _log: OverlappingConcurrencyOracle(_log).compute_enablement_timestamps(),
         )
 
         detector = detect_drift(
@@ -39,7 +51,8 @@ if __name__ == "__main__":
         )
 
         for index, drift in enumerate(detector):
-            causes = explain_drift(drift, first_activity="Sequence A", last_activity="Sequence C")
+            # causes = explain_drift(drift, first_activity="Sequence A", last_activity="Sequence C")
+            causes = explain_drift(drift, first_activity="__SYNTHETIC_START_EVENT__", last_activity="__SYNTHETIC_END_EVENT__")
             tree = export_causes(causes)
             print_causes(causes)
             with open(f"drift_{index}.json", "w") as file:
