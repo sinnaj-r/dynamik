@@ -5,17 +5,24 @@ The log is read as a `typing.Generator[expert.model.Event, None, None]` that yie
 simulate an event stream where events can be consumed only once.
 """
 import typing
+from datetime import timedelta
 
 import numpy as np
 import pandas as pd
 
 from expert.input import EventMapping
-from expert.process_model import Event, Log
+from expert.model import Event, Log
 from expert.utils.logger import LOGGER
 from expert.utils.timer import profile
 
-DEFAULT_CSV_MAPPING: EventMapping = EventMapping(start="start", end="end", enablement="enabled", case="case",
-                                                 activity="activity", resource="resource")
+DEFAULT_CSV_MAPPING: EventMapping = EventMapping(
+    start="start",
+    end="end",
+    enablement="enabled",
+    case="case",
+    activity="activity",
+    resource="resource",
+)
 
 
 @profile()
@@ -26,29 +33,41 @@ def __preprocess_and_sort(
         add_artificial_start_end_events: bool = False,
 ) -> typing.Generator[Event, None, None]:
     # Convert timestamp value to pd.Timestamp, setting timezone to UTC
-    event_log[attribute_mapping.start.lower()] = pd.to_datetime(event_log[attribute_mapping.start.lower()], utc=True,
-                                                                format="ISO8601")
-    event_log[attribute_mapping.end.lower()] = pd.to_datetime(event_log[attribute_mapping.end.lower()], utc=True,
-                                                              format="ISO8601")
+    event_log[attribute_mapping.start.lower()] = pd.to_datetime(
+        event_log[attribute_mapping.start.lower()],
+        utc=True,
+        format="ISO8601",
+    ).dt.to_pydatetime()
+    event_log[attribute_mapping.end.lower()] = pd.to_datetime(
+        event_log[attribute_mapping.end.lower()],
+        utc=True,
+        format="ISO8601",
+    ).dt.to_pydatetime()
 
     # add synthetic events to the start and end of traces if asked
     if add_artificial_start_end_events:
+        start_mapping = {
+            attribute_mapping.activity.lower(): (attribute_mapping.activity.lower(), lambda _: "__SYNTHETIC_START_EVENT__"),
+            attribute_mapping.start.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - timedelta(seconds=1)),
+            attribute_mapping.end.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - timedelta(seconds=1)),
+        }
+
+        end_mapping = {
+            attribute_mapping.activity.lower(): (attribute_mapping.activity.lower(), lambda _: "__SYNTHETIC_END_EVENT__"),
+            attribute_mapping.start.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + timedelta(seconds=1)),
+            attribute_mapping.end.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + timedelta(seconds=1)),
+        }
+
+        if attribute_mapping.enablement is not None:
+            start_mapping[attribute_mapping.enablement.lower()] = (attribute_mapping.start.lower(), lambda val: val.min() - timedelta(seconds=1))
+            end_mapping[attribute_mapping.enablement.lower()] = (attribute_mapping.end.lower(), lambda val: val.max() + timedelta(seconds=1))
+
         start_events = event_log.groupby(attribute_mapping.case.lower(), as_index=False).agg(
-            **{
-                attribute_mapping.activity.lower(): (attribute_mapping.activity.lower(), lambda _: "__SYNTHETIC_START_EVENT__"),
-                attribute_mapping.enablement.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - pd.to_timedelta(1, "s")),
-                attribute_mapping.start.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - pd.to_timedelta(1, "s")),
-                attribute_mapping.end.lower(): (attribute_mapping.start.lower(), lambda values: values.min() - pd.to_timedelta(1, "s")),
-            },
+            **start_mapping,
         )
 
         end_events = event_log.groupby(attribute_mapping.case.lower(), as_index=False).agg(
-            **{
-                attribute_mapping.activity.lower(): (attribute_mapping.activity.lower(), lambda _: "__SYNTHETIC_END_EVENT__"),
-                attribute_mapping.enablement.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + pd.to_timedelta(1, "s")),
-                attribute_mapping.start.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + pd.to_timedelta(1, "s")),
-                attribute_mapping.end.lower(): (attribute_mapping.end.lower(), lambda values: values.max() + pd.to_timedelta(1, "s")),
-            },
+            **end_mapping,
         )
 
         event_log = pd.concat([event_log, start_events, end_events], ignore_index=True)
@@ -56,8 +75,10 @@ def __preprocess_and_sort(
     # cast enablement times to datetime type if present
     if attribute_mapping.enablement is not None:
         event_log[attribute_mapping.enablement.lower()] = pd.to_datetime(
-            event_log[attribute_mapping.enablement.lower()], utc=True, format="ISO8601",
-        )
+            event_log[attribute_mapping.enablement.lower()],
+            utc=True,
+            format="ISO8601",
+        ).dt.to_pydatetime()
 
     # Sort events
     if attribute_mapping.enablement is not None:
@@ -92,7 +113,7 @@ def __preprocess_and_sort(
         LOGGER.error("    %d malformed events have been detected! Results may be inaccurate", malformed_events)
 
     # Yield parsed events
-    yield from list(event_log.apply(attribute_mapping.tuple_to_event, axis=1))
+    yield from (attribute_mapping.tuple_to_event(row) for row in event_log.itertuples())
 
 
 @profile()
