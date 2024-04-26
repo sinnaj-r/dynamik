@@ -161,14 +161,16 @@ class ActivityProfile(Profile):
 
     def asdict(self: typing.Self) -> dict:
         return {
-            "activities": self.activities,
+            "activities": list(self.activities),
             "activity_frequency": self.activity_frequency,
             "demand": self.demand,
             "arrival_distribution": {
                 key: value.asdict() for (key, value) in self.arrival_distribution.items()
             },
             "complexity_deviation": self.complexity_deviation,
-            "co_occurrence_index": self.co_occurrence_index,
+            "co_occurrence_index": [
+                {"activities": [activity1, activity2], "count": count} for (activity1, activity2), count in self.co_occurrence_index.items()
+            ],
         }
 
     @staticmethod
@@ -351,14 +353,16 @@ class ResourceProfile(Profile):
 
     def asdict(self: typing.Self) -> dict:
         return {
-            'resources': self.resources,
+            'resources': list(self.resources),
             'instance_count': self.instance_count,
             'utilization_index': self.utilization_index,
             'effort_distribution': {
                 key: value.asdict() for (key, value) in self.effort_distribution.items()
             },
             'performance_deviation': self.performance_deviation,
-            'collaboration_index': self.collaboration_index,
+            'collaboration_index': [
+                {"resources": [resource1, resource2], "count": count} for (resource1, resource2), count in self.collaboration_index.items()
+            ],
         }
 
     @staticmethod
