@@ -100,33 +100,38 @@ class Model:
     # The date and time when the model ends
     end: datetime
     # The collection of events used as the model
-    data: typing.MutableSequence[Event]
+    _data: typing.MutableSequence[Event]
 
     def __init__(self: typing.Self, start: datetime, length: timedelta) -> None:
         self.start = start
         self.end = start + length
-        self.data = []
+        self._data = []
 
     @property
     def empty(self: typing.Self) -> bool:
         """TODO docs"""
-        return len(self.data) == 0
+        return len(self._data) == 0
+
+    @property
+    def data(self: typing.Self) -> tuple[Event, ...]:
+        """An immutable view of the events contained in the model"""
+        return tuple(self._data)
 
     def prune(self: typing.Self) -> None:
         """TODO docs"""
         LOGGER.debug("pruning model")
         # Remove all events that are out of the overlapping region from the running model
-        self.data = [event for event in self.data if event.start > self.start and event.end < self.end]
+        self._data = [event for event in self._data if event.start > self.start and event.end < self.end]
 
     def add(self: typing.Self, event: Event) -> None:
         """TODO docs"""
-        self.data.append(event)
+        self._data.append(event)
 
     def statistically_equals(self: typing.Self, other: Model, *, significance: float = 0.05) -> bool:
         """TODO docs"""
-        if len(list(self.data)) > 0 and len(list(other.data)) > 0:
+        if len(list(self._data)) > 0 and len(list(other.data)) > 0:
             result = scipy.stats.kstest(
-                [event.cycle_time.total_seconds() for event in self.data],
+                [event.cycle_time.total_seconds() for event in self._data],
                 [event.cycle_time.total_seconds() for event in other.data],
             )
 
@@ -153,4 +158,4 @@ class Model:
         return instant > self.end
 
     def __repr__(self: typing.Self) -> str:
-        return f"""Model(timeframe=({self.start} - {self.end}), events={len(self.data)})"""
+        return f"""Model(timeframe=({self.start} - {self.end}), events={len(self._data)})"""

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import operator
 import re
@@ -13,6 +15,7 @@ from imodels import SkopeRulesClassifier
 from sklearn.preprocessing import OneHotEncoder
 
 from expert.model import Event, Log
+from expert.utils.model import HashableDF
 
 _operators = {
     "<": operator.lt,
@@ -138,7 +141,7 @@ class Rule:
     @property
     def score(self: typing.Self) -> ConfusionMatrix:
         """The rule score"""
-        return compute_rule_score(self, self.training_data, class_attr=self.training_class)
+        return compute_rule_score(self, HashableDF(self.training_data), class_attr=self.training_class)
 
     def evaluate(
             self: typing.Self,
@@ -370,9 +373,10 @@ def __balance_data(
     return sampler.fit_resample(data, outcome)
 
 
+@functools.lru_cache
 def compute_rule_score(
         rule: Rule,
-        data: pd.DataFrame,
+        data: HashableDF,
         *,
         class_attr: str = "class",
         n_samples: int = 1,
@@ -394,12 +398,12 @@ def compute_rule_score(
             ) for index in range(n_samples)
         ]
 
-    sample = data.sample(
+    sample = data.df.sample(
         n=sample_size,
         replace=sample_with_replacement,
         axis=0,
         random_state=seed,
-    ) if isinstance(sample_size, int) else data.sample(
+    ) if isinstance(sample_size, int) else data.df.sample(
         frac=sample_size,
         replace=sample_with_replacement,
         axis=0,
@@ -420,8 +424,9 @@ def compute_rule_score(
     )
 
 
+@functools.lru_cache
 def discover_rules(
-        features: pd.DataFrame,
+        features: HashableDF,
         *,
         class_attr: str = "class",
         balance_data: bool = True,
@@ -451,6 +456,9 @@ def discover_rules(
     -------
     * a rule that describes the outcome from the given data
     """
+    # get the real dataframe
+    features = features.df
+
     # if the provided features dataframe is empty, or only one class is present, no rules are extracted
     if len(features) == 0 or len(np.unique(features.loc[:, class_attr])) == 1:
         return frozenset()
@@ -482,12 +490,6 @@ def discover_rules(
         precision_min=min_rule_precision,
         # extracted rules must have a minimum recall of min_rule_recall
         recall_min=min_rule_recall,
-        # the maximum of estimators is set to the number of features in the observations
-        n_estimators=observations.columns.size,
-        # remove the max depth constraint for the trees
-        max_depth=None,
-        # no perform deduplication of rules
-        max_depth_duplication=None,
         # bootstrap the samples (i.e., extract samples with replacement) when building the ensemble
         bootstrap=True,
         # set a seed for rng for reproducible results
@@ -573,6 +575,6 @@ def filter_log(rule: Rule) -> typing.Callable[[Log], Log]:
         indices_to_keep = log_dataframe.loc[rule.evaluate(log_dataframe), :].index.to_numpy()
         # return the events from the log in the indices obtained before
         filtered = itemgetter(*indices_to_keep)(log) if len(indices_to_keep) > 0 else []
-        return [filtered] if isinstance(filtered, Event) else filtered
+        return (filtered,) if isinstance(filtered, Event) else tuple(filtered)
 
     return _filter

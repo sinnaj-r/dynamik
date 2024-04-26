@@ -10,7 +10,7 @@ import scipy
 from expert.drift.model import Drift, DriftCause
 from expert.model import Event, Log, Resource
 from expert.utils.logger import LOGGER
-from expert.utils.model import DistributionDescription, Pair
+from expert.utils.model import DistributionDescription, HashableDF, Pair
 from expert.utils.pm.batching import build_batch_creation_features, build_batch_firing_features
 from expert.utils.pm.calendars import Calendar, discover_calendars
 from expert.utils.pm.prioritization import build_prioritization_features
@@ -88,14 +88,14 @@ class DriftExplainer:
         reference_features = feature_extractor(filter_(self.drift.reference_model.data))
         running_features = feature_extractor(filter_(self.drift.running_model.data))
         # discover rules for pre- and post-drift
-        reference_policies = discover_rules(reference_features)
-        running_policies = discover_rules(running_features)
+        reference_policies = discover_rules(HashableDF(reference_features))
+        running_policies = discover_rules(HashableDF(running_features))
 
         results = Pair(reference={}, running={})
         # evaluate each rule and add the score to the results pair
         for rule in itertools.chain(reference_policies, running_policies):
-            results.reference[rule] = compute_rule_score(rule, reference_features)
-            results.running[rule] = compute_rule_score(rule, running_features)
+            results.reference[rule] = compute_rule_score(rule, HashableDF(reference_features))
+            results.running[rule] = compute_rule_score(rule, HashableDF(running_features))
 
         return results
 
@@ -259,14 +259,14 @@ class DriftExplainer:
         reference_features = feature_extractor(filter_(self.drift.reference_model.data))
         running_features = feature_extractor(filter_(self.drift.running_model.data))
 
-        reference_policies = discover_rules(reference_features)
-        running_policies = discover_rules(running_features)
+        reference_policies = discover_rules(HashableDF(reference_features))
+        running_policies = discover_rules(HashableDF(running_features))
 
         results = []
 
         for rule in itertools.chain(reference_policies, running_policies):
-            reference_scores = compute_rule_score(rule, reference_features, n_samples=20, sample_size=0.8)
-            running_scores = compute_rule_score(rule, running_features, n_samples=20, sample_size=0.8)
+            reference_scores = compute_rule_score(rule, HashableDF(reference_features), n_samples=20, sample_size=0.8)
+            running_scores = compute_rule_score(rule, HashableDF(running_features), n_samples=20, sample_size=0.8)
 
             results.append(
                 scipy.stats.kstest(
@@ -473,8 +473,10 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
             # get the creation policies from the descriptor
-            creation_policies = explainer.build_policies_descriptor("",
-                                                                    feature_extractor=build_batch_creation_features).how.reference.keys()
+            creation_policies = explainer.build_policies_descriptor(
+                "",
+                feature_extractor=build_batch_creation_features,
+            ).how.reference.keys()
 
             # check changes in the firing policies for each creation policy
             for creation_policy in creation_policies:

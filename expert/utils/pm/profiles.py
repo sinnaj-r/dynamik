@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import functools
 import itertools
 import typing
 from collections import defaultdict
@@ -175,6 +176,7 @@ class ActivityProfile(Profile):
 
     @staticmethod
     @profile()
+    @functools.lru_cache
     def discover(log: Log) -> ActivityProfile:
         """TODO docs"""
         activities = {event.activity for event in log}
@@ -367,6 +369,7 @@ class ResourceProfile(Profile):
 
     @staticmethod
     @profile()
+    @functools.lru_cache
     def discover(log: Log) -> ResourceProfile:
         """TODO docs"""
         activities = {event.activity for event in log}

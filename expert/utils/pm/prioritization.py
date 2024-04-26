@@ -1,3 +1,5 @@
+import functools
+
 import janitor
 import pandas as pd
 
@@ -95,6 +97,7 @@ def __find_non_prioritized_events(log: Log) -> list[dict]:
     return non_prioritized
 
 
+@functools.lru_cache
 def build_prioritization_features(log: Log) -> pd.DataFrame:
     """Build the matrix of features for prioritization from the given event log"""
     # find the prioritized and non prioritized pairs of events

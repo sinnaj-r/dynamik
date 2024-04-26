@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import datetime
+import hashlib
 import typing
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import cached_property
 
+import pandas as pd
 from intervaltree import Interval
 
 _T = typing.TypeVar("_T")
@@ -37,12 +41,18 @@ class Pair(typing.Generic[_T]):
                     repr(key): value.asdict() for (key, value) in self.running.items()
                 },
             }
-        if isinstance(self.reference, typing.Iterable) and hasattr(next(iter(self.reference)), "asdict"):
+        if (
+                isinstance(self.reference, typing.Iterable) and
+                (
+                        (len(list(self.reference)) > 0 and hasattr(list(self.reference)[0], "asdict")) or
+                        (len(list(self.running)) > 0 and hasattr(list(self.running)[0], "asdict"))
+                )
+        ):
             return {
                 "reference": [item.asdict() for item in self.reference],
                 "running": [item.asdict() for item in self.running],
             }
-        if isinstance(self.reference, typing.Iterable) and isinstance(next(iter(self.reference)), datetime.timedelta):
+        if isinstance(self.reference, typing.Iterable) and isinstance(list(self.reference)[0], datetime.timedelta):
             return {
                 "reference": [
                     {"days": item.days, "seconds": item.seconds, "microseconds": item.microseconds} for item in self.reference
@@ -135,3 +145,19 @@ class DistributionDescription:
             "skewness": self.skewness,
             "kurtosis": self.kurtosis,
         }
+
+
+@dataclass(slots=True)
+class HashableDF:
+    """A wrapper for a pandas dataframe so it is hashable and, consequently, functions getting a df as parameter can be memoized"""
+
+    df: pd.DataFrame
+
+    def __init__(self: typing.Self, df: pd.DataFrame) -> None:
+        self.df = df
+
+    def __eq__(self: typing.Self, other: HashableDF) -> bool:
+        return hash(self) == hash(other)
+
+    def __hash__(self: typing.Self) -> int:
+        return int(hashlib.md5(pd.util.hash_pandas_object(self.df).values, usedforsecurity=False).hexdigest(), 16)

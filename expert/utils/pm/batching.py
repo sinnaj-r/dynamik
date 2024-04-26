@@ -1,3 +1,4 @@
+import functools
 import typing
 from collections import defaultdict
 from dataclasses import dataclass
@@ -83,6 +84,7 @@ def discover_batches(log: Log) -> Log:
     return log
 
 
+@functools.lru_cache
 def build_batch_firing_features(log: Log) -> pd.DataFrame:
     """Build the batch firing state from the log provided as argument"""
     # store the list of batch states
@@ -149,6 +151,7 @@ def build_batch_firing_features(log: Log) -> pd.DataFrame:
             .rename(columns={"fired": "class"})).drop_duplicates()
 
 
+@functools.lru_cache
 def build_batch_creation_features(log: Log) -> pd.DataFrame:
     """Build the batch creation features from the log provided as argument"""
     # store the list of batch states

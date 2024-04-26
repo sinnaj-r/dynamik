@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import itertools
 import typing
 from collections import defaultdict
@@ -171,6 +172,7 @@ class Calendar:
 
 
 @profile()
+@functools.lru_cache
 def discover_calendars(
         log: Log,
 ) -> typing.Mapping[Resource, Calendar]:
