@@ -26,8 +26,20 @@ run_simulation(
     stat_out_path="../data/stats/base.stat.csv",
 )
 
+# change case identifiers so they are easily recognizable
+with open(f"../data/logs/base.log.csv", 'r+') as file:
+    lines = file.readlines()
+    header = lines[0]
+    body = [f"base-{line}" for line in lines[1:]]
+
+    file.seek(0)
+    file.writelines(header)
+    file.writelines(body)
+    file.truncate()
+
 for alternative_scenario in alternative_scenarios:
     print(f"Generating {alternative_scenario} log...")
+
     run_simulation(
         starting_at=str(alternative_start_date),
         total_cases=total_cases,
@@ -36,3 +48,14 @@ for alternative_scenario in alternative_scenarios:
         log_out_path=f"../data/logs/{alternative_scenario}.log.csv",
         stat_out_path=f"../data/stats/{alternative_scenario}.stat.csv",
     )
+
+    # change case identifiers so they are easily recognizable
+    with open(f"../data/logs/{alternative_scenario}.log.csv", 'r+') as file:
+        lines = file.readlines()
+        header = lines[0]
+        body = [f"{alternative_scenario}-{line}" for line in lines[1:]]
+
+        file.seek(0)
+        file.writelines(header)
+        file.writelines(body)
+        file.truncate()
