@@ -11,7 +11,6 @@ from intervaltree import Interval, IntervalTree
 
 from expert.model import Event, Log, Resource
 from expert.utils.model import TestResult
-from expert.utils.timer import profile
 
 
 class Calendar:

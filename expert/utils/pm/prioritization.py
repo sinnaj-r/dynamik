@@ -4,7 +4,6 @@ import janitor
 import pandas as pd
 
 from expert.model import Event, Log
-from expert.utils.timer import profile
 
 
 def __event_as_dict(event: Event) -> dict:

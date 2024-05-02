@@ -13,7 +13,6 @@ import pandas as pd
 from expert.input import EventMapping
 from expert.model import Event, Log
 from expert.utils.logger import LOGGER
-from expert.utils.timer import profile
 
 DEFAULT_CSV_MAPPING: EventMapping = EventMapping(
     start="start",

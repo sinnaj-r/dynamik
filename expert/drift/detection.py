@@ -11,7 +11,6 @@ import scipy
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, Model
 from expert.model import Event, Log
 from expert.utils.logger import LOGGER
-from expert.utils.timer import DEFAULT_TIMER as TIMER
 
 
 def detect_drift(
@@ -67,9 +66,6 @@ def detect_drift(
         warnings_to_confirm=warnings_to_confirm,
         overlap_between_models=overlap_between_models,
     )
-
-    # Store the event causing the first drift warning for localization
-    # first_warning: tuple | None = None
 
     # Iterate over the events in the log
     for event in log:

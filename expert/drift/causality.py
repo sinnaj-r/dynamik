@@ -16,7 +16,6 @@ from expert.utils.pm.calendars import Calendar, discover_calendars
 from expert.utils.pm.prioritization import build_prioritization_features
 from expert.utils.pm.profiles import ActivityProfile, Profile, ResourceProfile
 from expert.utils.rules import ConfusionMatrix, Rule, compute_rule_score, discover_rules, filter_log
-from expert.utils.timer import profile
 
 
 class DriftExplainer:
