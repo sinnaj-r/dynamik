@@ -164,8 +164,9 @@ class DriftExplainer:
         """TODO docs"""
         if len(self.drift.reference_model.data) > 0 and len(self.drift.running_model.data) > 0:
             result = scipy.stats.kstest(
-                [time_extractor(event).total_seconds() for event in self.drift.reference_model.data],
-                [time_extractor(event).total_seconds() for event in self.drift.running_model.data],
+                # compare the durations in minutes to prevent too sensitive tests
+                [int(time_extractor(event).total_seconds()/60) for event in self.drift.reference_model.data],
+                [int(time_extractor(event).total_seconds()/60) for event in self.drift.running_model.data],
             )
 
             LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)

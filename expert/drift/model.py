@@ -134,10 +134,11 @@ class Model:
 
     def statistically_equals(self: typing.Self, other: Model, *, significance: float = 0.05) -> bool:
         """TODO docs"""
+        # compare the durations (in minutes to prevent too sensitive tests)
         if len(list(self._data)) > 0 and len(list(other.data)) > 0:
             result = scipy.stats.kstest(
-                [event.cycle_time.total_seconds() for event in self._data],
-                [event.cycle_time.total_seconds() for event in other.data],
+                [int(event.cycle_time.total_seconds()/60) for event in self._data],
+                [int(event.cycle_time.total_seconds()/60) for event in other.data],
             )
 
             LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
@@ -148,7 +149,7 @@ class Model:
 
     def envelopes(self: typing.Self, event: Event) -> bool:
         """TODO docs"""
-        return self.start < event.enabled < event.end < self.end
+        return self.start <= event.enabled <= event.end <= self.end
 
     def update_timeframe(self: typing.Self, start: datetime, length: timedelta) -> None:
         """TODO docs"""
