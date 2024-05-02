@@ -235,7 +235,7 @@
             "resource_list": [
                 {
                     "calendar": "24/7",
-                    "amount": 1,
+                    "amount": 2,
                     "cost_per_hour": 10,
                     "name": "Base profile",
                     "id": "Base profile"
