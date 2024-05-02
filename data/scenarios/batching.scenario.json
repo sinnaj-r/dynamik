@@ -54,7 +54,7 @@
             "duration_distrib": [
                 {
                     "key": "5",
-                    "value": 1
+                    "value": 0.2
                 }
             ],
             "firing_rules": [
@@ -235,6 +235,29 @@
                 }
             ],
             "task_id": "D2"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 600
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 1140
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "E"
         }
     ],
     "resource_profiles": [
