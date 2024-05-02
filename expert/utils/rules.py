@@ -429,12 +429,13 @@ def discover_rules(
         features: HashableDF,
         *,
         class_attr: str = "class",
-        balance_data: bool = True,
+        drop_duplicates: bool = False,
+        balance_data: bool = False,
         encode_categorical: bool = True,
         simplify_rules: bool = True,
         remove_redundant_rules: bool = True,
         min_rule_precision: float = 0.9,
-        min_rule_recall: float = 0.01,
+        min_rule_recall: float = 0.05,
 ) -> typing.Iterable[Rule]:
     """
     Discover the combination of rules that lead to the positive outcome from the features passed as an argument.
@@ -445,6 +446,8 @@ def discover_rules(
     ----------
     * `features`:               *the dataframe containing the features from where the rules will be extracted*
     * `class_attr`:             *the name of the column from the dataframe containing the class*
+    * `drop_duplicates`:        *whether to remove duplicate observations or not. WARNING: removing duplicates will most likely
+                                 change the discovered rules, as precision and recall thresholds will be modified!*
     * `balance_data`:           *whether to balance the data received as input before discovering the rules or not*
     * `encode_categorical`:     *a flag indicating if the categorical features in the dataframe should be encoded using a one hot encoder*
     * `simplify_rules`:         *whether the discovered rules should be simplified and the encoding reversed or not*
@@ -463,8 +466,8 @@ def discover_rules(
     if len(features) == 0 or len(np.unique(features.loc[:, class_attr])) == 1:
         return frozenset()
 
-    # keep only the rows where the values are different (we do not need "repeated" observations)
-    features = features.drop_duplicates()
+    if drop_duplicates:
+        features = features.drop_duplicates()
 
     # split the features passed in two datasets, observations and outcome
     observations = features.loc[:, features.columns != class_attr]
@@ -490,6 +493,9 @@ def discover_rules(
         precision_min=min_rule_precision,
         # extracted rules must have a minimum recall of min_rule_recall
         recall_min=min_rule_recall,
+        # the depth for deduplicating rules (none=no deduplication)
+        # set to big number for "unlimited" deduplication
+        max_depth_duplication=1000,
         # bootstrap the samples (i.e., extract samples with replacement) when building the ensemble
         bootstrap=True,
         # set a seed for rng for reproducible results
