@@ -18,7 +18,6 @@ def __event_as_dict(event: Event) -> dict:
     }
 
 
-@profile()
 def __find_prioritized_events(log: Log) -> list[dict]:
     # a list of pairs (delayed event, prioritized event)
     prioritized = []
@@ -57,7 +56,6 @@ def __find_prioritized_events(log: Log) -> list[dict]:
     return prioritized
 
 
-@profile()
 def __find_non_prioritized_events(log: Log) -> list[dict]:
     # a list of pairs (delayed event, prioritized event)
     non_prioritized = []

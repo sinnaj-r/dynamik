@@ -6,14 +6,12 @@ from intervaltree import Interval, IntervalTree
 from expert.model import Log
 from expert.utils.model import TimeInterval
 from expert.utils.pm.calendars import discover_calendars
-from expert.utils.timer import profile
 
 
 class WaitingTimeCanvas:
     """TODO docs"""
 
     @staticmethod
-    @profile()
     def apply(log: Log) -> Log:
         """Decompose the waiting times from given log applying the waiting time canvas."""
         # build an intervaltree with the log for each resource

@@ -56,7 +56,9 @@ class ActivityProfile(Profile):
         self.complexity_deviation = complexity_deviation
         self.co_occurrence_index = co_occurrence_index
 
-    @profile()
+    def __str__(self: typing.Self) -> str:
+        return str(self.asdict())
+
     def statistically_equals(self: typing.Self, other: ActivityProfile) -> TestResult:
         """TODO docs"""
         # compute the sets of all activities and resources present in any of the profiles
@@ -170,12 +172,11 @@ class ActivityProfile(Profile):
             },
             "complexity_deviation": self.complexity_deviation,
             "co_occurrence_index": [
-                {"activities": [activity1, activity2], "count": count} for (activity1, activity2), count in self.co_occurrence_index.items()
+                {"activities": [act1, act2], "count": count} for (act1, act2), count in self.co_occurrence_index.items() if count > 0
             ],
         }
 
     @staticmethod
-    @profile()
     @functools.lru_cache
     def discover(log: Log) -> ActivityProfile:
         """TODO docs"""
@@ -252,7 +253,9 @@ class ResourceProfile(Profile):
         self.performance_deviation = performance_deviation
         self.collaboration_index = collaboration_index
 
-    @profile()
+    def __str__(self: typing.Self) -> str:
+        return str(self.asdict())
+
     def statistically_equals(self: typing.Self, other: ResourceProfile) -> TestResult:
         """TODO docs"""
         # compute the sets of all resources present in any of the profiles
@@ -363,12 +366,11 @@ class ResourceProfile(Profile):
             },
             'performance_deviation': self.performance_deviation,
             'collaboration_index': [
-                {"resources": [resource1, resource2], "count": count} for (resource1, resource2), count in self.collaboration_index.items()
+                {"resources": [res1, res2], "count": count} for (res1, res2), count in self.collaboration_index.items() if count > 0
             ],
         }
 
     @staticmethod
-    @profile()
     @functools.lru_cache
     def discover(log: Log) -> ResourceProfile:
         """TODO docs"""

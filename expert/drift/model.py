@@ -16,7 +16,6 @@ from expert.utils.model import Pair
 from expert.utils.pm.batching import discover_batches
 from expert.utils.pm.processing import ProcessingTimeCanvas
 from expert.utils.pm.waiting import WaitingTimeCanvas
-from expert.utils.timer import profile
 
 
 class DriftCause(NodeMixin):
@@ -74,7 +73,6 @@ class Drift:
     running_model: Model | None = None
     first_warning: Drift | None = None
 
-    @profile()
     def __post_init__(self: typing.Self) -> None:
         # if the drift has been confirmed, compute the features
         if self.level == DriftLevel.CONFIRMED:

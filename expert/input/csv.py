@@ -25,7 +25,6 @@ DEFAULT_CSV_MAPPING: EventMapping = EventMapping(
 )
 
 
-@profile()
 def __preprocess_and_sort(
         event_log: pd.DataFrame,
         attribute_mapping: EventMapping,
@@ -116,7 +115,6 @@ def __preprocess_and_sort(
     yield from (attribute_mapping.tuple_to_event(row) for row in event_log.itertuples())
 
 
-@profile()
 def read_csv_log(
         log_path: str,
         *,
@@ -163,7 +161,6 @@ def read_csv_log(
     yield from event_log
 
 
-@profile()
 def read_and_merge_csv_logs(
         logs: typing.Iterable[str],
         *,

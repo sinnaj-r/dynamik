@@ -51,9 +51,6 @@ def detect_drift(
     -------
     * the list of detected and confirmed drifts
     """
-    # start the profiler for measuring the execution time
-    TIMER.start(detect_drift.__name__)
-
     LOGGER.notice("detecting drift with params:")
     LOGGER.notice("    timeframe size: %s", timeframe_size)
     LOGGER.notice("    overlapping: %s", overlap_between_models)
@@ -98,9 +95,6 @@ def detect_drift(
             )
             # Yield the drift
             yield drift
-
-    # finish the method profiling
-    TIMER.end(detect_drift.__name__)
 
     return drifts
 

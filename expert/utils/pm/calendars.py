@@ -51,7 +51,6 @@ class Calendar:
             },
         )
 
-    @profile()
     def transform(self: typing.Self, transformer: typing.Callable[[int], int]) -> Calendar:
         """TODO docs"""
         for slot in self.__calendar:
@@ -59,7 +58,6 @@ class Calendar:
 
         return self
 
-    @profile()
     def apply(self: typing.Self, timeframe: Interval) -> IntervalTree:
         """
         Apply a calendar to a specific timeframe, generating availability intervals for the given interval
@@ -112,7 +110,6 @@ class Calendar:
 
         return tree
 
-    @profile()
     def statistically_equals(self: typing.Self, other: Calendar) -> TestResult:
         """TODO docs"""
         results = {}
@@ -132,7 +129,6 @@ class Calendar:
         return set(self.__calendar.keys())
 
     @staticmethod
-    @profile()
     def discover(
             log: Log,
             time_extractor: typing.Callable[[Event], typing.Iterable[datetime]] = lambda event: (event.start, event.end),
@@ -166,12 +162,11 @@ class Calendar:
                     "weekday": weekdays[weekday],
                     "hour": hour,
                     "value": value,
-                } for ((weekday, hour), value) in self.__calendar.items()
+                } for ((weekday, hour), value) in self.__calendar.items() if value > 0
             ],
         }
 
 
-@profile()
 @functools.lru_cache
 def discover_calendars(
         log: Log,

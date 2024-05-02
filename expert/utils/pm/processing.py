@@ -10,7 +10,6 @@ class ProcessingTimeCanvas:
     """TODO docs"""
 
     @staticmethod
-    @profile()
     def apply(log: Log) -> Log:
         """Decompose the processing time for a log depending on whether the resource was working or not"""
         # build an interval for the log timeframe

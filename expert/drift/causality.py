@@ -29,7 +29,6 @@ class DriftExplainer:
         self.drift = drift
         self.significance = significance
 
-    @profile()
     def __describe_distributions(
             self: typing.Self,
             extractor: typing.Callable[[Event], timedelta],
@@ -47,7 +46,6 @@ class DriftExplainer:
             ),
         )
 
-    @profile()
     def __describe_calendars(
             self: typing.Self,
     ) -> Pair[Calendar]:
@@ -65,7 +63,6 @@ class DriftExplainer:
             ),
         )
 
-    @profile()
     def __describe_rates(
             self: typing.Self,
             filter_: typing.Callable[[Event], bool],
@@ -78,7 +75,6 @@ class DriftExplainer:
             running=data.running - data.reference,
         )
 
-    @profile()
     def __describe_policies(
             self: typing.Self,
             feature_extractor: typing.Callable[[Log], pd.DataFrame],
@@ -99,7 +95,6 @@ class DriftExplainer:
 
         return results
 
-    @profile()
     def __describe_profiles(
             self: typing.Self,
             profile_builder: typing.Callable[[Log], Profile],
@@ -112,14 +107,12 @@ class DriftExplainer:
             running=running_profile,
         )
 
-    @profile()
     def __get_calendars(self: typing.Self) -> Pair[typing.Mapping[Resource, Calendar]]:
         return Pair(
             reference=discover_calendars(self.drift.reference_model.data),
             running=discover_calendars(self.drift.running_model.data),
         )
 
-    @profile()
     def __get_time_data(
             self: typing.Self,
             time_extractor: typing.Callable[[Event], timedelta],
@@ -130,7 +123,6 @@ class DriftExplainer:
             running=[time_extractor(event) for event in self.drift.running_model.data],
         )
 
-    @profile()
     def __get_rate_data(
             self: typing.Self,
             filter_: typing.Callable[[Event], bool],
@@ -147,7 +139,6 @@ class DriftExplainer:
             ),
         )
 
-    @profile()
     def __get_policies_data(
             self: typing.Self,
             filter_: typing.Callable[[Log], Log] = lambda _: _,
@@ -157,7 +148,6 @@ class DriftExplainer:
             running=filter_(self.drift.running_model.data),
         )
 
-    @profile()
     def __get_profiles(
             self: typing.Self,
             profile_builder: typing.Callable[[Log], Profile],
@@ -167,7 +157,6 @@ class DriftExplainer:
             running=profile_builder(self.drift.running_model.data),
         )
 
-    @profile()
     def has_drift_in_time(
             self: typing.Self,
             time_extractor: typing.Callable[[Event], timedelta],
@@ -185,7 +174,6 @@ class DriftExplainer:
 
         return False
 
-    @profile()
     def has_drift_in_calendar(
             self: typing.Self,
     ) -> bool:
@@ -205,7 +193,6 @@ class DriftExplainer:
         # compare aggregated calendars
         return aggregated_reference_calendar.statistically_equals(aggregated_running_calendar).pvalue < self.significance
 
-    @profile()
     def has_drift_in_rate(
             self: typing.Self,
             filter_: typing.Callable[[Event], bool],
@@ -249,7 +236,6 @@ class DriftExplainer:
             value.pvalue for value in results.values()
         ]).pvalue < self.significance
 
-    @profile()
     def has_drift_in_policies(
             self: typing.Self,
             feature_extractor: typing.Callable[[Log], pd.DataFrame],
@@ -280,7 +266,6 @@ class DriftExplainer:
             result.pvalue for result in results
         ]).pvalue < self.significance
 
-    @profile()
     def has_drift_in_profile(
             self: typing.Self,
             profile_builder: typing.Callable[[Log], Profile],
@@ -291,7 +276,6 @@ class DriftExplainer:
 
         return reference_profile.statistically_equals(running_profile).pvalue < self.significance
 
-    @profile()
     def build_time_descriptor(
             self: typing.Self,
             title: str,
@@ -310,7 +294,6 @@ class DriftExplainer:
             parent=parent,
         )
 
-    @profile()
     def build_calendar_descriptor(
             self: typing.Self,
             title: str,
@@ -328,7 +311,6 @@ class DriftExplainer:
             parent=parent,
         )
 
-    @profile()
     def build_rate_descriptor(
             self: typing.Self,
             title: str,
@@ -349,7 +331,6 @@ class DriftExplainer:
             parent=parent,
         )
 
-    @profile()
     def build_policies_descriptor(
             self: typing.Self,
             title: str,
@@ -369,7 +350,6 @@ class DriftExplainer:
             parent=parent,
         )
 
-    @profile()
     def build_profile_descriptor(
             self: typing.Self,
             title: str,
@@ -389,7 +369,6 @@ class DriftExplainer:
         )
 
 
-@profile()
 def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, significance: float = 0.05) -> DriftCause:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
