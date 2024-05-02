@@ -434,7 +434,7 @@ def discover_rules(
         encode_categorical: bool = True,
         simplify_rules: bool = True,
         remove_redundant_rules: bool = True,
-        min_rule_precision: float = 0.9,
+        min_rule_precision: float = 0.7,
         min_rule_recall: float = 0.05,
 ) -> typing.Iterable[Rule]:
     """
