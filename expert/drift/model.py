@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+import textwrap
 import typing
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -44,7 +45,13 @@ class DriftCause(NodeMixin):
             self.children = children
 
     def __str__(self: typing.Self) -> str:
-        return f"{self.what}"
+        return textwrap.dedent(
+            f"""\
+            {self.what}
+                ├── Reference: {self.how.reference}
+                └── Running:   {self.how.running}
+            """,
+        )
 
     def asdict(self: typing.Self) -> dict:
         """Return a dictionary representation of the object."""
