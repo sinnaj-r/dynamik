@@ -33,6 +33,10 @@ ruff = "^0.1.6"
 taskipy = "^1.10.3"
 pdoc3 = "^0.10.0"
 
+
+[tool.poetry.group.log-generation.dependencies]
+prosimos = "^2.0.4"
+
 [tool.taskipy.tasks.lint]
 cmd = "ruff check ."
 help = "lint the code using ruff"
