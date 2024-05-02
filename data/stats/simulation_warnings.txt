@@ -1,0 +1,7 @@
+Gateway OR_SPLIT is using conditions, but some are missing. Flows without conditions: OR_SPLIT_TO_C1, OR_SPLIT_TO_C2
+Gateway LOOP_SPLIT is using conditions, but some are missing. Flows without conditions: LOOP_SPLIT_TO_D2, LOOP_SPLIT_TO_PARALLEL_JOIN
+TASK 'D1' (ID: D1) is used more frequently than expected, in 11754 out of 10000 cases (117.54%).
+Flow D1_TO_LOOP_SPLIT from TASK 'D1' (ID: D1) is used more frequently than expected, in 11754 out of 10000 cases (117.54%).
+EXCLUSIVE-GATEWAY 'LOOP_SPLIT' (ID: LOOP_SPLIT) is used more frequently than expected, in 11754 out of 10000 cases (117.54%).
+EXCLUSIVE-GATEWAY 'LOOP_JOIN' (ID: LOOP_JOIN) is used more frequently than expected, in 11754 out of 10000 cases (117.54%).
+Flow LOOP_JOIN_TO_D1 from EXCLUSIVE-GATEWAY 'LOOP_JOIN' (ID: LOOP_JOIN) is used more frequently than expected, in 11754 out of 10000 cases (117.54%).

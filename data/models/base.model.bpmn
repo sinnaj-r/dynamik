@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions
+        xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+        id="Definitions_1"
+        targetNamespace="http://bpmn.io/schema/bpmn"
+>
+    <bpmn:process id="Process_1" isExecutable="false">
+        <bpmn:startEvent id="START" name="START">
+            <bpmn:outgoing>START_TO_A</bpmn:outgoing>
+        </bpmn:startEvent>
+        <bpmn:task id="A" name="A">
+            <bpmn:incoming>START_TO_A</bpmn:incoming>
+            <bpmn:outgoing>A_TO_PARALLEL_SPLIT</bpmn:outgoing>
+        </bpmn:task>
+        <bpmn:task id="B" name="B">
+            <bpmn:incoming>PARALLEL_SPLIT_TO_B</bpmn:incoming>
+            <bpmn:outgoing>B_TO_CHOICE_SPLIT</bpmn:outgoing>
+        </bpmn:task>
+        <bpmn:task id="C1" name="C1">
+            <bpmn:incoming>OR_SPLIT_TO_C1</bpmn:incoming>
+            <bpmn:outgoing>C1_TO_OR_JOIN</bpmn:outgoing>
+        </bpmn:task>
+        <bpmn:task id="C2" name="C2">
+            <bpmn:incoming>OR_SPLIT_TO_C2</bpmn:incoming>
+            <bpmn:outgoing>C2_TO_OR_JOIN</bpmn:outgoing>
+        </bpmn:task>
+        <bpmn:task id="D1" name="D1">
+            <bpmn:incoming>LOOP_JOIN_TO_D1</bpmn:incoming>
+            <bpmn:outgoing>D1_TO_LOOP_SPLIT</bpmn:outgoing>
+        </bpmn:task>
+        <bpmn:task id="D2" name="D2">
+            <bpmn:incoming>LOOP_SPLIT_TO_D2</bpmn:incoming>
+            <bpmn:outgoing>D2_TO_LOOP_JOIN</bpmn:outgoing>
+        </bpmn:task>
+        <bpmn:endEvent id="END" name="END">
+            <bpmn:incoming>PARALLEL_JOIN_TO_END</bpmn:incoming>
+        </bpmn:endEvent>
+
+        <bpmn:parallelGateway id="PARALLEL_SPLIT" gatewayDirection="Diverging">
+            <bpmn:incoming>A_TO_PARALLEL_SPLIT</bpmn:incoming>
+            <bpmn:outgoing>PARALLEL_SPLIT_TO_B</bpmn:outgoing>
+            <bpmn:outgoing>PARALLEL_SPLIT_TO_LOOP_JOIN</bpmn:outgoing>
+        </bpmn:parallelGateway>
+        <bpmn:parallelGateway id="PARALLEL_JOIN" gatewayDirection="Converging">
+            <bpmn:incoming>OR_JOIN_TO_PARALLEL_JOIN</bpmn:incoming>
+            <bpmn:incoming>LOOP_JOIN_TO_PARALLEL_JOIN</bpmn:incoming>
+            <bpmn:outgoing>PARALLEL_JOIN_TO_END</bpmn:outgoing>
+        </bpmn:parallelGateway>
+        <bpmn:exclusiveGateway id="OR_SPLIT" gatewayDirection="Diverging">
+            <bpmn:incoming>B_TO_OR_SPLIT</bpmn:incoming>
+            <bpmn:outgoing>OR_SPLIT_TO_C1</bpmn:outgoing>
+            <bpmn:outgoing>OR_SPLIT_TO_C2</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:exclusiveGateway id="OR_JOIN" gatewayDirection="Converging">
+            <bpmn:incoming>C1_TO_OR_JOIN</bpmn:incoming>
+            <bpmn:incoming>C2_TO_OR_JOIN</bpmn:incoming>
+            <bpmn:outgoing>OR_JOIN_TO_PARALLEL_JOIN</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:exclusiveGateway id="LOOP_SPLIT" gatewayDirection="Diverging">
+            <bpmn:incoming>D1_TO_LOOP_SPLIT</bpmn:incoming>
+            <bpmn:outgoing>LOOP_SPLIT_TO_D2</bpmn:outgoing>
+            <bpmn:outgoing>LOOP_SPLIT_TO_PARALLEL_JOIN</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+        <bpmn:exclusiveGateway id="LOOP_JOIN" gatewayDirection="Converging">
+            <bpmn:incoming>D2_TO_LOOP_JOIN</bpmn:incoming>
+            <bpmn:incoming>PARALLEL_SPLIT_TO_LOOP_JOIN</bpmn:incoming>
+            <bpmn:outgoing>LOOP_JOIN_TO_D1</bpmn:outgoing>
+        </bpmn:exclusiveGateway>
+
+        <bpmn:sequenceFlow id="START_TO_A" sourceRef="START" targetRef="A" />
+        <bpmn:sequenceFlow id="A_TO_PARALLEL_SPLIT" sourceRef="A" targetRef="PARALLEL_SPLIT" />
+        <bpmn:sequenceFlow id="PARALLEL_SPLIT_TO_B" sourceRef="PARALLEL_SPLIT" targetRef="B" />
+        <bpmn:sequenceFlow id="PARALLEL_SPLIT_TO_LOOP_JOIN" sourceRef="PARALLEL_SPLIT" targetRef="LOOP_JOIN" />
+        <bpmn:sequenceFlow id="B_TO_OR_SPLIT" sourceRef="B" targetRef="OR_SPLIT" />
+        <bpmn:sequenceFlow id="OR_SPLIT_TO_C1" sourceRef="OR_SPLIT" targetRef="C1" />
+        <bpmn:sequenceFlow id="OR_SPLIT_TO_C2" sourceRef="OR_SPLIT" targetRef="C2" />
+        <bpmn:sequenceFlow id="C1_TO_OR_JOIN" sourceRef="C1" targetRef="OR_JOIN" />
+        <bpmn:sequenceFlow id="C2_TO_OR_JOIN" sourceRef="C2" targetRef="OR_JOIN" />
+        <bpmn:sequenceFlow id="OR_JOIN_TO_PARALLEL_JOIN" sourceRef="OR_JOIN" targetRef="PARALLEL_JOIN" />
+        <bpmn:sequenceFlow id="LOOP_JOIN_TO_D1" sourceRef="LOOP_JOIN" targetRef="D1" />
+        <bpmn:sequenceFlow id="D1_TO_LOOP_SPLIT" sourceRef="D1" targetRef="LOOP_SPLIT" />
+        <bpmn:sequenceFlow id="LOOP_SPLIT_TO_D2" sourceRef="LOOP_SPLIT" targetRef="D2" />
+        <bpmn:sequenceFlow id="D2_TO_LOOP_JOIN" sourceRef="D2" targetRef="LOOP_JOIN" />
+        <bpmn:sequenceFlow id="LOOP_SPLIT_TO_PARALLEL_JOIN" sourceRef="LOOP_SPLIT" targetRef="PARALLEL_JOIN" />
+        <bpmn:sequenceFlow id="PARALLEL_JOIN_TO_END" sourceRef="PARALLEL_JOIN" targetRef="END" />
+    </bpmn:process>
+</bpmn:definitions>
