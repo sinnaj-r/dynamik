@@ -5,8 +5,10 @@ from __future__ import annotations
 import enum
 import textwrap
 import typing
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from statistics import median
 
 import scipy
 from anytree import NodeMixin
@@ -115,7 +117,7 @@ class Model:
     @property
     def empty(self: typing.Self) -> bool:
         """TODO docs"""
-        return len(self._data) == 0
+        return len(self.data) == 0
 
     @property
     def data(self: typing.Self) -> tuple[Event, ...]:
@@ -126,7 +128,7 @@ class Model:
         """TODO docs"""
         LOGGER.debug("pruning model")
         # Remove all events that are out of the overlapping region from the running model
-        self._data = [event for event in self._data if event.start > self.start and event.end < self.end]
+        self._data = [event for event in self.data if event.start > self.start and event.end < self.end]
 
     def add(self: typing.Self, event: Event) -> None:
         """TODO docs"""
@@ -134,11 +136,20 @@ class Model:
 
     def statistically_equals(self: typing.Self, other: Model, *, significance: float = 0.05) -> bool:
         """TODO docs"""
-        # compare the durations (in minutes to prevent too sensitive tests)
-        if len(list(self._data)) > 0 and len(list(other.data)) > 0:
+        reference_times_per_activity = defaultdict(list)
+        for event in self._data:
+            reference_times_per_activity[event.activity].append(event.cycle_time)
+
+        reference_times_per_activity = {
+            activity: median(values) for activity, values in reference_times_per_activity.items()
+        }
+
+        # compare the deviations from the mean duration for each activity (this way we take into account the magnitude
+        # of the change with respect to the duration of the activity instance)
+        if len(self.data) > 0 and len(other.data) > 0:
             result = scipy.stats.kstest(
-                [int(event.cycle_time.total_seconds()/60) for event in self._data],
-                [int(event.cycle_time.total_seconds()/60) for event in other.data],
+                [event.cycle_time / reference_times_per_activity[event.activity] for event in self.data],
+                [event.cycle_time / reference_times_per_activity[event.activity] for event in other.data],
             )
 
             LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
@@ -164,4 +175,4 @@ class Model:
         return instant > self.end
 
     def __repr__(self: typing.Self) -> str:
-        return f"""Model(timeframe=({self.start} - {self.end}), events={len(self._data)})"""
+        return f"""Model(timeframe=({self.start} - {self.end}), events={len(self.data)})"""

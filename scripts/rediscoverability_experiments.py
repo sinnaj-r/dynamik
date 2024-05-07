@@ -28,7 +28,7 @@ if __name__ == "__main__":
     for alternative_scenario in alternative_scenarios:
         # create directory for results
         os.makedirs(f"../data/results/causes/{alternative_scenario}/", exist_ok=True)
-        setup_logger(Level.NOTICE, destination=f"../data/results/{alternative_scenario}.log", disable_third_party_warnings=True)
+        setup_logger(Level.VERBOSE, destination=f"../data/results/{alternative_scenario}.log", disable_third_party_warnings=True)
 
         log = read_and_merge_csv_logs(
             (

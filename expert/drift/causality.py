@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import itertools
 import typing
+from collections import defaultdict
 from datetime import datetime, timedelta
+from statistics import median
 
 import pandas as pd
 import scipy
@@ -161,11 +163,18 @@ class DriftExplainer:
             time_extractor: typing.Callable[[Event], timedelta],
     ) -> bool:
         """TODO docs"""
+        reference_events_per_activity = defaultdict(list)
+        for event in self.drift.reference_model.data:
+            reference_events_per_activity[event.activity].append(event.cycle_time)
+
+        reference_times_per_activity = defaultdict(timedelta)
+        for activity, values in reference_events_per_activity.items():
+            reference_times_per_activity[activity] = median(values)
+
         if len(self.drift.reference_model.data) > 0 and len(self.drift.running_model.data) > 0:
             result = scipy.stats.kstest(
-                # compare the durations in minutes to prevent too sensitive tests
-                [int(time_extractor(event).total_seconds()/60) for event in self.drift.reference_model.data],
-                [int(time_extractor(event).total_seconds()/60) for event in self.drift.running_model.data],
+                [time_extractor(event) / reference_times_per_activity[event.activity] for event in self.drift.reference_model.data],
+                [time_extractor(event) / reference_times_per_activity[event.activity] for event in self.drift.running_model.data],
             )
 
             LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
@@ -380,6 +389,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
     )
 
     # check processing time
+    LOGGER.verbose("checking drifts in total processing time")
     if explainer.has_drift_in_time(lambda event: event.processing_time.total.duration):
         # add a node to the tree reporting the change in the processing times
         processing_time = explainer.build_time_descriptor(
@@ -389,6 +399,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
         )
 
         # check drift in processing time when the resource is available
+        LOGGER.verbose("checking drifts in effective processing time")
         if explainer.has_drift_in_time(lambda event: event.processing_time.effective.duration):
             effective_time = explainer.build_time_descriptor(
                 "processing time with resources available changed!",
@@ -397,6 +408,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check drifts in the activity profiles
+            LOGGER.verbose("checking drifts in activity profiles")
             if explainer.has_drift_in_profile(ActivityProfile.discover):
                 explainer.build_profile_descriptor(
                     "activity profiles changed!",
@@ -404,6 +416,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                     profile_builder=ActivityProfile.discover,
                 )
             # check drifts in the resource profiles
+            LOGGER.verbose("checking drifts in resource profiles")
             if explainer.has_drift_in_profile(ResourceProfile.discover):
                 explainer.build_profile_descriptor(
                     "resource profiles changed!",
@@ -412,6 +425,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
         # check drift in processing time when the resource is not available
+        LOGGER.verbose("checking drifts in idle processing time")
         if explainer.has_drift_in_time(lambda event: event.processing_time.idle.duration):
             idle_time = explainer.build_time_descriptor(
                 "processing time with resources unavailable changed!",
@@ -420,6 +434,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check changes in the availability calendars
+            LOGGER.verbose("checking drifts in calendars")
             if explainer.has_drift_in_calendar():
                 explainer.build_calendar_descriptor(
                     "resource availability calendars changed!",
@@ -427,6 +442,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
     # check waiting time
+    LOGGER.verbose("checking drifts in total waiting time")
     if explainer.has_drift_in_time(lambda event: event.waiting_time.total.duration):
         # add a node to the tree reporting the change in the waiting times
         waiting_time = explainer.build_time_descriptor(
@@ -436,6 +452,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
         )
 
         # check waiting time due to batching
+        LOGGER.verbose("checking drifts in batching waiting time")
         if explainer.has_drift_in_time(lambda event: event.waiting_time.batching.duration):
             batching_time = explainer.build_time_descriptor(
                 "waiting time due to batching changed!",
@@ -444,6 +461,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check changes in the batch creation policies
+            LOGGER.verbose("checking drifts batch creation policies")
             if explainer.has_drift_in_policies(build_batch_creation_features):
                 explainer.build_policies_descriptor(
                     "batch creation policies changed!",
@@ -459,6 +477,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
 
             # check changes in the firing policies for each creation policy
             for creation_policy in creation_policies:
+                LOGGER.verbose("checking drifts in batch firing policies")
                 if explainer.has_drift_in_policies(build_batch_firing_features, filter_log(creation_policy)):
                     explainer.build_policies_descriptor(
                         f"batch firing policies for '{creation_policy}' changed!",
@@ -468,6 +487,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                     )
 
         # check waiting time due to contention
+        LOGGER.verbose("checking drifts in contention waiting time")
         if explainer.has_drift_in_time(lambda event: event.waiting_time.contention.duration):
             contention_time = explainer.build_time_descriptor(
                 "waiting time due to resource contention changed!",
@@ -476,6 +496,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check changes in the arrival rate
+            LOGGER.verbose("checking drifts in arrival rate")
             if explainer.has_drift_in_rate(
                     filter_=lambda event: event.activity == first_activity,
                     extractor=lambda event: event.enabled,
@@ -488,6 +509,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
             # check changes in the service rate
+            LOGGER.verbose("checking drifts in service rate")
             if explainer.has_drift_in_rate(
                     filter_=lambda event: event.activity == last_activity,
                     extractor=lambda event: event.end,
@@ -500,6 +522,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
         # check waiting time due to prioritization
+        LOGGER.verbose("checking drifts in prioritization waiting time")
         if explainer.has_drift_in_time(lambda event: event.waiting_time.prioritization.duration):
             prioritization_time = explainer.build_time_descriptor(
                 "waiting time due to prioritization changed!",
@@ -508,6 +531,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check changes in the prioritization policies
+            LOGGER.verbose("checking drifts in prioritization policies")
             if explainer.has_drift_in_policies(build_prioritization_features):
                 explainer.build_policies_descriptor(
                     "prioritization policies changed!",
@@ -516,6 +540,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
         # check waiting time due to unavailability
+        LOGGER.verbose("checking drifts in unavailability waiting time")
         if explainer.has_drift_in_time(lambda event: event.waiting_time.availability.duration):
             unavailability_time = explainer.build_time_descriptor(
                 "waiting time due to resource unavailability changed!",
@@ -524,6 +549,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check changes in the availability calendars
+            LOGGER.verbose("checking drifts in calendars")
             if explainer.has_drift_in_calendar():
                 explainer.build_calendar_descriptor(
                     "resource availability calendars changed!",
@@ -531,6 +557,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                 )
 
         # check waiting time due to extraneous
+        LOGGER.verbose("checking drifts in extraneous waiting time")
         if explainer.has_drift_in_time(lambda event: event.waiting_time.extraneous.duration):
             extraneous_time = explainer.build_time_descriptor(
                 "waiting time due to extraneous delays changed!",
@@ -539,6 +566,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
             )
 
             # check drifts in the activity profiles
+            LOGGER.verbose("checking drifts in activity profiles")
             if explainer.has_drift_in_profile(ActivityProfile.discover):
                 explainer.build_profile_descriptor(
                     "activity profiles changed!",
@@ -546,6 +574,7 @@ def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, sign
                     profile_builder=ActivityProfile.discover,
                 )
             # check drifts in the resource profiles
+            LOGGER.verbose("checking drifts in resource profiles")
             if explainer.has_drift_in_profile(ResourceProfile.discover):
                 explainer.build_profile_descriptor(
                     "resource profiles changed!",
