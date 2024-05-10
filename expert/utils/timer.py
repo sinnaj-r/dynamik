@@ -29,6 +29,12 @@ class Timer:
         """Returns the elapsed time for the timer with the given name"""
         return sum([timedelta(microseconds=(period["end"] - period["start"]) / 1000) for period in self.__timers[name]], start=timedelta())
 
+    def reset(self: typing.Self, name: str | None = None) -> None:
+        if name is None:
+            self.__timers = defaultdict(list)
+        else:
+            self.__timers[name] = []
+
     @contextmanager
     def profile(self: typing.Self, name: str = "default") -> typing.Generator[Timer, None, None]:
         """Profiles a block of code using a context provider"""

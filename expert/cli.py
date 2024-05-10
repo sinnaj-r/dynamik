@@ -8,8 +8,7 @@ from pathlib import Path
 
 from rich_argparse import RichHelpFormatter
 
-from expert.drift.causality import explain_drift
-from expert.drift.detection import detect_drift
+from expert.drift import detect_drift, explain_drift
 from expert.input import EventMapping
 from expert.input.csv import DEFAULT_CSV_MAPPING as MAPPING
 from expert.input.csv import read_and_merge_csv_logs as parse

@@ -72,9 +72,9 @@ class WaitingTimeCanvas:
                 ############################
                 contention_tree: IntervalTree = IntervalTree()
                 for evt in overlapping_events:
-                    if evt.enabled < event.enabled and evt != event:
+                    if evt != event and evt.enabled < event.enabled:
                         # evt causes contention between its start and its end or the next event starts
-                        contention_tree[evt.start: min(evt.end, event.start)] = evt
+                        contention_tree[max(evt.start, event.enabled): min(evt.end, event.start)] = evt
                 # remove already explained waiting intervals
                 for interval in already_explained:
                     contention_tree.chop(interval.begin, interval.end)

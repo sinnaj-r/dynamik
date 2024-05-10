@@ -4,8 +4,7 @@ import json
 import os
 from datetime import timedelta
 
-from expert.drift.causality import explain_drift
-from expert.drift.detection import detect_drift
+from expert.drift import detect_drift, explain_drift
 from expert.input import EventMapping
 from expert.input.csv import read_and_merge_csv_logs
 from expert.output import print_causes, export_causes
@@ -17,18 +16,18 @@ if __name__ == "__main__":
     base_scenario_log = "../data/logs/base.log.csv"
     mapping = "../data/mappings/prosimos.mapping.json"
     alternative_scenarios = (
-        "batching",
-        "contention1",
+        # "batching",
+        # "contention1",
         "contention2",
-        "prioritization",
-        "unavailability1",
-        "unavailability2",
+        # "prioritization",
+        # "unavailability1",
+        # "unavailability2",
     )
 
     for alternative_scenario in alternative_scenarios:
         # create directory for results
-        os.makedirs(f"../data/results/causes/{alternative_scenario}/", exist_ok=True)
-        setup_logger(Level.VERBOSE, destination=f"../data/results/{alternative_scenario}.log", disable_third_party_warnings=True)
+        os.makedirs(f"../data/results/{alternative_scenario}/causes/", exist_ok=True)
+        setup_logger(Level.NOTICE, destination=f"../data/results/{alternative_scenario}/output.log", disable_third_party_warnings=True)
 
         log = read_and_merge_csv_logs(
             (
@@ -38,7 +37,7 @@ if __name__ == "__main__":
             attribute_mapping=EventMapping.parse(mapping),
         )
 
-        log = list(log)
+        TIMER.start(__name__)
 
         detector = detect_drift(
             log=log,
@@ -52,7 +51,9 @@ if __name__ == "__main__":
             causes = explain_drift(drift, first_activity="A", last_activity="E")
             tree = export_causes(causes)
             print_causes(causes)
-            with open(f"../data/results/causes/{alternative_scenario}/drift-{index}.causes.json", "w") as file:
+            with open(f"../data/results/{alternative_scenario}/causes/drift-{index}.causes.json", "w") as file:
                 json.dump(tree, file, indent=4)
 
+        TIMER.end(__name__)
         LOGGER.success(f"{alternative_scenario} scenario execution took %s", TIMER.elapsed(__name__))
+        TIMER.reset(__name__)
