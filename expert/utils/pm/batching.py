@@ -2,6 +2,7 @@ import functools
 import typing
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import timedelta
 
 import pandas as pd
 
@@ -29,7 +30,7 @@ class __BatchCreationState:
     in_batch: bool
 
 
-def discover_batches(log: Log) -> Log:
+def discover_batches(log: Log, *, max_sequential_gap: timedelta = timedelta()) -> Log:
     """
     Compute the batches in the event log and add their descriptor to the events.
 
@@ -44,31 +45,38 @@ def discover_batches(log: Log) -> Log:
     batches = []
 
     # Group events by resource and activity
-    events_per_resource_and_activity = defaultdict(lambda: defaultdict(list))
+    events_per_resource_and_activity = defaultdict(list)
     for event in log:
         if event.resource is not None:
-            events_per_resource_and_activity[event.resource][event.activity].append(event)
+            events_per_resource_and_activity[(event.resource, event.activity)].append(event)
 
     # Build batches for each resource and activity
-    for resource in events_per_resource_and_activity:
-        for activity in events_per_resource_and_activity[resource]:
-            # Create a new empty batch (new activity implies new batch)
-            current_batch = []
+    for events in events_per_resource_and_activity.values():
+        # Create a new empty batch (new activity implies new batch)
+        current_batch = []
+        current_start = None
+        current_end = None
 
-            for event in sorted(events_per_resource_and_activity[resource][activity], key=lambda evt: evt.enabled):
-                # Add the event to the current batch if in first iteration or if it was enabled between the first event enablement and the
-                # batch started executing
-                if len(current_batch) == 0 or min(evt.enabled for evt in current_batch) <= event.enabled <= min(
-                        evt.start for evt in current_batch):
-                    current_batch.append(event)
-                # If the event is not part of the current batch, save the current batch and create a new one with the
-                # current event
-                else:
-                    batches.append(current_batch)
-                    current_batch = [event]
+        for event in sorted(events, key=lambda _evt: _evt.start):
+            # add event to current batch if in first iteration
+            if len(current_batch) == 0:
+                current_batch.append(event)
+                current_start = event.start
+                current_end = event.end
+            # add event to current batch if enabled between the first event enablement and the batch started executing
+            elif event.enabled <= current_start and (event.start - current_end) <= max_sequential_gap:
+                current_batch.append(event)
+                current_end = max(event.end, current_end)
+            # If the event is not part of the current batch, save the current batch and create a new one with the
+            # current event
+            else:
+                batches.append(current_batch)
+                current_batch = [event]
+                current_start = event.start
+                current_end = event.end
 
-            # Save the batch for the last iteration
-            batches.append(current_batch)
+        # Save the batch for the last iteration
+        batches.append(current_batch)
 
     # Build batch descriptors and add them to the events
     for batch in batches:
