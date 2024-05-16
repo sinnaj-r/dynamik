@@ -19,8 +19,11 @@ class Calendar:
     owner: set[str]
     __calendar: dict[tuple[int, int], int]
 
-    def __init__(self: typing.Self, owner: set[str] = frozenset(),
-                 calendar: dict[tuple[int, int], int] | None = None) -> None:
+    def __init__(
+            self: typing.Self,
+            owner: set[str] = frozenset(),
+            calendar: dict[tuple[int, int], int] | None = None,
+    ) -> None:
         self.owner = owner
         self.__calendar = calendar if calendar is not None else {slot: 0 for slot in
                                                                  itertools.product(range(7), range(24))}
@@ -49,6 +52,9 @@ class Calendar:
                 slot: self[slot] - other[slot] for slot in self.__calendar
             },
         )
+
+    def __iter__(self: typing.Self) -> typing.Iterator[tuple[tuple[int, int], int]]:
+        return iter(self.__calendar.items())
 
     def transform(self: typing.Self, transformer: typing.Callable[[int], int]) -> Calendar:
         """TODO docs"""
