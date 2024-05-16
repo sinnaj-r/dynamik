@@ -5,13 +5,11 @@ from __future__ import annotations
 import enum
 import textwrap
 import typing
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from statistics import median
 
-import scipy
 from anytree import NodeMixin
+from statsmodels.stats.weightstats import ttost_ind
 
 from expert.model import Event
 from expert.utils.logger import LOGGER
@@ -134,29 +132,30 @@ class Model:
         """TODO docs"""
         self._data.append(event)
 
-    def statistically_equals(self: typing.Self, other: Model, *, significance: float = 0.05) -> bool:
+    def statistically_equivalent(
+            self: typing.Self,
+            other: Model,
+            *,
+            threshold: timedelta = timedelta(minutes=1),
+            significance: float = 0.05
+    ) -> bool:
         """TODO docs"""
-        reference_times_per_activity = defaultdict(list)
-        for event in self._data:
-            reference_times_per_activity[event.activity].append(event.cycle_time)
+        if self.empty and other.empty:
+            return True
+        if self.empty or other.empty:
+            return False
 
-        reference_times_per_activity = {
-            activity: median(values) for activity, values in reference_times_per_activity.items()
-        }
+        # only if both models are non-empty, perform the test
+        pvalue, _, _ = ttost_ind(
+            [event.cycle_time.total_seconds() for event in self.data],
+            [event.cycle_time.total_seconds() for event in other.data],
+            -threshold.total_seconds(),
+            threshold.total_seconds(),
+        )
 
-        # compare the deviations from the mean duration for each activity (this way we take into account the magnitude
-        # of the change with respect to the duration of the activity instance)
-        if len(self.data) > 0 and len(other.data) > 0:
-            result = scipy.stats.kstest(
-                [event.cycle_time / reference_times_per_activity[event.activity] for event in self.data],
-                [event.cycle_time / reference_times_per_activity[event.activity] for event in other.data],
-            )
+        LOGGER.verbose("test(reference != running) p-value: %.4f", pvalue)
 
-            LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
-
-            return result.pvalue >= significance
-
-        return True
+        return pvalue <= significance
 
     def envelopes(self: typing.Self, event: Event) -> bool:
         """TODO docs"""

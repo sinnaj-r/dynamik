@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import itertools
 import typing
-from collections import defaultdict
 from datetime import datetime, timedelta
-from statistics import median
 
 import pandas as pd
 import scipy
+from statsmodels.stats.weightstats import ttost_ind
 
 from expert.drift.model import Drift, DriftCause
 from expert.model import Event, Log, Resource
@@ -26,11 +25,19 @@ class DriftExplainer:
     drift: Drift
     significance: float
     calendar_threshold: int
+    threshold: timedelta
 
-    def __init__(self: typing.Self, drift: Drift, significance: float) -> None:
+    def __init__(
+            self: typing.Self,
+            drift: Drift,
+            significance: float,
+            threshold: timedelta,
+            calendar_threshold: int
+    ) -> None:
         self.drift = drift
         self.significance = significance
         self.calendar_threshold = calendar_threshold
+        self.threshold = threshold
 
     def __describe_distributions(
             self: typing.Self,
@@ -165,23 +172,17 @@ class DriftExplainer:
             time_extractor: typing.Callable[[Event], timedelta],
     ) -> bool:
         """TODO docs"""
-        reference_events_per_activity = defaultdict(list)
-        for event in self.drift.reference_model.data:
-            reference_events_per_activity[event.activity].append(event.cycle_time)
-
-        reference_times_per_activity = defaultdict(timedelta)
-        for activity, values in reference_events_per_activity.items():
-            reference_times_per_activity[activity] = median(values)
-
-        if len(self.drift.reference_model.data) > 0 and len(self.drift.running_model.data) > 0:
-            result = scipy.stats.kstest(
-                [time_extractor(event) / reference_times_per_activity[event.activity] for event in self.drift.reference_model.data],
-                [time_extractor(event) / reference_times_per_activity[event.activity] for event in self.drift.running_model.data],
+        if not self.drift.reference_model.empty and not self.drift.running_model.empty:
+            pvalue, _, _ = ttost_ind(
+                [time_extractor(event).total_seconds() for event in self.drift.reference_model.data],
+                [time_extractor(event).total_seconds() for event in self.drift.running_model.data],
+                -self.threshold.total_seconds(),
+                self.threshold.total_seconds(),
             )
 
-            LOGGER.verbose("test(reference != running) p-value: %.4f", result.pvalue)
+            LOGGER.verbose("test(reference != running) p-value: %.4f", pvalue)
 
-            return result.pvalue < self.significance
+            return pvalue > self.significance
 
         return False
 
@@ -389,12 +390,13 @@ def explain_drift(
         first_activity: str,
         last_activity: str,
         significance: float = 0.05,
+        threshold: timedelta = timedelta(minutes=1),
         calendar_threshold: int = 0,
 ) -> DriftCause:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
     # a tree accordingly, explaining the changes that occurred to the process
-    explainer = DriftExplainer(drift, significance, calendar_threshold)
+    explainer = DriftExplainer(drift, significance, threshold, calendar_threshold)
     root_cause = explainer.build_time_descriptor(
         "cycle time changed!",
         lambda event: event.cycle_time,

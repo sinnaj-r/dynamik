@@ -19,6 +19,8 @@ def detect_drift(
         warm_up: timedelta,
         overlap_between_models: timedelta = timedelta(),
         warnings_to_confirm: int = 5,
+        threshold: timedelta = timedelta(minutes=1),
+        significance: float = 0.05,
 ) -> typing.Generator[Drift, None, typing.Iterable[Drift]]:
     """Find drifts in the performance of a process execution by monitoring its cycle time.
 
@@ -64,6 +66,8 @@ def detect_drift(
         warm_up=warm_up,
         warnings_to_confirm=warnings_to_confirm,
         overlap_between_models=overlap_between_models,
+        threshold=threshold,
+        significance=significance,
     )
 
     # Iterate over the events in the log
@@ -112,6 +116,9 @@ class DriftDetector:
     # The collection of detection results
     __drift_warnings: typing.MutableSequence[Drift] = deque([NO_DRIFT], maxlen=1)
 
+    __significance: float
+    __threshold: timedelta
+
     def __init__(
             self: typing.Self,
             *,
@@ -119,6 +126,8 @@ class DriftDetector:
             warm_up: timedelta = timedelta(),
             overlap_between_models: timedelta = timedelta(),
             warnings_to_confirm: int = 3,
+            threshold: timedelta = timedelta(minutes=1),
+            significance: float = 0.05,
     ) -> None:
         """
         Create a new empty drift detection model with the given timeframe size and limit activities.
@@ -135,6 +144,8 @@ class DriftDetector:
         self.__warnings_to_confirm = warnings_to_confirm
         self.__drift_warnings = deque([NO_DRIFT] * warnings_to_confirm, maxlen=warnings_to_confirm)
         self.__overlap = overlap_between_models
+        self.__threshold = threshold
+        self.__significance = significance
 
     def __initialize_models(self: typing.Self, start: datetime) -> None:
         self.__reference_model = Model(start + self.__warm_up, self.__timeframe_size)
@@ -172,8 +183,16 @@ class DriftDetector:
             stdev([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
         )
 
-        # If models are not statistically equal, there is a drift
-        if not self.__reference_model.statistically_equals(self.__running_model):
+        # If models are not equivalent, there is a drift
+        if (
+            not self.__reference_model.empty and
+            not self.__running_model.empty and
+            not self.__reference_model.statistically_equivalent(
+                self.__running_model,
+                significance=self.__significance,
+                threshold=self.__threshold,
+            )
+        ):
             # At the beginning all drifts are created as warnings
             drift = Drift(
                 level=DriftLevel.WARNING,
