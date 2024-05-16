@@ -1,15 +1,11 @@
 """This module contains the functions needed for detecting and explaining performance drifts in a process model."""
 from __future__ import annotations
 
-import statistics
 import typing
 from collections import deque
 from copy import deepcopy
 from datetime import datetime, timedelta
-from json.decoder import NaN
 from statistics import mean, median, stdev
-
-import scipy
 
 from expert.drift.model import NO_DRIFT, Drift, DriftLevel, Model
 from expert.model import Event, Log
@@ -164,16 +160,16 @@ class DriftDetector:
 
         LOGGER.verbose(
             "reference time distribution is mean=%s, median=%s, sd=%s",
-            mean([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else NaN,
-            median([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else NaN,
-            stdev([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else NaN,
+            mean([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else -1,
+            median([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else -1,
+            stdev([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else -1,
         )
 
         LOGGER.verbose(
             "running time distribution is mean=%s, median=%s, sd=%s",
-            mean([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else NaN,
-            median([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else NaN,
-            stdev([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else NaN,
+            mean([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
+            median([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
+            stdev([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
         )
 
         # If models are not statistically equal, there is a drift

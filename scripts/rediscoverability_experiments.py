@@ -16,11 +16,11 @@ if __name__ == "__main__":
     base_scenario_log = "../data/logs/base.log.csv"
     mapping = "../data/mappings/prosimos.mapping.json"
     alternative_scenarios = (
-        # "batching",
-        # "contention1",
-        "contention2",
+        # x "batching",
+        # x "contention1",
+        # x "contention2",
         # "prioritization",
-        # "unavailability1",
+        # x "unavailability1",
         # "unavailability2",
     )
 
