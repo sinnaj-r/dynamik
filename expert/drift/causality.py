@@ -25,10 +25,12 @@ class DriftExplainer:
 
     drift: Drift
     significance: float
+    calendar_threshold: int
 
     def __init__(self: typing.Self, drift: Drift, significance: float) -> None:
         self.drift = drift
         self.significance = significance
+        self.calendar_threshold = calendar_threshold
 
     def __describe_distributions(
             self: typing.Self,
@@ -199,8 +201,11 @@ class DriftExplainer:
             [calendar.transform(lambda value: min(value, 1)) for calendar in running_calendars.values()],
             Calendar(),
         )
-        # compare aggregated calendars
-        return aggregated_reference_calendar.statistically_equals(aggregated_running_calendar).pvalue < self.significance
+        # compute the difference between calendars, saving the absolute value of the difference
+        diff = (aggregated_reference_calendar - aggregated_running_calendar).transform(lambda value: abs(value))
+
+        # check if diff is greater than threshold
+        return sum([value for _, value in diff]) >= self.calendar_threshold
 
     def has_drift_in_rate(
             self: typing.Self,
@@ -230,7 +235,7 @@ class DriftExplainer:
             LOGGER.warning("try increasing the window size")
             return False
 
-        for key in set(reference_arrival_rates.slots):
+        for key in reference_arrival_rates.slots:
             # we use the combined size for assessing differences in the total also
             # (otherwise if the changes are proportional to the sample size nothing will be detected)
             results[key] = scipy.stats.poisson_means_test(
@@ -378,11 +383,18 @@ class DriftExplainer:
         )
 
 
-def explain_drift(drift: Drift, *, first_activity: str, last_activity: str, significance: float = 0.05) -> DriftCause:
+def explain_drift(
+        drift: Drift,
+        *,
+        first_activity: str,
+        last_activity: str,
+        significance: float = 0.05,
+        calendar_threshold: int = 0,
+) -> DriftCause:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build
     # a tree accordingly, explaining the changes that occurred to the process
-    explainer = DriftExplainer(drift, significance)
+    explainer = DriftExplainer(drift, significance, calendar_threshold)
     root_cause = explainer.build_time_descriptor(
         "cycle time changed!",
         lambda event: event.cycle_time,
