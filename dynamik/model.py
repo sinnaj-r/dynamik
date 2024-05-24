@@ -8,7 +8,7 @@ from functools import cached_property
 
 from intervaltree import Interval
 
-from expert.utils.model import TimeInterval
+from dynamik.utils.model import TimeInterval
 
 
 @dataclass

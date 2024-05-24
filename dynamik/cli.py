@@ -1,4 +1,4 @@
-"""This module contains the logic used for launching expert from the command line."""
+"""This module contains the logic used for launching dynamik from the command line."""
 
 import argparse
 import json
@@ -8,25 +8,25 @@ from pathlib import Path
 
 from rich_argparse import RichHelpFormatter
 
-from expert.drift import detect_drift, explain_drift
-from expert.input import EventMapping
-from expert.input.csv import DEFAULT_CSV_MAPPING as MAPPING
-from expert.input.csv import read_and_merge_csv_logs as parse
-from expert.output import export_causes, print_causes
-from expert.utils.logger import LOGGER, Level, setup_logger
-from expert.utils.pm.concurrency import OverlappingConcurrencyOracle
-from expert.utils.timer import DEFAULT_TIMER as TIMER
+from dynamik.drift import detect_drift, explain_drift
+from dynamik.input import EventMapping
+from dynamik.input.csv import DEFAULT_CSV_MAPPING as MAPPING
+from dynamik.input.csv import read_and_merge_csv_logs as parse
+from dynamik.output import export_causes, print_causes
+from dynamik.utils.logger import LOGGER, Level, setup_logger
+from dynamik.utils.pm.concurrency import OverlappingConcurrencyOracle
+from dynamik.utils.timer import DEFAULT_TIMER as TIMER
 
 LEVELS = [Level.NOTICE, Level.INFO, Level.VERBOSE, Level.DEBUG, Level.SPAM]
 
 
 def __parse_arg() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="""expert (Explainable Performance Drift) is an algorithm for finding actionable causes for drifts
+        description="""dynamik (Explainable Performance Drift) is an algorithm for finding actionable causes for drifts
                        in the performance of a process execution. For this, the cycle time of the process is monitored,
                        and, if a change is detected in the process performance, the algorithm finds the actionable
                        causes for the change.""",
-        epilog="expert is licensed under the Apache License, Version 2.0",
+        epilog="dynamik is licensed under the Apache License, Version 2.0",
         formatter_class=RichHelpFormatter,
     )
 
@@ -72,7 +72,7 @@ def run() -> None:
 
     mapping = EventMapping.parse(args.mapping) if args.mapping is not None else MAPPING
 
-    LOGGER.notice("applying expert drift detector to files %s", ", ".join(args.log_files))
+    LOGGER.notice("applying dynamik drift detector to files %s", ", ".join(args.log_files))
     LOGGER.notice("results will be saved to %s", args.output)
 
     with TIMER.profile(__name__):

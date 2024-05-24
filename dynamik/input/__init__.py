@@ -10,8 +10,8 @@ import typing
 from collections import namedtuple
 from dataclasses import dataclass, field
 
-from expert.model import Event
-from expert.utils.logger import LOGGER
+from dynamik.model import Event
+from dynamik.utils.logger import LOGGER
 
 
 @dataclass
@@ -35,7 +35,7 @@ class EventMapping:
 
     def tuple_to_event(self: typing.Self, source: namedtuple) -> Event:
         """
-        Create an `expert.model.Event` instance from a source *dictionary-like* object applying the current mapping.
+        Create an `dynamik.model.Event` instance from a source *dictionary-like* object applying the current mapping.
 
         Parameters
         ----------
@@ -43,7 +43,7 @@ class EventMapping:
 
         Returns
         -------
-        * the `expert.model.Event` instance resulting from applying this mapping to the *dictionary-like* source
+        * the `dynamik.model.Event` instance resulting from applying this mapping to the *dictionary-like* source
         """
         instance = Event(
             case=getattr(source, self.case.lower()),

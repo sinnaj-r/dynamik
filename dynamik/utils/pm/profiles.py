@@ -11,9 +11,9 @@ from statistics import mean
 import scipy
 from intervaltree import Interval
 
-from expert.model import Activity, Log, Resource
-from expert.utils.model import TestResult
-from expert.utils.pm.calendars import Calendar
+from dynamik.model import Activity, Log, Resource
+from dynamik.utils.model import TestResult
+from dynamik.utils.pm.calendars import Calendar
 
 
 class Profile(abc.ABC):

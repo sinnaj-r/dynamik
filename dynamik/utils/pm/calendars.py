@@ -9,8 +9,8 @@ from datetime import datetime, time, timedelta
 import scipy
 from intervaltree import Interval, IntervalTree
 
-from expert.model import Event, Log, Resource
-from expert.utils.model import TestResult
+from dynamik.model import Event, Log, Resource
+from dynamik.utils.model import TestResult
 
 
 class Calendar:

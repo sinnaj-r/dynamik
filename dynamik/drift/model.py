@@ -7,16 +7,21 @@ import textwrap
 import typing
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from statistics import median, mean, stdev
 
+import numpy as np
 from anytree import NodeMixin
+from sklearn.preprocessing import RobustScaler, StandardScaler
 from statsmodels.stats.weightstats import ttost_ind
 
-from expert.model import Event
-from expert.utils.logger import LOGGER
-from expert.utils.model import Pair
-from expert.utils.pm.batching import discover_batches
-from expert.utils.pm.processing import ProcessingTimeCanvas
-from expert.utils.pm.waiting import WaitingTimeCanvas
+from dynamik.model import Event
+
+# from dynamik.utils.bayes import probability_difference_under_threshold
+from dynamik.utils.logger import LOGGER
+from dynamik.utils.model import Pair
+from dynamik.utils.pm.batching import discover_batches
+from dynamik.utils.pm.processing import ProcessingTimeCanvas
+from dynamik.utils.pm.waiting import WaitingTimeCanvas
 
 
 class DriftCause(NodeMixin):
@@ -58,7 +63,7 @@ class DriftCause(NodeMixin):
         return {
             "what": self.what,
             "how": self.how.asdict(),
-            "data": self.data.asdict(),
+            # "data": self.data.asdict(),
             "causes": [children.asdict() for children in self.children],
         }
 
@@ -136,8 +141,8 @@ class Model:
             self: typing.Self,
             other: Model,
             *,
-            threshold: timedelta = timedelta(minutes=1),
-            significance: float = 0.05
+            threshold: timedelta | float = timedelta(minutes=1),
+            significance: float = 0.05,
     ) -> bool:
         """TODO docs"""
         if self.empty and other.empty:
@@ -145,14 +150,32 @@ class Model:
         if self.empty or other.empty:
             return False
 
-        # only if both models are non-empty, perform the test
-        pvalue, _, _ = ttost_ind(
-            [event.cycle_time.total_seconds() for event in self.data],
-            [event.cycle_time.total_seconds() for event in other.data],
-            -threshold.total_seconds(),
-            threshold.total_seconds(),
-        )
+        reference_data = [event.cycle_time.total_seconds() for event in self.data]
+        running_data = [event.cycle_time.total_seconds() for event in other.data]
+        t = threshold
 
+        if isinstance(threshold, float):
+            scaler = StandardScaler()
+            scaler.fit(np.array(reference_data).reshape(-1, 1))
+            reference_data = scaler.transform(np.array(reference_data).reshape(-1, 1)).flatten()
+            running_data = scaler.transform(np.array(running_data).reshape(-1, 1)).flatten()
+        else:
+            t = threshold.total_seconds()
+
+        # only if both models are non-empty, perform the test
+        pvalue, _, _ = ttost_ind(reference_data, running_data, -t, t)
+
+        # test, maybe not needed
+        # if pvalue > significance:
+        #     bayes = probability_difference_under_threshold(reference_data, running_data, t)
+        LOGGER.verbose(
+            "reference time distribution is mean=%s, median=%s, sd=%s",
+            mean(reference_data), median(reference_data), stdev(reference_data),
+        )
+        LOGGER.verbose(
+            "running time distribution is mean=%s, median=%s, sd=%s",
+            mean(running_data), median(running_data), stdev(running_data),
+        )
         LOGGER.verbose("test(reference != running) p-value: %.4f", pvalue)
 
         return pvalue <= significance

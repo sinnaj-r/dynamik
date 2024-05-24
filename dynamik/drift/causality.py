@@ -3,20 +3,23 @@ from __future__ import annotations
 import itertools
 import typing
 from datetime import datetime, timedelta
+from statistics import median
 
+import numpy as np
 import pandas as pd
 import scipy
+from sklearn.preprocessing import RobustScaler, StandardScaler
 from statsmodels.stats.weightstats import ttost_ind
 
-from expert.drift.model import Drift, DriftCause
-from expert.model import Event, Log, Resource
-from expert.utils.logger import LOGGER
-from expert.utils.model import DistributionDescription, HashableDF, Pair
-from expert.utils.pm.batching import build_batch_creation_features, build_batch_firing_features
-from expert.utils.pm.calendars import Calendar, discover_calendars
-from expert.utils.pm.prioritization import build_prioritization_features
-from expert.utils.pm.profiles import ActivityProfile, Profile, ResourceProfile
-from expert.utils.rules import ConfusionMatrix, Rule, compute_rule_score, discover_rules, filter_log
+from dynamik.drift.model import Drift, DriftCause
+from dynamik.model import Event, Log, Resource
+from dynamik.utils.logger import LOGGER
+from dynamik.utils.model import DistributionDescription, HashableDF, Pair
+from dynamik.utils.pm.batching import build_batch_creation_features, build_batch_firing_features
+from dynamik.utils.pm.calendars import Calendar, discover_calendars
+from dynamik.utils.pm.prioritization import build_prioritization_features
+from dynamik.utils.pm.profiles import ActivityProfile, Profile, ResourceProfile
+from dynamik.utils.rules import ConfusionMatrix, Rule, compute_rule_score, discover_rules, filter_log
 
 
 class DriftExplainer:
@@ -25,14 +28,14 @@ class DriftExplainer:
     drift: Drift
     significance: float
     calendar_threshold: int
-    threshold: timedelta
+    threshold: timedelta | float
 
     def __init__(
             self: typing.Self,
             drift: Drift,
             significance: float,
-            threshold: timedelta,
-            calendar_threshold: int
+            threshold: timedelta | float,
+            calendar_threshold: int,
     ) -> None:
         self.drift = drift
         self.significance = significance
@@ -173,12 +176,20 @@ class DriftExplainer:
     ) -> bool:
         """TODO docs"""
         if not self.drift.reference_model.empty and not self.drift.running_model.empty:
-            pvalue, _, _ = ttost_ind(
-                [time_extractor(event).total_seconds() for event in self.drift.reference_model.data],
-                [time_extractor(event).total_seconds() for event in self.drift.running_model.data],
-                -self.threshold.total_seconds(),
-                self.threshold.total_seconds(),
-            )
+            reference_data = [time_extractor(event).total_seconds() for event in self.drift.reference_model.data]
+            running_data = [time_extractor(event).total_seconds() for event in self.drift.running_model.data]
+            t = self.threshold
+
+            if isinstance(self.threshold, float):
+                scaler = StandardScaler()
+                scaler.fit(np.array(reference_data).reshape(-1, 1))
+                reference_data = scaler.transform(np.array(reference_data).reshape(-1, 1)).flatten()
+                running_data = scaler.transform(np.array(running_data).reshape(-1, 1)).flatten()
+            else:
+                t = self.threshold.total_seconds()
+
+            # only if both models are non-empty, perform the test
+            pvalue, _, _ = ttost_ind(reference_data, running_data, -t, t)
 
             LOGGER.verbose("test(reference != running) p-value: %.4f", pvalue)
 
@@ -390,7 +401,7 @@ def explain_drift(
         first_activity: str,
         last_activity: str,
         significance: float = 0.05,
-        threshold: timedelta = timedelta(minutes=1),
+        threshold: timedelta | float = timedelta(minutes=1),
         calendar_threshold: int = 0,
 ) -> DriftCause:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""

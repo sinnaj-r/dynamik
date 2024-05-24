@@ -1,7 +1,7 @@
-# What is `expert`?
+# What is `dynamik`?
 
-```expert``` stands for ***explainable performance drift***, an algorithm for detecting changes in the cycle time of a
-process execution and, if present, to provide insights about the actionable causes of the change.
+```dynamik``` is an algorithm for analyzing the dynamics of a process execution, detecting changes in the cycle time and,
+if present, providing insights about the causes of the change.
 
 You can find more details about the algorithm in the following article:
 
@@ -34,15 +34,14 @@ You can find more details about the algorithm in the following article:
 
 # Quickstart
 
-`expert` is designed to be executed using an event log as it's input, processing it sequentially, event by event,
-mimicking
-an online environment where events are consumed from an event stream.
+`dynamik` is designed to be executed using an event log as it's input, processing it sequentially, event by event,  
+mimicking an online environment where events are consumed from an event stream.
 
-## Running `expert` from the CLI
+## Running `dynamik` from the CLI
 
-To run the algorithm in your command line, you need an event log in CSV or JSON format.
+To run the algorithm in your command line, you need an event log in CSV format.
 
-If in CSV, the file is expected to have a headers row which is followed by a row per event:
+The file is expected to have a headers row which is followed by a row per event:
 
 ```csv
 case,                   start,                     end,   activity,        resource
@@ -59,38 +58,6 @@ case,                   start,                     end,   activity,        resou
  ...                      ...                      ...         ...             ...
 ```
 
-In the case of a JSON file, an array of objects is expected, where each object contains an event:
-
-```json
-[
-    {
-        "case": "2182", "activity": "Activity 3", "resource": "resource-000001",
-        "start": "2023-02-24T05:28:00.843", "end": "2023-02-24T05:28:00.843"
-    },
-    {
-        "case": "2182", "activity": "Activity 1", "resource": "resource-000044",
-        "start": "2023-02-24T05:28:00.843", "end": "2023-02-24T05:34:31.219"
-    },
-    {
-        "case": "2182", "activity": "Activity 2", "resource": "resource-000024",
-        "start": "2023-02-24T05:34:31.219", "end": "2023-02-24T05:47:25.817"
-    },
-    ...
-]
-```
-
-If your log files have any of these formats you can run `edm` specifying the log format via the option `--format`:
-
-```shell
-$> expert ./log.csv --format csv
-```
-
-or
-
-```shell
-$> expert ./log.json --format json
-```
-
 If you need a different mapping for processing your log files, you can specify it using a JSON file:
 
 ```json
@@ -103,18 +70,18 @@ If you need a different mapping for processing your log files, you can specify i
 }
 ```
 
-Then, you can then run `expert` with the option `--mapping MAPPING_FILE` to use your custom mapping:
+Then, you can then run `dynamik` with the option `--mapping MAPPING_FILE` to use your custom mapping:
 
 ```shell
-$> expert ./log.csv --format csv --mapping ./my_custom_mapping.json
+$> dynamik ./log.csv --mapping ./my_custom_mapping.json
 ```
 
-Run `expert --help` to check the additional options:
+Run `dynamik --help` to check the additional options:
 
 ```shell
-$> expert --help
+$> dynamik --help
 
-usage: expert [-h] [-f FORMAT] [-m MAPPING_FILE] [-t TIMEFRAME] [-a ALPHA] [-v] LOG_FILE
+usage: dynamik [-h] [-f FORMAT] [-m MAPPING_FILE] [-t TIMEFRAME] [-a ALPHA] [-v] LOG_FILE
 
 Explainable Performance Drift is an algorithm for finding actionable causes for drifts in the
 performance of a process execution. For this, the cycle time of the process is monitored, and,
@@ -132,49 +99,31 @@ options:
                                               to define the reference and running models.
   -a ALPHA, --alpha ALPHA                     specify the confidence for the statistical tests
   -v, --verbose                               enable verbose output. High verbosity level can
-                                              drastically decrease expert performance
+                                              drastically decrease dynamik performance
 
-expert is licensed under the Apache License, Version 2.0
+dynamik is licensed under the Apache License, Version 2.0
 
 ```
 
-## Using `expert` as a Python package
+## Using `dynamik` as a Python package
 
-Aside of providing an executable command, `expert` can be fully customized by using it as a Python package.
-If you use poetry you can install `expert` directly from git:
+Aside of providing an executable command, `dynamik` can be fully customized by using it as a Python package.
+If you use poetry you can install `dynamik` directly from git:
 
 ```shell
 $> poetry add "https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git"
 
 ```
 
-When using it as a package, the drift detection algorithm can be located at `expert.drift.detect_drift`.
+When using it as a package, the drift detection algorithm can be located at `dynamik.drift.detect_drift`.
 
 # How can I...?
 
-## ...read a log from different source than CSV or JSON?
+## ...read a log from different source than CSV?
 
-`expert` provides you with all the utilities needed to read CSV and JSON files in a performant way.
+`dynamik` provides you with all the utilities needed to read CSV files in a performant way.
 However, we are aware that your logs may be in a different format. You may even want to read your logs from a database
 or message queue! Don't worry, we've got you covered. The representation we use for logs in expert is a
-simple `Iterator`
-object, so you can implement any data source you need, and as long as it returns an `Iterator` of `expert.model.Event`
-objects you shouldn't have any problems. As a reference, you can check the implementations
-from `expert.input.csv.read_csv_log`
-and `expert.input.json.read_json_log`, which are implemented using generators so the memory consumption is reduced.
-
-## ...check the performance for only a part of my process?
-
-In `expert` you can specify exactly which activities mark the start and the end of the subprocess that you want to
-monitor.
-To do that, you just have to specify your initial and final activities when calling `expert.drift.detect_drift`, and the
-algorithm will deal with the rest!
-
-## ...filter some of my events?
-
-When using `expert` as a Python package, you can provide some filters to the `expert.drift.detect_drift` method.
-By default, `expert` provides you some filters that can be used, like filtering all events without an assigned resource
-or those whose duration is 0.
-You can extend this and implement any filter you need. The signature for the filtering functions receives an event
-instance and must return a boolean indicating if that event should be kept or discarded.
-In CLI mode the filters are not available, so you will have to preprocess your log files before using `expert`.
+simple `Generator` object, so you can implement any data source you need, and as long as it returns an `Generator` 
+of `expert.model.Event` objects you shouldn't have any problems. As a reference, you can check the implementations
+from `expert.input.csv.read_csv_log`.

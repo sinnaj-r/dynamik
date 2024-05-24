@@ -14,8 +14,8 @@ from imblearn.under_sampling import RandomUnderSampler
 from imodels import SkopeRulesClassifier
 from sklearn.preprocessing import OneHotEncoder
 
-from expert.model import Event, Log
-from expert.utils.model import HashableDF
+from dynamik.model import Event, Log
+from dynamik.utils.model import HashableDF
 
 _operators = {
     "<": operator.lt,

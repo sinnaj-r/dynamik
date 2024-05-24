@@ -34,12 +34,12 @@ def generate_log(
 if __name__ == "__main__":
     total_cases = 10_000
     base_start_date = datetime(2020, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    alternative_start_date = datetime(2021, 1, 19, 0, 0, 0, tzinfo=timezone.utc)
+    alternative_start_date = datetime(2020, 10, 1, 0, 0, 0, tzinfo=timezone.utc)
 
-    # generate_log("base", total_cases, base_start_date)
-    # generate_log("batching", total_cases, alternative_start_date)
-    # generate_log("contention1", total_cases, alternative_start_date)
-    # generate_log("contention2", total_cases, alternative_start_date)
-    # generate_log("prioritization", total_cases, alternative_start_date)
-    # generate_log("unavailability1", total_cases, alternative_start_date)
-    # generate_log("unavailability2", total_cases, alternative_start_date)
+    generate_log("base", total_cases, base_start_date)
+    generate_log("batching", total_cases, alternative_start_date)
+    generate_log("contention1", total_cases, alternative_start_date)
+    generate_log("contention2", total_cases, alternative_start_date)
+    generate_log("prioritization", total_cases, alternative_start_date)
+    generate_log("unavailability1", total_cases, alternative_start_date)
+    generate_log("unavailability2", total_cases, alternative_start_date)

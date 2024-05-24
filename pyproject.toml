@@ -1,33 +1,35 @@
 [tool.poetry]
-name = "expert"
+name = "dynamik"
 version = "0.1.0"
-description = "A package for detecting performance drifts in process models by analyzing event logs"
+description = "A package for analyzing process dynamics from event logs"
 license = "Apache-2.0"
 authors = ["Victor Gallego-Fontenla <victorjose.gallego@usc.gal>"]
 readme = "README.md"
 repository = "https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git"
-packages = [{ include = "expert" }]
+packages = [{ include = "dynamik" }]
 
 [tool.poetry.scripts]
-expert = "expert.cli:run"
+expert = "dynamik.cli:run"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-verboselogs = "^1.7"
-coloredlogs = "^15.0.1"
-pyyaml = "^6.0.1"
-pandas = {extras = ["performance"], version = "^2.1.4"}
-numpy = "^1.26.4"
-scipy = "^1.13.0"
+verboselogs = "1.7"
+coloredlogs = "15.0.1"
+pyyaml = "6.0.1"
+pandas = {extras = ["performance"], version = "2.1.4"}
+numpy = "1.26.4"
+scipy = "1.13.0"
 intervaltree = { git = "https://github.com/chaimleib/intervaltree.git" }
-matplotlib = "^3.8.4"
-anytree = "^2.12.1"
-imodels = "^1.4.3"
-scikit-learn = "^1.4.2"
-imbalanced-learn = "^0.12.2"
-rich-argparse = "^1.4.0"
-pyjanitor = "^0.27.0"
-statsmodels = "^0.14.2"
+matplotlib = "3.8.4"
+anytree = "2.12.1"
+imodels = "1.4.3"
+scikit-learn = "1.4.2"
+imbalanced-learn = "0.12.2"
+rich-argparse = "1.4.0"
+pyjanitor = "0.27.0"
+statsmodels = "0.14.2"
+#pymc = "^5.15.0"
+#numpyro = "^0.15.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.6"
@@ -36,7 +38,8 @@ pdoc3 = "^0.10.0"
 
 
 [tool.poetry.group.log-generation.dependencies]
-prosimos = "^2.0.4"
+#prosimos = "^2.0.4"
+prosimos = "2.0.4"
 
 [tool.taskipy.tasks.lint]
 cmd = "ruff check ."

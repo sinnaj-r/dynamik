@@ -6,7 +6,7 @@ from datetime import timedelta
 
 import pandas as pd
 
-from expert.model import Batch, Log
+from dynamik.model import Batch, Log
 
 
 @dataclass

@@ -2,8 +2,8 @@
 
 from anytree import RenderTree
 
-from expert.drift.model import DriftCause
-from expert.utils.logger import LOGGER
+from dynamik.drift.model import DriftCause
+from dynamik.utils.logger import LOGGER
 
 
 def print_causes(drift_causes: DriftCause) -> None:

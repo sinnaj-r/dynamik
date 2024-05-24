@@ -5,11 +5,10 @@ import typing
 from collections import deque
 from copy import deepcopy
 from datetime import datetime, timedelta
-from statistics import mean, median, stdev
 
-from expert.drift.model import NO_DRIFT, Drift, DriftLevel, Model
-from expert.model import Event, Log
-from expert.utils.logger import LOGGER
+from dynamik.drift.model import NO_DRIFT, Drift, DriftLevel, Model
+from dynamik.model import Event, Log
+from dynamik.utils.logger import LOGGER
 
 
 def detect_drift(
@@ -19,7 +18,7 @@ def detect_drift(
         warm_up: timedelta,
         overlap_between_models: timedelta = timedelta(),
         warnings_to_confirm: int = 5,
-        threshold: timedelta = timedelta(minutes=1),
+        threshold: timedelta | float = timedelta(minutes=1),
         significance: float = 0.05,
 ) -> typing.Generator[Drift, None, typing.Iterable[Drift]]:
     """Find drifts in the performance of a process execution by monitoring its cycle time.
@@ -56,6 +55,7 @@ def detect_drift(
     LOGGER.notice("    overlapping: %s", overlap_between_models)
     LOGGER.notice("    warm up: %s", warm_up)
     LOGGER.notice("    warnings before confirmation: %s", warnings_to_confirm)
+    LOGGER.notice("    threshold: %s", f"{threshold * 100}%" if isinstance(threshold, float) else threshold)
 
     # Create a list for storing the drifts
     drifts: list[Drift] = []
@@ -117,7 +117,7 @@ class DriftDetector:
     __drift_warnings: typing.MutableSequence[Drift] = deque([NO_DRIFT], maxlen=1)
 
     __significance: float
-    __threshold: timedelta
+    __threshold: timedelta | float
 
     def __init__(
             self: typing.Self,
@@ -126,7 +126,7 @@ class DriftDetector:
             warm_up: timedelta = timedelta(),
             overlap_between_models: timedelta = timedelta(),
             warnings_to_confirm: int = 3,
-            threshold: timedelta = timedelta(minutes=1),
+            threshold: timedelta | float = timedelta(minutes=1),
             significance: float = 0.05,
     ) -> None:
         """
@@ -169,20 +169,6 @@ class DriftDetector:
     def __update_drifts(self: typing.Self) -> Drift:
         LOGGER.debug("updating drifts")
 
-        LOGGER.verbose(
-            "reference time distribution is mean=%s, median=%s, sd=%s",
-            mean([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else -1,
-            median([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else -1,
-            stdev([event.cycle_time.total_seconds() for event in self.__reference_model.data]) if len(self.__reference_model.data) > 0 else -1,
-        )
-
-        LOGGER.verbose(
-            "running time distribution is mean=%s, median=%s, sd=%s",
-            mean([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
-            median([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
-            stdev([event.cycle_time.total_seconds() for event in self.__running_model.data]) if len(self.__running_model.data) > 0 else -1,
-        )
-
         # If models are not equivalent, there is a drift
         if (
             not self.__reference_model.empty and
@@ -201,7 +187,7 @@ class DriftDetector:
             )
 
             # The first warning is the same as in the previous warning, or the warning itself if no previous warnings
-            if self.__drift_warnings[-1].level == DriftLevel.WARNING:
+            if self.__warnings_to_confirm > 0 and self.__drift_warnings[-1].level == DriftLevel.WARNING:
                 drift.first_warning = self.__drift_warnings[-1].first_warning
             else:
                 drift.first_warning = deepcopy(drift)
@@ -215,7 +201,7 @@ class DriftDetector:
                 self.__running_model.start, self.__running_model.end)
 
             # When enough successive WARNINGS are found, the drift is confirmed
-            if all(dft.level == DriftLevel.WARNING for dft in self.__drift_warnings):
+            if self.__warnings_to_confirm == 0 or all(dft.level == DriftLevel.WARNING for dft in self.__drift_warnings):
                 LOGGER.verbose(
                     "drift confirmed between reference model (%s - %s) and running model (%s - %s)",
                     self.__reference_model.start, self.__reference_model.end, self.__running_model.start, self.__running_model.end,
@@ -224,7 +210,7 @@ class DriftDetector:
                     level=DriftLevel.CONFIRMED,
                     reference_model=self.__reference_model,
                     running_model=self.__running_model,
-                    first_warning=self.__drift_warnings[-1].first_warning,
+                    first_warning=drift.first_warning if self.__warnings_to_confirm == 0 else self.__drift_warnings[-1].first_warning,
                 )
                 # when the drift is confirmed, the detector is restarted
                 self.__reference_model = None

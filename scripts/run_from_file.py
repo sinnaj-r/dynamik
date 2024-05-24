@@ -3,15 +3,15 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
-from expert.drift.causality import explain_drift
-from expert.drift.detection import detect_drift
-from expert.input import EventMapping
-from expert.input.csv import read_and_merge_csv_logs
-from expert.model import Log
-from expert.output import print_causes, export_causes
-from expert.utils.logger import LOGGER, Level, setup_logger
-from expert.utils.pm.concurrency import OverlappingConcurrencyOracle
-from expert.utils.timer import DEFAULT_TIMER as TIMER
+from dynamik.drift.causality import explain_drift
+from dynamik.drift.detection import detect_drift
+from dynamik.input import EventMapping
+from dynamik.input.csv import read_and_merge_csv_logs
+from dynamik.model import Log
+from dynamik.output import print_causes, export_causes
+from dynamik.utils.logger import LOGGER, Level, setup_logger
+from dynamik.utils.pm.concurrency import OverlappingConcurrencyOracle
+from dynamik.utils.timer import DEFAULT_TIMER as TIMER
 
 
 def preprocess(_log: Log) -> Log:
@@ -47,12 +47,6 @@ if __name__ == "__main__":
 
         files = (
             ("../data/logs/real/work_orders.csv", "../data/logs/real/work_orders.mapping.json"),
-            # "../data/logs/base-sequence.csv",
-            # "../data/logs/base-sequence-with-unavailability.csv",
-            # "../data/logs/base-sequence-fast-execution.csv",
-            # "../data/logs/base-sequence-long-run.csv",
-            # "../data/logs/base-sequence-long-run-limited-avail-no-wait.csv",
-            # "../data/logs/base-sequence-batching.csv",
         )
 
         log = read_and_merge_csv_logs(

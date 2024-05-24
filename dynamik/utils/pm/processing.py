@@ -1,8 +1,8 @@
 from intervaltree import Interval, IntervalTree
 
-from expert.model import Log
-from expert.utils.model import TimeInterval
-from expert.utils.pm.calendars import discover_calendars
+from dynamik.model import Log
+from dynamik.utils.model import TimeInterval
+from dynamik.utils.pm.calendars import discover_calendars
 
 
 class ProcessingTimeCanvas:

@@ -8,7 +8,7 @@ import warnings
 import coloredlogs
 import verboselogs
 
-LOGGER: verboselogs.VerboseLogger = verboselogs.VerboseLogger("expert")
+LOGGER: verboselogs.VerboseLogger = verboselogs.VerboseLogger("dynamik")
 """The logger instance"""
 
 

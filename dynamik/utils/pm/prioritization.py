@@ -3,7 +3,7 @@ import functools
 import janitor
 import pandas as pd
 
-from expert.model import Event, Log
+from dynamik.model import Event, Log
 
 
 def __event_as_dict(event: Event) -> dict:

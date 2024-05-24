@@ -1,7 +1,7 @@
 """
 This module contains everything needed for reading an event log from a CSV file.
 
-The log is read as a `typing.Generator[expert.model.Event, None, None]` that yields events one by one in order to
+The log is read as a `typing.Generator[dynamik.model.Event, None, None]` that yields events one by one in order to
 simulate an event stream where events can be consumed only once.
 """
 import typing
@@ -10,9 +10,9 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-from expert.input import EventMapping
-from expert.model import Event, Log
-from expert.utils.logger import LOGGER
+from dynamik.input import EventMapping
+from dynamik.model import Event, Log
+from dynamik.utils.logger import LOGGER
 
 DEFAULT_CSV_MAPPING: EventMapping = EventMapping(
     start="start",
@@ -126,19 +126,19 @@ def read_csv_log(
     Read an event log from a CSV file.
 
     The file is expected to contain a header row and an event per row.
-    Events will be mapped to `expert.model.Event` instances by applying the provided `expert.input.Mapping` object.
+    Events will be mapped to `dynamik.model.Event` instances by applying the provided `dynamik.input.Mapping` object.
     The functon returns a Generator that yields the events from the log file one by one to optimize memory usage.
 
     Parameters
     ----------
     * `log_path`:           *the path to the CSV log file*
-    * `attribute_mapping`:  *an instance of `expert.input.Mapping` defining a mapping between CSV columns and event attributes*.
+    * `attribute_mapping`:  *an instance of `dynamik.input.Mapping` defining a mapping between CSV columns and event attributes*.
     * `case_prefix`:        *a prefix that will be prepended to every case ID on the log*
 
     Yields
     ------
-    * the parsed events sorted by the `expert.model.Event.end`and `expert.model.Event.start` timestamps and transformed to
-      instances of `expert.model.Event`
+    * the parsed events sorted by the `dynamik.model.Event.end`and `dynamik.model.Event.start` timestamps and transformed to
+      instances of `dynamik.model.Event`
     """
     # Read log
     event_log = pd.read_csv(log_path, skipinitialspace=True, na_values=["[NULL]", ""], engine="c")
@@ -171,7 +171,7 @@ def read_and_merge_csv_logs(
     Read a set of event logs from CSV files and combine them.
 
     The files are expected to contain a header row and an event per row.
-    Events will be mapped to `expert.model.Event` instances by applying the provided `expert.input.Mapping` object.
+    Events will be mapped to `dynamik.model.Event` instances by applying the provided `dynamik.input.Mapping` object.
     The functon returns a Generator that yields the events from the log file one by one to optimize memory usage.
 
     Parameters
@@ -180,13 +180,13 @@ def read_and_merge_csv_logs(
                              name the events with the same case id will be considered as part of the same case.
                              Otherwise, the log name will be appended to the case id so events from different log files
                              are considered as different cases even if they have the same case id*
-    * `attribute_mapping`:  *an instance of `expert.input.Mapping` defining a mapping between CSV columns and event
+    * `attribute_mapping`:  *an instance of `dynamik.input.Mapping` defining a mapping between CSV columns and event
                              attributes*
 
     Yields
     ------
-    * the parsed events sorted by the `expert.model.Event.end`and `expert.model.Event.start` timestamps and transformed
-      to instances of `expert.model.Event`
+    * the parsed events sorted by the `dynamik.model.Event.end`and `dynamik.model.Event.start` timestamps and transformed
+      to instances of `dynamik.model.Event`
     """
     event_logs = []
 
