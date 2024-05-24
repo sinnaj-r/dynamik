@@ -1,0 +1,114 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 1372,
+            "minmax": [
+                444.07022,
+                1786.133165
+            ],
+            "mean": 952.8179142237609,
+            "variance": 90120.77360905554,
+            "skewness": 0.3550683087909267,
+            "kurtosis": -0.9578558903958654
+        },
+        "running": {
+            "nobs": 1360,
+            "minmax": [
+                431.059884,
+                1739.273796
+            ],
+            "mean": 829.0856049220588,
+            "variance": 60019.07636751426,
+            "skewness": 0.8201170102445186,
+            "kurtosis": 0.05019073364220494
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 1372,
+                    "minmax": [
+                        0.0,
+                        1118.373162
+                    ],
+                    "mean": 350.86251962172014,
+                    "variance": 86539.66604030563,
+                    "skewness": 0.38185661711828356,
+                    "kurtosis": -0.9979143235983279
+                },
+                "running": {
+                    "nobs": 1360,
+                    "minmax": [
+                        0.0,
+                        1122.013625
+                    ],
+                    "mean": 227.89676457205883,
+                    "variance": 54425.992187301366,
+                    "skewness": 0.9136163475124387,
+                    "kurtosis": 0.09705927657921487
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1372,
+                            "minmax": [
+                                0.0,
+                                897.75259
+                            ],
+                            "mean": 32.552181635568516,
+                            "variance": 18566.054526924472,
+                            "skewness": 4.120518793052586,
+                            "kurtosis": 15.686824870305124
+                        },
+                        "running": {
+                            "nobs": 1360,
+                            "minmax": [
+                                0.0,
+                                915.67655
+                            ],
+                            "mean": 12.646577591911765,
+                            "variance": 7717.466348792897,
+                            "skewness": 7.119001357124112,
+                            "kurtosis": 50.910377792671056
+                        }
+                    },
+                    "causes": []
+                },
+                {
+                    "what": "waiting time due to resource contention changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1372,
+                            "minmax": [
+                                0.0,
+                                1118.373162
+                            ],
+                            "mean": 318.31033798615164,
+                            "variance": 80876.2737108473,
+                            "skewness": 0.5444838430750734,
+                            "kurtosis": -0.774935511783398
+                        },
+                        "running": {
+                            "nobs": 1360,
+                            "minmax": [
+                                0.0,
+                                1122.013625
+                            ],
+                            "mean": 215.25018698014705,
+                            "variance": 51024.99859891526,
+                            "skewness": 0.9778732627668763,
+                            "kurtosis": 0.2945423760365973
+                        }
+                    },
+                    "causes": []
+                }
+            ]
+        }
+    ]
+}

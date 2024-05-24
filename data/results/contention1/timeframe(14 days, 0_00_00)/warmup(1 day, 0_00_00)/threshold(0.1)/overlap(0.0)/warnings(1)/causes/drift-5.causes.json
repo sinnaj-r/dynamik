@@ -1,0 +1,142 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 2740,
+            "minmax": [
+                413.326137,
+                2270.9294
+            ],
+            "mean": 915.7083685755475,
+            "variance": 107069.16580346342,
+            "skewness": 1.1412551023763453,
+            "kurtosis": 1.366001961942585
+        },
+        "running": {
+            "nobs": 2714,
+            "minmax": [
+                375.641603,
+                1784.946444
+            ],
+            "mean": 871.1456476495946,
+            "variance": 64396.5426806207,
+            "skewness": 0.5882691562892959,
+            "kurtosis": -0.3323864108878305
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 2740,
+                    "minmax": [
+                        0.0,
+                        1658.213386
+                    ],
+                    "mean": 314.78878356970796,
+                    "variance": 102982.32041538402,
+                    "skewness": 1.182877016057197,
+                    "kurtosis": 1.4419646772777694
+                },
+                "running": {
+                    "nobs": 2714,
+                    "minmax": [
+                        0.0,
+                        1187.152127
+                    ],
+                    "mean": 270.9261408725129,
+                    "variance": 59796.52803847979,
+                    "skewness": 0.6674141144075698,
+                    "kurtosis": -0.24982591384992014
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2740,
+                            "minmax": [
+                                0.0,
+                                1320.38801
+                            ],
+                            "mean": 19.911445624452554,
+                            "variance": 13572.293085021649,
+                            "skewness": 6.444134878536355,
+                            "kurtosis": 45.34283921944075
+                        },
+                        "running": {
+                            "nobs": 2714,
+                            "minmax": [
+                                0.0,
+                                783.911018
+                            ],
+                            "mean": 10.497778295504789,
+                            "variance": 5795.157132909358,
+                            "skewness": 7.417779523767697,
+                            "kurtosis": 54.87505279960883
+                        }
+                    },
+                    "causes": []
+                },
+                {
+                    "what": "waiting time due to resource contention changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2740,
+                            "minmax": [
+                                0.0,
+                                1658.213386
+                            ],
+                            "mean": 294.8773379452555,
+                            "variance": 91638.07443020094,
+                            "skewness": 1.1599847129435714,
+                            "kurtosis": 1.4181264187384839
+                        },
+                        "running": {
+                            "nobs": 2714,
+                            "minmax": [
+                                0.0,
+                                1187.152127
+                            ],
+                            "mean": 260.25731823986735,
+                            "variance": 58021.63060520396,
+                            "skewness": 0.7292860498087411,
+                            "kurtosis": -0.1244567114910935
+                        }
+                    },
+                    "causes": []
+                },
+                {
+                    "what": "waiting time due to extraneous delays changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2740,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2714,
+                            "minmax": [
+                                0.0,
+                                464.214331
+                            ],
+                            "mean": 0.17104433714075165,
+                            "variance": 79.40123253713247,
+                            "skewness": 52.06726772738944,
+                            "kurtosis": 2709.000368595651
+                        }
+                    },
+                    "causes": []
+                }
+            ]
+        }
+    ]
+}

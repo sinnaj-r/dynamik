@@ -1,0 +1,689 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 2779,
+            "minmax": [
+                415.246214,
+                788.311134
+            ],
+            "mean": 601.1639833494063,
+            "variance": 3651.6936020711323,
+            "skewness": -0.006605017515270631,
+            "kurtosis": -0.14345083632970024
+        },
+        "running": {
+            "nobs": 2768,
+            "minmax": [
+                349.067029,
+                67933.00145
+            ],
+            "mean": 1433.3256603652453,
+            "variance": 42518467.796455644,
+            "skewness": 9.872623831515561,
+            "kurtosis": 96.15892143911553
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 2779,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 2768,
+                    "minmax": [
+                        0.0,
+                        67293.050205
+                    ],
+                    "mean": 832.8464992850433,
+                    "variance": 42509044.50497332,
+                    "skewness": 9.87364146046258,
+                    "kurtosis": 96.17184270781173
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2779,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2768,
+                            "minmax": [
+                                0.0,
+                                67293.050205
+                            ],
+                            "mean": 832.8464992850433,
+                            "variance": 42509044.50497332,
+                            "skewness": 9.87364146046258,
+                            "kurtosis": 96.17184270781173
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "batch creation policies changed!",
+                            "how": {
+                                "reference": {
+                                    "(resource != Base profile_9) && (activity == B) && (attributes.revenue <= 88.13585)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2733,
+                                        "false_positives": 46,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.983447283195394
+                                    },
+                                    "(resource != Base profile_9) && (attributes.revenue > 88.13585) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2322,
+                                        "false_positives": 457,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8355523569629363
+                                    },
+                                    "(resource != Base profile_40) && (resource != Base profile_2) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2287,
+                                        "false_positives": 492,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8229578985246492
+                                    },
+                                    "(resource != Base profile_44) && (resource != Base profile_0) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2287,
+                                        "false_positives": 492,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8229578985246492
+                                    },
+                                    "(resource != Base profile_0) && (resource != Base profile_26) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2289,
+                                        "false_positives": 490,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8236775818639799
+                                    },
+                                    "(resource != Base profile_44) && (resource != Base profile_40) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2288,
+                                        "false_positives": 491,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8233177401943145
+                                    },
+                                    "(attributes.revenue <= 126.69457) && (resource != Base profile_26) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2283,
+                                        "false_positives": 496,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8215185318459878
+                                    },
+                                    "(attributes.revenue <= 127.60085) && (resource != Base profile_40) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2281,
+                                        "false_positives": 498,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8207988485066571
+                                    }
+                                },
+                                "running": {
+                                    "(resource != Base profile_9) && (activity == B) && (attributes.revenue <= 88.13585)": {
+                                        "true_positives": 43,
+                                        "true_negatives": 2286,
+                                        "false_positives": 7,
+                                        "false_negatives": 432,
+                                        "f1_score": 0.16380952380952382,
+                                        "classification_accuracy": 0.8414017341040463
+                                    },
+                                    "(resource != Base profile_9) && (attributes.revenue > 88.13585) && (activity == B)": {
+                                        "true_positives": 432,
+                                        "true_negatives": 2259,
+                                        "false_positives": 34,
+                                        "false_negatives": 43,
+                                        "f1_score": 0.91817215727949,
+                                        "classification_accuracy": 0.9721820809248555
+                                    },
+                                    "(resource != Base profile_40) && (resource != Base profile_2) && (activity == B)": {
+                                        "true_positives": 465,
+                                        "true_negatives": 2257,
+                                        "false_positives": 36,
+                                        "false_negatives": 10,
+                                        "f1_score": 0.9528688524590165,
+                                        "classification_accuracy": 0.9833815028901735
+                                    },
+                                    "(resource != Base profile_44) && (resource != Base profile_0) && (activity == B)": {
+                                        "true_positives": 460,
+                                        "true_negatives": 2255,
+                                        "false_positives": 38,
+                                        "false_negatives": 15,
+                                        "f1_score": 0.9455292908530321,
+                                        "classification_accuracy": 0.9808526011560693
+                                    },
+                                    "(resource != Base profile_0) && (resource != Base profile_26) && (activity == B)": {
+                                        "true_positives": 465,
+                                        "true_negatives": 2254,
+                                        "false_positives": 39,
+                                        "false_negatives": 10,
+                                        "f1_score": 0.9499489274770173,
+                                        "classification_accuracy": 0.9822976878612717
+                                    },
+                                    "(resource != Base profile_44) && (resource != Base profile_40) && (activity == B)": {
+                                        "true_positives": 465,
+                                        "true_negatives": 2257,
+                                        "false_positives": 36,
+                                        "false_negatives": 10,
+                                        "f1_score": 0.9528688524590165,
+                                        "classification_accuracy": 0.9833815028901735
+                                    },
+                                    "(attributes.revenue <= 126.69457) && (resource != Base profile_26) && (activity == B)": {
+                                        "true_positives": 473,
+                                        "true_negatives": 2253,
+                                        "false_positives": 40,
+                                        "false_negatives": 2,
+                                        "f1_score": 0.9574898785425101,
+                                        "classification_accuracy": 0.9848265895953757
+                                    },
+                                    "(attributes.revenue <= 127.60085) && (resource != Base profile_40) && (activity == B)": {
+                                        "true_positives": 470,
+                                        "true_negatives": 2256,
+                                        "false_positives": 37,
+                                        "false_negatives": 5,
+                                        "f1_score": 0.9572301425661915,
+                                        "classification_accuracy": 0.9848265895953757
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_9) && (activity == B) && (attributes.revenue <= 88.13585)' changed!",
+                            "how": {
+                                "reference": {
+                                    "(hour_of_day > 8) && (time_since_first > 2034.56903)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(hour_of_day > 8) && (time_since_first > 2034.56903)": {
+                                        "true_positives": 14,
+                                        "true_negatives": 36,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_9) && (attributes.revenue > 88.13585) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "(time_since_first > 34040.35876) && (time_since_last <= 32910.91925)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66543.23828": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 33786.94934) && (time_since_first > 2048.98871)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(time_since_first > 34040.35876) && (time_since_last <= 32910.91925)": {
+                                        "true_positives": 17,
+                                        "true_negatives": 339,
+                                        "false_positives": 5,
+                                        "false_negatives": 159,
+                                        "f1_score": 0.17171717171717168,
+                                        "classification_accuracy": 0.6846153846153846
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 176,
+                                        "true_negatives": 344,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "time_since_first > 66543.23828": {
+                                        "true_positives": 20,
+                                        "true_negatives": 343,
+                                        "false_positives": 1,
+                                        "false_negatives": 156,
+                                        "f1_score": 0.2030456852791878,
+                                        "classification_accuracy": 0.698076923076923
+                                    },
+                                    "(time_since_first <= 33786.94934) && (time_since_first > 2048.98871)": {
+                                        "true_positives": 154,
+                                        "true_negatives": 344,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9333333333333333,
+                                        "classification_accuracy": 0.9576923076923077
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_40) && (resource != Base profile_2) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34420.28528) && (time_since_first > 2062.74023) && (time_since_last <= 65117.11133)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 20,
+                                        "true_negatives": 371,
+                                        "false_positives": 1,
+                                        "false_negatives": 166,
+                                        "f1_score": 0.19323671497584538,
+                                        "classification_accuracy": 0.7007168458781362
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 186,
+                                        "true_negatives": 372,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first <= 34420.28528) && (time_since_first > 2062.74023) && (time_since_last <= 65117.11133)": {
+                                        "true_positives": 164,
+                                        "true_negatives": 372,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9371428571428573,
+                                        "classification_accuracy": 0.9605734767025089
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_44) && (resource != Base profile_0) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34420.28528) && (time_since_last <= 32910.91925) && (time_since_first > 2081.15308)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 20,
+                                        "true_negatives": 367,
+                                        "false_positives": 1,
+                                        "false_negatives": 164,
+                                        "f1_score": 0.19512195121951217,
+                                        "classification_accuracy": 0.7010869565217391
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 184,
+                                        "true_negatives": 368,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first <= 34420.28528) && (time_since_last <= 32910.91925) && (time_since_first > 2081.15308)": {
+                                        "true_positives": 162,
+                                        "true_negatives": 368,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9364161849710984,
+                                        "classification_accuracy": 0.9601449275362319
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_0) && (resource != Base profile_26) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34420.28528) && (time_since_last <= 32910.91925) && (time_since_first > 2081.15308)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 20,
+                                        "true_negatives": 371,
+                                        "false_positives": 1,
+                                        "false_negatives": 166,
+                                        "f1_score": 0.19323671497584538,
+                                        "classification_accuracy": 0.7007168458781362
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 186,
+                                        "true_negatives": 372,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first <= 34420.28528) && (time_since_last <= 32910.91925) && (time_since_first > 2081.15308)": {
+                                        "true_positives": 164,
+                                        "true_negatives": 372,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9371428571428573,
+                                        "classification_accuracy": 0.9605734767025089
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_44) && (resource != Base profile_40) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "(time_since_first > 2075.91125) && (time_since_first <= 34420.28528) && (time_since_last <= 32897.84741)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(time_since_first > 2075.91125) && (time_since_first <= 34420.28528) && (time_since_last <= 32897.84741)": {
+                                        "true_positives": 164,
+                                        "true_negatives": 372,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9371428571428573,
+                                        "classification_accuracy": 0.9605734767025089
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 186,
+                                        "true_negatives": 372,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 20,
+                                        "true_negatives": 371,
+                                        "false_positives": 1,
+                                        "false_negatives": 166,
+                                        "f1_score": 0.19323671497584538,
+                                        "classification_accuracy": 0.7007168458781362
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(attributes.revenue <= 126.69457) && (resource != Base profile_26) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "time_since_first > 66465.71094": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first > 2075.91125) && (time_since_first <= 33786.94934)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first > 34249.89856) && (time_since_last <= 32847.17468)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "time_since_first > 66465.71094": {
+                                        "true_positives": 20,
+                                        "true_negatives": 378,
+                                        "false_positives": 1,
+                                        "false_negatives": 168,
+                                        "f1_score": 0.1913875598086124,
+                                        "classification_accuracy": 0.7019400352733686
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 188,
+                                        "true_negatives": 379,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first > 2075.91125) && (time_since_first <= 33786.94934)": {
+                                        "true_positives": 166,
+                                        "true_negatives": 379,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9378531073446328,
+                                        "classification_accuracy": 0.9611992945326279
+                                    },
+                                    "(time_since_first > 34249.89856) && (time_since_last <= 32847.17468)": {
+                                        "true_positives": 17,
+                                        "true_negatives": 373,
+                                        "false_positives": 6,
+                                        "false_negatives": 171,
+                                        "f1_score": 0.16113744075829384,
+                                        "classification_accuracy": 0.6878306878306878
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(attributes.revenue <= 127.60085) && (resource != Base profile_40) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "(time_since_first > 2075.91125) && (time_since_first <= 34420.28528) && (time_since_last <= 32897.84741)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(time_since_first > 2075.91125) && (time_since_first <= 34420.28528) && (time_since_last <= 32897.84741)": {
+                                        "true_positives": 166,
+                                        "true_negatives": 376,
+                                        "false_positives": 0,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9378531073446328,
+                                        "classification_accuracy": 0.9609929078014184
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 188,
+                                        "true_negatives": 376,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "time_since_first > 66512.75": {
+                                        "true_positives": 20,
+                                        "true_negatives": 375,
+                                        "false_positives": 1,
+                                        "false_negatives": 168,
+                                        "f1_score": 0.1913875598086124,
+                                        "classification_accuracy": 0.700354609929078
+                                    }
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,114 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 2754,
+            "minmax": [
+                405.043608,
+                789.008769
+            ],
+            "mean": 601.1868392806826,
+            "variance": 3564.534786965864,
+            "skewness": 0.001910109640816924,
+            "kurtosis": -0.19022582608841487
+        },
+        "running": {
+            "nobs": 2735,
+            "minmax": [
+                396.752285,
+                1765.579457
+            ],
+            "mean": 729.7519981184644,
+            "variance": 52746.38054870633,
+            "skewness": 1.5205771302249091,
+            "kurtosis": 1.6779364395655092
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 2754,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 2735,
+                    "minmax": [
+                        0.0,
+                        1171.449565
+                    ],
+                    "mean": 129.43893425594152,
+                    "variance": 49401.111117633816,
+                    "skewness": 1.6928597205833846,
+                    "kurtosis": 1.9966110915229454
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2754,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2735,
+                            "minmax": [
+                                0.0,
+                                934.99462
+                            ],
+                            "mean": 7.116081378427786,
+                            "variance": 4095.58128275297,
+                            "skewness": 9.363616622126365,
+                            "kurtosis": 90.43783124728745
+                        }
+                    },
+                    "causes": []
+                },
+                {
+                    "what": "waiting time due to resource contention changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2754,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2735,
+                            "minmax": [
+                                0.0,
+                                1171.449565
+                            ],
+                            "mean": 122.32285287751372,
+                            "variance": 45348.76621232819,
+                            "skewness": 1.7428882774031382,
+                            "kurtosis": 2.24385711123482
+                        }
+                    },
+                    "causes": []
+                }
+            ]
+        }
+    ]
+}

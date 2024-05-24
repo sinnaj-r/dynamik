@@ -1,0 +1,171 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 2758,
+            "minmax": [
+                403.340444,
+                801.879766
+            ],
+            "mean": 600.1170185591009,
+            "variance": 3523.23789411228,
+            "skewness": -0.004244212084434117,
+            "kurtosis": -0.10016743684193408
+        },
+        "running": {
+            "nobs": 2729,
+            "minmax": [
+                349.067029,
+                67739.324208
+            ],
+            "mean": 1482.1534046251375,
+            "variance": 44602129.53364472,
+            "skewness": 9.61516083881205,
+            "kurtosis": 91.12998046111308
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 2758,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 2729,
+                    "minmax": [
+                        0.0,
+                        67089.655964
+                    ],
+                    "mean": 882.1303140809821,
+                    "variance": 44600472.3476236,
+                    "skewness": 9.616343001368415,
+                    "kurtosis": 91.14393347916835
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2758,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2729,
+                            "minmax": [
+                                0.0,
+                                67089.655964
+                            ],
+                            "mean": 882.1303140809821,
+                            "variance": 44600472.3476236,
+                            "skewness": 9.616343001368415,
+                            "kurtosis": 91.14393347916835
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "batch creation policies changed!",
+                            "how": {
+                                "reference": {
+                                    "activity == B": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2250,
+                                        "false_positives": 508,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8158085569253082
+                                    }
+                                },
+                                "running": {
+                                    "activity == B": {
+                                        "true_positives": 507,
+                                        "true_negatives": 2222,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for 'activity == B' changed!",
+                            "how": {
+                                "reference": {
+                                    "(time_since_first > 2131.69775) && (time_since_last <= 64906.20117)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first > 2131.66504) && (time_since_first <= 34022.61926) && (time_since_last <= 32884.1994)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(time_since_first > 2131.69775) && (time_since_last <= 64906.20117)": {
+                                        "true_positives": 198,
+                                        "true_negatives": 397,
+                                        "false_positives": 5,
+                                        "false_negatives": 6,
+                                        "f1_score": 0.972972972972973,
+                                        "classification_accuracy": 0.9818481848184818
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 202,
+                                        "true_negatives": 402,
+                                        "false_positives": 0,
+                                        "false_negatives": 2,
+                                        "f1_score": 0.9950738916256158,
+                                        "classification_accuracy": 0.9966996699669967
+                                    },
+                                    "(time_since_first > 2131.66504) && (time_since_first <= 34022.61926) && (time_since_last <= 32884.1994)": {
+                                        "true_positives": 180,
+                                        "true_negatives": 402,
+                                        "false_positives": 0,
+                                        "false_negatives": 24,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9603960396039604
+                                    }
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

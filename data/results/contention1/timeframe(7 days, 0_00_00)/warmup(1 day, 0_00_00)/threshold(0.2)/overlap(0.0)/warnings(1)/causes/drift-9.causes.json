@@ -1,0 +1,141 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 1374,
+            "minmax": [
+                439.310068,
+                1763.652648
+            ],
+            "mean": 885.906655125182,
+            "variance": 71329.69469392326,
+            "skewness": 0.685427730743392,
+            "kurtosis": -0.20957103199017624
+        },
+        "running": {
+            "nobs": 1387,
+            "minmax": [
+                451.557824,
+                2362.706474
+            ],
+            "mean": 995.8460918464311,
+            "variance": 120241.07293773454,
+            "skewness": 1.0145096551725832,
+            "kurtosis": 1.4358733078109998
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 1374,
+                    "minmax": [
+                        0.0,
+                        1140.782196
+                    ],
+                    "mean": 286.46026772634644,
+                    "variance": 67590.88550456446,
+                    "skewness": 0.7050170539188093,
+                    "kurtosis": -0.26170717923348397
+                },
+                "running": {
+                    "nobs": 1387,
+                    "minmax": [
+                        0.0,
+                        1754.847218
+                    ],
+                    "mean": 395.30662656885374,
+                    "variance": 115683.56517234269,
+                    "skewness": 1.0598898718124456,
+                    "kurtosis": 1.513340270755835
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1374,
+                            "minmax": [
+                                0.0,
+                                944.352793
+                            ],
+                            "mean": 12.962340172489084,
+                            "variance": 7306.535761031064,
+                            "skewness": 6.924943140153841,
+                            "kurtosis": 49.168680531255575
+                        },
+                        "running": {
+                            "nobs": 1387,
+                            "minmax": [
+                                0.0,
+                                1273.755131
+                            ],
+                            "mean": 28.50748166113915,
+                            "variance": 18115.281860264935,
+                            "skewness": 5.1161085840069624,
+                            "kurtosis": 28.272112556567304
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "batch creation policies changed!",
+                            "how": {
+                                "reference": {
+                                    "(attributes.revenue <= 113.63582) && (attributes.revenue > 113.51428)": {
+                                        "true_positives": 3,
+                                        "true_negatives": 1294,
+                                        "false_positives": 2,
+                                        "false_negatives": 65,
+                                        "f1_score": 0.08219178082191782,
+                                        "classification_accuracy": 0.9508797653958945
+                                    }
+                                },
+                                "running": {
+                                    "(attributes.revenue <= 113.63582) && (attributes.revenue > 113.51428)": {
+                                        "true_positives": 1,
+                                        "true_negatives": 1241,
+                                        "false_positives": 4,
+                                        "false_negatives": 127,
+                                        "f1_score": 0.015037593984962405,
+                                        "classification_accuracy": 0.9045884923525127
+                                    }
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                },
+                {
+                    "what": "waiting time due to resource contention changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1374,
+                            "minmax": [
+                                0.0,
+                                1140.782196
+                            ],
+                            "mean": 273.4979275538574,
+                            "variance": 64674.95042996709,
+                            "skewness": 0.7692124940126934,
+                            "kurtosis": -0.10680166910038214
+                        },
+                        "running": {
+                            "nobs": 1387,
+                            "minmax": [
+                                0.0,
+                                1754.847218
+                            ],
+                            "mean": 366.7991449077145,
+                            "variance": 108744.1494601549,
+                            "skewness": 1.1190664657258496,
+                            "kurtosis": 1.7426567538515423
+                        }
+                    },
+                    "causes": []
+                }
+            ]
+        }
+    ]
+}

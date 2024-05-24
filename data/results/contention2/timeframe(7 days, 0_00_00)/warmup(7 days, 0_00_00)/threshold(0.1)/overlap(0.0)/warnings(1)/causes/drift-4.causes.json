@@ -1,0 +1,586 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 1370,
+            "minmax": [
+                420.824176,
+                798.111974
+            ],
+            "mean": 599.6139484474453,
+            "variance": 3563.9456899570528,
+            "skewness": 0.07859841458281228,
+            "kurtosis": -0.09965564253892589
+        },
+        "running": {
+            "nobs": 11802,
+            "minmax": [
+                437.196261,
+                1507.732127
+            ],
+            "mean": 866.3204090414338,
+            "variance": 36918.435440301524,
+            "skewness": 0.22484813730903455,
+            "kurtosis": -0.6292034283329726
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 1370,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 11802,
+                    "minmax": [
+                        0.0,
+                        789.889718
+                    ],
+                    "mean": 267.1611256730215,
+                    "variance": 33418.07741112415,
+                    "skewness": 0.24504594744534283,
+                    "kurtosis": -0.7907379120319256
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1370,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 11802,
+                            "minmax": [
+                                0.0,
+                                685.249736
+                            ],
+                            "mean": 4.152759620064396,
+                            "variance": 2230.8054498266965,
+                            "skewness": 11.447399511873103,
+                            "kurtosis": 130.7356523284223
+                        }
+                    },
+                    "causes": []
+                },
+                {
+                    "what": "waiting time due to resource contention changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1370,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 11802,
+                            "minmax": [
+                                0.0,
+                                789.889718
+                            ],
+                            "mean": 263.0083660529571,
+                            "variance": 32931.049393703055,
+                            "skewness": 0.25511172917535596,
+                            "kurtosis": -0.7815356817227115
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "arrival rates changed!",
+                            "how": {
+                                "reference": {
+                                    "owner": [],
+                                    "calendar": []
+                                },
+                                "running": {
+                                    "owner": [],
+                                    "calendar": [
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 7,
+                                            "value": 1
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 8,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 9,
+                                            "value": 56
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 10,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 11,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 12,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 13,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 8,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 9,
+                                            "value": 51
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 10,
+                                            "value": 58
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 11,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 12,
+                                            "value": 57
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 13,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Wednesday",
+                                            "hour": 8,
+                                            "value": 1
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 8,
+                                            "value": 58
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 9,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 10,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 11,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 12,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 13,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 8,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 9,
+                                            "value": 52
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 10,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 11,
+                                            "value": 52
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 12,
+                                            "value": 56
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 13,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 8,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 9,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 10,
+                                            "value": 51
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 11,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 12,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 13,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 8,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 9,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 10,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 11,
+                                            "value": 52
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 12,
+                                            "value": 55
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 13,
+                                            "value": 54
+                                        }
+                                    ]
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "service rates changed!",
+                            "how": {
+                                "reference": {
+                                    "owner": [],
+                                    "calendar": [
+                                        {
+                                            "weekday": "Wednesday",
+                                            "hour": 12,
+                                            "value": 1
+                                        }
+                                    ]
+                                },
+                                "running": {
+                                    "owner": [],
+                                    "calendar": [
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 8,
+                                            "value": 14
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 9,
+                                            "value": 49
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 10,
+                                            "value": 50
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 11,
+                                            "value": 49
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 12,
+                                            "value": 49
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 13,
+                                            "value": 49
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 14,
+                                            "value": 66
+                                        },
+                                        {
+                                            "weekday": "Monday",
+                                            "hour": 15,
+                                            "value": 1
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 8,
+                                            "value": 13
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 9,
+                                            "value": 51
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 10,
+                                            "value": 44
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 11,
+                                            "value": 44
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 12,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 13,
+                                            "value": 42
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 14,
+                                            "value": 77
+                                        },
+                                        {
+                                            "weekday": "Tuesday",
+                                            "hour": 15,
+                                            "value": 4
+                                        },
+                                        {
+                                            "weekday": "Wednesday",
+                                            "hour": 10,
+                                            "value": 1
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 8,
+                                            "value": 14
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 9,
+                                            "value": 51
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 10,
+                                            "value": 44
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 11,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 12,
+                                            "value": 46
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 13,
+                                            "value": 45
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 14,
+                                            "value": 70
+                                        },
+                                        {
+                                            "weekday": "Thursday",
+                                            "hour": 15,
+                                            "value": 6
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 8,
+                                            "value": 16
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 9,
+                                            "value": 49
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 10,
+                                            "value": 46
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 11,
+                                            "value": 49
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 12,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 13,
+                                            "value": 47
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 14,
+                                            "value": 62
+                                        },
+                                        {
+                                            "weekday": "Friday",
+                                            "hour": 15,
+                                            "value": 1
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 8,
+                                            "value": 15
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 9,
+                                            "value": 51
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 10,
+                                            "value": 43
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 11,
+                                            "value": 46
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 12,
+                                            "value": 53
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 13,
+                                            "value": 54
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 14,
+                                            "value": 56
+                                        },
+                                        {
+                                            "weekday": "Saturday",
+                                            "hour": 15,
+                                            "value": 1
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 8,
+                                            "value": 11
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 9,
+                                            "value": 45
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 10,
+                                            "value": 48
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 11,
+                                            "value": 44
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 12,
+                                            "value": 51
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 13,
+                                            "value": 45
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 14,
+                                            "value": 78
+                                        },
+                                        {
+                                            "weekday": "Sunday",
+                                            "hour": 15,
+                                            "value": 1
+                                        }
+                                    ]
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

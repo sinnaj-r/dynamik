@@ -1,0 +1,86 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 1403,
+            "minmax": [
+                391.360842,
+                804.837906
+            ],
+            "mean": 599.1151220990733,
+            "variance": 3536.740739473908,
+            "skewness": 0.055333910488877855,
+            "kurtosis": -0.022341418371947697
+        },
+        "running": {
+            "nobs": 1381,
+            "minmax": [
+                396.752285,
+                3174.349929
+            ],
+            "mean": 629.5335637096307,
+            "variance": 55320.63658808394,
+            "skewness": 7.505527000278372,
+            "kurtosis": 62.57484676152639
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 1403,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 1381,
+                    "minmax": [
+                        0.0,
+                        2505.408576
+                    ],
+                    "mean": 30.095682874728453,
+                    "variance": 52355.795364323014,
+                    "skewness": 8.338804354582177,
+                    "kurtosis": 72.31939675280405
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1403,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 1381,
+                            "minmax": [
+                                0.0,
+                                2505.408576
+                            ],
+                            "mean": 30.095682874728453,
+                            "variance": 52355.795364323014,
+                            "skewness": 8.338804354582177,
+                            "kurtosis": 72.31939675280405
+                        }
+                    },
+                    "causes": []
+                }
+            ]
+        }
+    ]
+}

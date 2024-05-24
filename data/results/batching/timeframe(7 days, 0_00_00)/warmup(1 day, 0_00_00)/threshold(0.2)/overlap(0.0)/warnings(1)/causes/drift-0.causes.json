@@ -1,0 +1,531 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 1370,
+            "minmax": [
+                403.340444,
+                801.879766
+            ],
+            "mean": 599.1077270985401,
+            "variance": 3379.3464114066333,
+            "skewness": -0.02184954596608548,
+            "kurtosis": -0.07462699606008805
+        },
+        "running": {
+            "nobs": 1412,
+            "minmax": [
+                418.938564,
+                67477.499184
+            ],
+            "mean": 1364.6442736253541,
+            "variance": 37086716.06227155,
+            "skewness": 10.573506260198158,
+            "kurtosis": 110.75298012440774
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 1370,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 1412,
+                    "minmax": [
+                        0.0,
+                        66895.952327
+                    ],
+                    "mean": 761.5955083923513,
+                    "variance": 37098657.073607475,
+                    "skewness": 10.574831673163924,
+                    "kurtosis": 110.77087333543437
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1370,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 1412,
+                            "minmax": [
+                                0.0,
+                                66895.952327
+                            ],
+                            "mean": 761.5955083923513,
+                            "variance": 37098657.073607475,
+                            "skewness": 10.574831673163924,
+                            "kurtosis": 110.77087333543437
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "batch creation policies changed!",
+                            "how": {
+                                "reference": {
+                                    "(resource != Base profile_44) && (attributes.revenue > 81.98737) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 1130,
+                                        "false_positives": 240,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8248175182481752
+                                    },
+                                    "(attributes.revenue > 81.96395) && (resource != Base profile_8) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 1126,
+                                        "false_positives": 244,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8218978102189781
+                                    },
+                                    "(resource != Base profile_44) && (resource != Base profile_41) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 1129,
+                                        "false_positives": 241,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8240875912408759
+                                    },
+                                    "(resource != Base profile_41) && (resource != Base profile_8) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 1126,
+                                        "false_positives": 244,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8218978102189781
+                                    },
+                                    "(resource != Base profile_44) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 1125,
+                                        "false_positives": 245,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8211678832116789
+                                    }
+                                },
+                                "running": {
+                                    "(resource != Base profile_44) && (attributes.revenue > 81.98737) && (activity == B)": {
+                                        "true_positives": 253,
+                                        "true_negatives": 1154,
+                                        "false_positives": 3,
+                                        "false_negatives": 2,
+                                        "f1_score": 0.990215264187867,
+                                        "classification_accuracy": 0.9964589235127479
+                                    },
+                                    "(attributes.revenue > 81.96395) && (resource != Base profile_8) && (activity == B)": {
+                                        "true_positives": 253,
+                                        "true_negatives": 1154,
+                                        "false_positives": 3,
+                                        "false_negatives": 2,
+                                        "f1_score": 0.990215264187867,
+                                        "classification_accuracy": 0.9964589235127479
+                                    },
+                                    "(resource != Base profile_44) && (resource != Base profile_41) && (activity == B)": {
+                                        "true_positives": 255,
+                                        "true_negatives": 1154,
+                                        "false_positives": 3,
+                                        "false_negatives": 0,
+                                        "f1_score": 0.9941520467836258,
+                                        "classification_accuracy": 0.9978753541076487
+                                    },
+                                    "(resource != Base profile_41) && (resource != Base profile_8) && (activity == B)": {
+                                        "true_positives": 255,
+                                        "true_negatives": 1154,
+                                        "false_positives": 3,
+                                        "false_negatives": 0,
+                                        "f1_score": 0.9941520467836258,
+                                        "classification_accuracy": 0.9978753541076487
+                                    },
+                                    "(resource != Base profile_44) && (activity == B)": {
+                                        "true_positives": 255,
+                                        "true_negatives": 1153,
+                                        "false_positives": 4,
+                                        "false_negatives": 0,
+                                        "f1_score": 0.9922178988326849,
+                                        "classification_accuracy": 0.9971671388101983
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_44) && (attributes.revenue > 81.98737) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "(day_of_week == Sunday) && (time_since_last <= 32814.42593) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_last <= 32814.42593) && (day_of_week != Sunday) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 33750.56189) && (time_since_first > 2061.40851)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66535.44141": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(day_of_week == Sunday) && (time_since_last <= 32814.42593) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 12,
+                                        "true_negatives": 200,
+                                        "false_positives": 2,
+                                        "false_negatives": 90,
+                                        "f1_score": 0.20689655172413796,
+                                        "classification_accuracy": 0.6973684210526315
+                                    },
+                                    "(time_since_last <= 32814.42593) && (day_of_week != Sunday) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 87,
+                                        "true_negatives": 200,
+                                        "false_positives": 2,
+                                        "false_negatives": 15,
+                                        "f1_score": 0.9109947643979056,
+                                        "classification_accuracy": 0.944078947368421
+                                    },
+                                    "(time_since_first <= 33750.56189) && (time_since_first > 2061.40851)": {
+                                        "true_positives": 90,
+                                        "true_negatives": 202,
+                                        "false_positives": 0,
+                                        "false_negatives": 12,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9605263157894737
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 102,
+                                        "true_negatives": 202,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "time_since_first > 66535.44141": {
+                                        "true_positives": 10,
+                                        "true_negatives": 202,
+                                        "false_positives": 0,
+                                        "false_negatives": 92,
+                                        "f1_score": 0.17857142857142858,
+                                        "classification_accuracy": 0.6973684210526315
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(attributes.revenue > 81.96395) && (resource != Base profile_8) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "(day_of_week == Sunday) && (time_since_last <= 32814.42593) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_last <= 32814.42593) && (day_of_week != Sunday) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 33750.56189) && (time_since_first > 2061.40851)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66535.44141": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "(day_of_week == Sunday) && (time_since_last <= 32814.42593) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 12,
+                                        "true_negatives": 200,
+                                        "false_positives": 2,
+                                        "false_negatives": 90,
+                                        "f1_score": 0.20689655172413796,
+                                        "classification_accuracy": 0.6973684210526315
+                                    },
+                                    "(time_since_last <= 32814.42593) && (day_of_week != Sunday) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 87,
+                                        "true_negatives": 200,
+                                        "false_positives": 2,
+                                        "false_negatives": 15,
+                                        "f1_score": 0.9109947643979056,
+                                        "classification_accuracy": 0.944078947368421
+                                    },
+                                    "(time_since_first <= 33750.56189) && (time_since_first > 2061.40851)": {
+                                        "true_positives": 90,
+                                        "true_negatives": 202,
+                                        "false_positives": 0,
+                                        "false_negatives": 12,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9605263157894737
+                                    },
+                                    "size > 4": {
+                                        "true_positives": 102,
+                                        "true_negatives": 202,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "time_since_first > 66535.44141": {
+                                        "true_positives": 10,
+                                        "true_negatives": 202,
+                                        "false_positives": 0,
+                                        "false_negatives": 92,
+                                        "f1_score": 0.17857142857142858,
+                                        "classification_accuracy": 0.6973684210526315
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_44) && (resource != Base profile_41) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34040.35876) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66422.35938": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "size > 4": {
+                                        "true_positives": 102,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first <= 34040.35876) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 90,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 12,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9607843137254902
+                                    },
+                                    "time_since_first > 66422.35938": {
+                                        "true_positives": 10,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 92,
+                                        "f1_score": 0.17857142857142858,
+                                        "classification_accuracy": 0.6993464052287581
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_41) && (resource != Base profile_8) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34040.35876) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66422.35938": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "size > 4": {
+                                        "true_positives": 102,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first <= 34040.35876) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 90,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 12,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9607843137254902
+                                    },
+                                    "time_since_first > 66422.35938": {
+                                        "true_positives": 10,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 92,
+                                        "f1_score": 0.17857142857142858,
+                                        "classification_accuracy": 0.6993464052287581
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource != Base profile_44) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34040.35876) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66422.35938": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "size > 4": {
+                                        "true_positives": 102,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    },
+                                    "(time_since_first <= 34040.35876) && (time_since_first > 2062.15973)": {
+                                        "true_positives": 90,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 12,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9607843137254902
+                                    },
+                                    "time_since_first > 66422.35938": {
+                                        "true_positives": 10,
+                                        "true_negatives": 204,
+                                        "false_positives": 0,
+                                        "false_negatives": 92,
+                                        "f1_score": 0.17857142857142858,
+                                        "classification_accuracy": 0.6993464052287581
+                                    }
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

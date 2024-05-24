@@ -1,0 +1,187 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 2779,
+            "minmax": [
+                415.246214,
+                788.311134
+            ],
+            "mean": 601.1639833494063,
+            "variance": 3651.6936020711323,
+            "skewness": -0.006605017515270631,
+            "kurtosis": -0.14345083632970024
+        },
+        "running": {
+            "nobs": 2754,
+            "minmax": [
+                395.362073,
+                67737.160016
+            ],
+            "mean": 1380.8977564546117,
+            "variance": 37913839.790101245,
+            "skewness": 10.433483511046086,
+            "kurtosis": 107.8252580651087
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 2779,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 2754,
+                    "minmax": [
+                        0.0,
+                        67166.95621
+                    ],
+                    "mean": 783.3745506416121,
+                    "variance": 37946743.617656924,
+                    "skewness": 10.435539133018596,
+                    "kurtosis": 107.85421689908024
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2779,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2754,
+                            "minmax": [
+                                0.0,
+                                67166.95621
+                            ],
+                            "mean": 783.3745506416121,
+                            "variance": 37946743.617656924,
+                            "skewness": 10.435539133018596,
+                            "kurtosis": 107.85421689908024
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "batch creation policies changed!",
+                            "how": {
+                                "reference": {
+                                    "activity == B": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2268,
+                                        "false_positives": 511,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.8161209068010076
+                                    }
+                                },
+                                "running": {
+                                    "activity == B": {
+                                        "true_positives": 508,
+                                        "true_negatives": 2246,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for 'activity == B' changed!",
+                            "how": {
+                                "reference": {
+                                    "size > 4": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "time_since_first > 66505.53516": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 33966.85193) && (time_since_first > 2118.77576)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    },
+                                    "(time_since_first <= 34067.73474) && (time_since_last <= 64984.90625) && (time_since_first > 2079.94946)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "size > 4": {
+                                        "true_positives": 202,
+                                        "true_negatives": 406,
+                                        "false_positives": 0,
+                                        "false_negatives": 2,
+                                        "f1_score": 0.9950738916256158,
+                                        "classification_accuracy": 0.9967213114754099
+                                    },
+                                    "time_since_first > 66505.53516": {
+                                        "true_positives": 20,
+                                        "true_negatives": 406,
+                                        "false_positives": 0,
+                                        "false_negatives": 184,
+                                        "f1_score": 0.17857142857142858,
+                                        "classification_accuracy": 0.6983606557377049
+                                    },
+                                    "(time_since_first <= 33966.85193) && (time_since_first > 2118.77576)": {
+                                        "true_positives": 180,
+                                        "true_negatives": 406,
+                                        "false_positives": 0,
+                                        "false_negatives": 24,
+                                        "f1_score": 0.9375,
+                                        "classification_accuracy": 0.9606557377049181
+                                    },
+                                    "(time_since_first <= 34067.73474) && (time_since_last <= 64984.90625) && (time_since_first > 2079.94946)": {
+                                        "true_positives": 182,
+                                        "true_negatives": 404,
+                                        "false_positives": 2,
+                                        "false_negatives": 22,
+                                        "f1_score": 0.9381443298969072,
+                                        "classification_accuracy": 0.9606557377049181
+                                    }
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

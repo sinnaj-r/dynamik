@@ -1,0 +1,181 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 2779,
+            "minmax": [
+                415.246214,
+                788.311134
+            ],
+            "mean": 601.1639833494063,
+            "variance": 3651.6936020711323,
+            "skewness": -0.006605017515270631,
+            "kurtosis": -0.14345083632970024
+        },
+        "running": {
+            "nobs": 2772,
+            "minmax": [
+                396.752285,
+                67477.499184
+            ],
+            "mean": 928.4317744170274,
+            "variance": 15862485.638073333,
+            "skewness": 16.325585161850746,
+            "kurtosis": 267.0319534586305
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 2779,
+                    "minmax": [
+                        0.0,
+                        0.0
+                    ],
+                    "mean": 0.0,
+                    "variance": 0.0,
+                    "skewness": NaN,
+                    "kurtosis": NaN
+                },
+                "running": {
+                    "nobs": 2772,
+                    "minmax": [
+                        0.0,
+                        66813.363388
+                    ],
+                    "mean": 326.88898474783554,
+                    "variance": 15859820.829128606,
+                    "skewness": 16.330720237201493,
+                    "kurtosis": 267.14109995228205
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to batching changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 2779,
+                            "minmax": [
+                                0.0,
+                                0.0
+                            ],
+                            "mean": 0.0,
+                            "variance": 0.0,
+                            "skewness": NaN,
+                            "kurtosis": NaN
+                        },
+                        "running": {
+                            "nobs": 2772,
+                            "minmax": [
+                                0.0,
+                                66813.363388
+                            ],
+                            "mean": 326.88898474783554,
+                            "variance": 15859820.829128606,
+                            "skewness": 16.330720237201493,
+                            "kurtosis": 267.14109995228205
+                        }
+                    },
+                    "causes": [
+                        {
+                            "what": "batch creation policies changed!",
+                            "how": {
+                                "reference": {
+                                    "(resource == Base profile_38) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2765,
+                                        "false_positives": 14,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.9949622166246851
+                                    },
+                                    "(resource == Base profile_6) && (activity == B)": {
+                                        "true_positives": 0,
+                                        "true_negatives": 2770,
+                                        "false_positives": 9,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0.9967614249730119
+                                    }
+                                },
+                                "running": {
+                                    "(resource == Base profile_38) && (activity == B)": {
+                                        "true_positives": 20,
+                                        "true_negatives": 2544,
+                                        "false_positives": 8,
+                                        "false_negatives": 200,
+                                        "f1_score": 0.16129032258064516,
+                                        "classification_accuracy": 0.924963924963925
+                                    },
+                                    "(resource == Base profile_6) && (activity == B)": {
+                                        "true_positives": 15,
+                                        "true_negatives": 2548,
+                                        "false_positives": 4,
+                                        "false_negatives": 205,
+                                        "f1_score": 0.12552301255230125,
+                                        "classification_accuracy": 0.9246031746031746
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource == Base profile_38) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "time_since_first > 1845.89886": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "time_since_first > 1845.89886": {
+                                        "true_positives": 8,
+                                        "true_negatives": 16,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    }
+                                }
+                            },
+                            "causes": []
+                        },
+                        {
+                            "what": "batch firing policies for '(resource == Base profile_6) && (activity == B)' changed!",
+                            "how": {
+                                "reference": {
+                                    "time_since_first > 2180.54742": {
+                                        "true_positives": 0,
+                                        "true_negatives": 0,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 0,
+                                        "classification_accuracy": 0
+                                    }
+                                },
+                                "running": {
+                                    "time_since_first > 2180.54742": {
+                                        "true_positives": 6,
+                                        "true_negatives": 12,
+                                        "false_positives": 0,
+                                        "false_negatives": 0,
+                                        "f1_score": 1.0,
+                                        "classification_accuracy": 1.0
+                                    }
+                                }
+                            },
+                            "causes": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

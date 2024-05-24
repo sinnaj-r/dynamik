@@ -292,7 +292,7 @@
     "arrival_time_calendar": [
         {
             "from": "MONDAY",
-            "to": "FRIDAY",
+            "to": "SUNDAY",
             "beginTime": "08:00:00",
             "endTime": "13:59:59"
         }

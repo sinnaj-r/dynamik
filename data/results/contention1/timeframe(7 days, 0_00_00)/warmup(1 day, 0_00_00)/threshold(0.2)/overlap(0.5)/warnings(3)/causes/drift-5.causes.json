@@ -1,0 +1,86 @@
+{
+    "what": "cycle time changed!",
+    "how": {
+        "reference": {
+            "nobs": 1381,
+            "minmax": [
+                457.086929,
+                1678.704184
+            ],
+            "mean": 898.9866797588703,
+            "variance": 69346.63282170676,
+            "skewness": 0.3537778115787984,
+            "kurtosis": -0.8624196825893717
+        },
+        "running": {
+            "nobs": 1386,
+            "minmax": [
+                451.557824,
+                2362.706474
+            ],
+            "mean": 991.7944143333334,
+            "variance": 125737.92500212003,
+            "skewness": 1.0287626627617295,
+            "kurtosis": 1.2808012490812377
+        }
+    },
+    "causes": [
+        {
+            "what": "waiting time changed!",
+            "how": {
+                "reference": {
+                    "nobs": 1381,
+                    "minmax": [
+                        0.0,
+                        1080.927985
+                    ],
+                    "mean": 301.0442910173787,
+                    "variance": 65577.69697640126,
+                    "skewness": 0.40251188438816765,
+                    "kurtosis": -0.881812304699459
+                },
+                "running": {
+                    "nobs": 1386,
+                    "minmax": [
+                        0.0,
+                        1754.847218
+                    ],
+                    "mean": 391.8754455952381,
+                    "variance": 120379.80160623703,
+                    "skewness": 1.0804893966126081,
+                    "kurtosis": 1.3536656481972829
+                }
+            },
+            "causes": [
+                {
+                    "what": "waiting time due to resource contention changed!",
+                    "how": {
+                        "reference": {
+                            "nobs": 1381,
+                            "minmax": [
+                                0.0,
+                                1080.927985
+                            ],
+                            "mean": 282.18106337726283,
+                            "variance": 62087.76101131011,
+                            "skewness": 0.48178656878351334,
+                            "kurtosis": -0.7737467193138912
+                        },
+                        "running": {
+                            "nobs": 1386,
+                            "minmax": [
+                                0.0,
+                                1754.847218
+                            ],
+                            "mean": 363.54477287662337,
+                            "variance": 112647.1038755945,
+                            "skewness": 1.149712729688184,
+                            "kurtosis": 1.6189590249390164
+                        }
+                    },
+                    "causes": []
+                }
+            ]
+        }
+    ]
+}
