@@ -3,12 +3,11 @@ from __future__ import annotations
 import itertools
 import typing
 from datetime import datetime, timedelta
-from statistics import median
 
 import numpy as np
 import pandas as pd
 import scipy
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from statsmodels.stats.weightstats import ttost_ind
 
 from dynamik.drift.model import Drift, DriftCause
@@ -214,7 +213,7 @@ class DriftExplainer:
             Calendar(),
         )
         # compute the difference between calendars, saving the absolute value of the difference
-        diff = (aggregated_reference_calendar - aggregated_running_calendar).transform(lambda value: abs(value))
+        diff = (aggregated_reference_calendar - aggregated_running_calendar).transform(abs)
 
         # check if diff is greater than threshold
         return sum([value for _, value in diff]) >= self.calendar_threshold
