@@ -17,7 +17,8 @@ class WaitingTimeCanvas:
         # build an intervaltree with the log for each resource
         busy_resource_tree = defaultdict(IntervalTree)
         for event in log:
-            busy_resource_tree[event.resource][event.start:event.end] = event
+            if event.start != event.end:
+                busy_resource_tree[event.resource][event.start:event.end] = event
 
         # build an interval for the log timeframe
         log_timeframe = Interval(
@@ -27,7 +28,7 @@ class WaitingTimeCanvas:
 
         # discover and apply the calendars for the resources to the log timeframe
         applied_calendars = {
-            resource: calendar.apply(log_timeframe) for (resource, calendar) in discover_calendars(log).items()
+            resource: calendar.apply(log_timeframe) for (resource, calendar) in discover_calendars(tuple(log)).items()
         }
 
         # compute the waiting times for each event
