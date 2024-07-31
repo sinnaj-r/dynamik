@@ -26,7 +26,7 @@ class DriftExplainer:
 
     drift: Drift
     significance: float
-    calendar_threshold: int
+    calendar_threshold: float
     threshold: timedelta | float
 
     def __init__(
@@ -34,7 +34,7 @@ class DriftExplainer:
             drift: Drift,
             significance: float,
             threshold: timedelta | float,
-            calendar_threshold: int,
+            calendar_threshold: float,
     ) -> None:
         self.drift = drift
         self.significance = significance
@@ -66,11 +66,11 @@ class DriftExplainer:
 
         return Pair(
             reference=sum(
-                [calendar.transform(lambda value: min(value, 1)) for calendar in reference_calendars.values()],
+                reference_calendars.values(),
                 Calendar(),
             ),
             running=sum(
-                [calendar.transform(lambda value: min(value, 1)) for calendar in running_calendars.values()],
+                running_calendars.values(),
                 Calendar(),
             ),
         )
@@ -203,20 +203,18 @@ class DriftExplainer:
         # discover calendars for reference and running models
         reference_calendars = discover_calendars(self.drift.reference_model.data)
         running_calendars = discover_calendars(self.drift.running_model.data)
-        # aggregate calendars by resource, so each slot contains the number of resources available
-        aggregated_reference_calendar = sum(
-            [calendar.transform(lambda value: min(value, 1)) for calendar in reference_calendars.values()],
-            Calendar(),
-        )
-        aggregated_running_calendar = sum(
-            [calendar.transform(lambda value: min(value, 1)) for calendar in running_calendars.values()],
-            Calendar(),
-        )
-        # compute the difference between calendars, saving the absolute value of the difference
-        diff = (aggregated_reference_calendar - aggregated_running_calendar).transform(abs)
 
-        # check if diff is greater than threshold
-        return sum([value for _, value in diff]) >= self.calendar_threshold
+        resources = set(reference_calendars.keys()).union(running_calendars.keys())
+
+        # check if calendars are equivalent for each resource
+        for resource in resources:
+            if resource in reference_calendars and resource in running_calendars:
+                if not reference_calendars[resource].equivalent(running_calendars[resource], self.calendar_threshold):
+                    return True
+            else:
+                return True
+
+        return False
 
     def has_drift_in_rate(
             self: typing.Self,
@@ -225,20 +223,23 @@ class DriftExplainer:
     ) -> bool:
         """TODO docs"""
         # compute the average reference rate distribution per hour and day of week
-        reference_arrival_rates = Calendar.discover(
+        reference_rates = Calendar.discover(
             [event for event in self.drift.reference_model.data if filter_(event)],
             lambda event: [extractor(event)],
         )
 
         # compute the average running arrival distribution per hour and day of week
-        running_arrival_rates = Calendar.discover(
+        running_rates = Calendar.discover(
             [event for event in self.drift.running_model.data if filter_(event)],
             lambda event: [extractor(event)],
         )
 
-        reference_size = sum(reference_arrival_rates[slot] for slot in reference_arrival_rates.slots)
-        running_size = sum(running_arrival_rates[slot] for slot in running_arrival_rates.slots)
-        results = {}
+        reference_size = sum(reference_rates[slot] for slot in reference_rates.slots)
+        running_size = sum(running_rates[slot] for slot in running_rates.slots)
+
+        # normalize with the absolute count to get the frequency
+        reference_rates = reference_rates.transform(lambda value: value/reference_size)
+        running_rates = running_rates.transform(lambda value: value/running_size)
 
         if reference_size == 0 or running_size == 0:
             LOGGER.warning("can not check rate in models")
@@ -246,20 +247,9 @@ class DriftExplainer:
             LOGGER.warning("try increasing the window size")
             return False
 
-        for key in reference_arrival_rates.slots:
-            # we use the combined size for assessing differences in the total also
-            # (otherwise if the changes are proportional to the sample size nothing will be detected)
-            results[key] = scipy.stats.poisson_means_test(
-                reference_arrival_rates[key],
-                reference_size + running_size,
-                running_arrival_rates[key],
-                reference_size + running_size,
-            )
-            LOGGER.verbose("test(reference(%s) != running(%s)) p-value: %.4f", key, key, results[key].pvalue)
+        pvalue, _, _ = ttost_ind(reference_rates.values, running_rates.values, -0.1, 0.1)
 
-        return scipy.stats.combine_pvalues([
-            value.pvalue for value in results.values()
-        ]).pvalue < self.significance
+        return pvalue > self.significance
 
     def has_drift_in_policies(
             self: typing.Self,
@@ -279,17 +269,11 @@ class DriftExplainer:
             reference_scores = compute_rule_score(rule, HashableDF(reference_features), n_samples=20, sample_size=0.8)
             running_scores = compute_rule_score(rule, HashableDF(running_features), n_samples=20, sample_size=0.8)
 
-            results.append(
-                scipy.stats.kstest(
-                    [score.f1_score for score in reference_scores],
-                    [score.f1_score for score in running_scores],
-                ),
-            )
-            LOGGER.verbose("test(reference != running) p-value: %.4f", results[-1].pvalue)
+            pvalue, _, _ = ttost_ind([score.f1_score for score in reference_scores], [score.f1_score for score in running_scores], 0, 0)
+            results.append(pvalue)
+            LOGGER.verbose("test(reference != running) p-value: %.4f", pvalue)
 
-        return scipy.stats.combine_pvalues([
-            result.pvalue for result in results
-        ]).pvalue < self.significance
+        return any(pvalue > self.significance for pvalue in results)
 
     def has_drift_in_profile(
             self: typing.Self,
@@ -299,7 +283,7 @@ class DriftExplainer:
         reference_profile = profile_builder(self.drift.reference_model.data)
         running_profile = profile_builder(self.drift.running_model.data)
 
-        return reference_profile.statistically_equals(running_profile).pvalue < self.significance
+        return not reference_profile.statistically_equals(running_profile, self.significance)
 
     def build_time_descriptor(
             self: typing.Self,
@@ -401,7 +385,7 @@ def explain_drift(
         last_activity: str,
         significance: float = 0.05,
         threshold: timedelta | float = timedelta(minutes=1),
-        calendar_threshold: int = 0,
+        calendar_threshold: float = 0.0,
 ) -> DriftCause:
     """Build a tree with the causes that explain the drift characterized by the given drift features"""
     # if there is a drift in the cycle time distribution, check for drifts in the waiting and processing times and build

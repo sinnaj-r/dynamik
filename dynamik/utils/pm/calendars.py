@@ -115,7 +115,7 @@ class Calendar:
 
         return tree
 
-    def statistically_equals(self: typing.Self, other: Calendar) -> TestResult:
+    def statistically_equals(self: typing.Self, other: Calendar, significance: float = 0.05) -> bool:
         """TODO docs"""
         results = {}
         for slot in self.slots:
@@ -126,12 +126,27 @@ class Calendar:
                 len(set(self.owner).union(other.owner)),
             )
 
-        return scipy.stats.combine_pvalues([value.pvalue for value in results.values()])
+        return any(value.pvalue < significance for value in results.values())
+
+    def equivalent(self: typing.Self, other: Calendar, threshold: float) -> bool:
+        """TODO docs"""
+        diff = 0
+
+        for slot in self.slots:
+            if self[slot] != other[slot]:
+                diff += 1
+
+        return diff / len(self.slots) < threshold
 
     @property
     def slots(self: typing.Self) -> set[tuple[int, int]]:
         """TODO docs"""
         return set(self.__calendar.keys())
+
+    @property
+    def values(self: typing.Self) -> list[int]:
+        """TODO docs"""
+        return list(self.__calendar.values())
 
     @staticmethod
     def discover(
@@ -186,7 +201,7 @@ def discover_calendars(
     Returns
     -------
     * a mapping with pairs (`resource`, `calendar`) where calendar is an iterable of booleans indicating if the resource
-    was available at the interval i for intervals of size granularity
+    was available at the interval i
     """
     # build a map with the events executed by each resource
     events_per_resource = defaultdict(list)
@@ -196,6 +211,6 @@ def discover_calendars(
     # compute the calendar for each resource
     calendars = {}
     for (resource, events) in events_per_resource.items():
-        calendars[resource] = Calendar.discover(events)
+        calendars[resource] = Calendar.discover(events).transform(lambda value: min(value, 1))
 
     return calendars

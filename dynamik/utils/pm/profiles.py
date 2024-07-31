@@ -6,13 +6,12 @@ import itertools
 import typing
 from collections import defaultdict
 from datetime import timedelta
-from statistics import mean
 
 import scipy
 from intervaltree import Interval
+from statsmodels.stats.weightstats import ttost_ind
 
 from dynamik.model import Activity, Log, Resource
-from dynamik.utils.model import TestResult
 from dynamik.utils.pm.calendars import Calendar
 
 
@@ -20,7 +19,7 @@ class Profile(abc.ABC):
     """TODO docs"""
 
     @abc.abstractmethod
-    def statistically_equals(self: typing.Self, other: Profile) -> TestResult:
+    def statistically_equals(self: typing.Self, other: Profile, significance: float = 0.05) -> bool:
         """TODO docs"""
 
 
@@ -35,7 +34,7 @@ class ActivityProfile(Profile):
     # behaviour
     arrival_distribution: typing.MutableMapping[Activity, Calendar]
     # complexity
-    complexity_deviation: typing.MutableMapping[Activity, float]
+    complexity_deviation: typing.MutableMapping[Activity, typing.Iterable[float]]
     # interactions
     co_occurrence_index: typing.MutableMapping[tuple[Activity, Activity], int]
 
@@ -45,7 +44,7 @@ class ActivityProfile(Profile):
             activity_frequency: typing.MutableMapping[Activity, int],
             demand: typing.MutableMapping[Activity, float],
             arrival_distribution: typing.MutableMapping[Activity, Calendar],
-            complexity_deviation: typing.MutableMapping[Activity, float],
+            complexity_deviation: typing.MutableMapping[Activity, typing.Iterable[float]],
             co_occurrence_index: typing.MutableMapping[tuple[Activity, Activity], int],
     ) -> None:
         self.activities = activities
@@ -58,7 +57,7 @@ class ActivityProfile(Profile):
     def __str__(self: typing.Self) -> str:
         return str(self.asdict())
 
-    def statistically_equals(self: typing.Self, other: ActivityProfile) -> TestResult:
+    def statistically_equals(self: typing.Self, other: ActivityProfile, significance: float = 0.05) -> bool:
         """TODO docs"""
         # compute the sets of all activities and resources present in any of the profiles
         activities = set(itertools.chain(self.activities, other.activities))
@@ -80,7 +79,7 @@ class ActivityProfile(Profile):
                 other.activity_frequency[activity],
                 # wrt. the total instances in other
                 sum(other.activity_frequency.values()),
-            )
+            ).pvalue < significance
 
             # check workload demand
             demand_drift[activity] = scipy.stats.poisson_means_test(
@@ -90,7 +89,7 @@ class ActivityProfile(Profile):
                 # the percentage of time executing activity in other
                 int(other.demand[activity] * 100),
                 100,
-            )
+            ).pvalue < significance
 
             # check arrival distribution
             arrival_distribution_drift[activity] = self.arrival_distribution[activity].statistically_equals(
@@ -98,14 +97,8 @@ class ActivityProfile(Profile):
             )
 
             # check complexity deviation
-            complexity_deviation_drift[activity] = scipy.stats.poisson_means_test(
-                # check the deviation of one activity (in percentage over the mean) in self, vs
-                int(self.complexity_deviation[activity] * 100),
-                100,
-                # the deviation of one activity (in percentage over the mean) in other
-                int(other.complexity_deviation[activity] * 100),
-                100,
-            )
+            pvalue, _, _ = ttost_ind(self.complexity_deviation[activity], other.complexity_deviation[activity], 0, 0)
+            complexity_deviation_drift[activity] = pvalue > significance
 
             # check co-occurrence index
             for activity2 in activities:
@@ -132,34 +125,15 @@ class ActivityProfile(Profile):
                         other.co_occurrence_index[(activity, activity)]
                         + other.co_occurrence_index[(activity2, activity2)]
                         - other.co_occurrence_index[(activity, activity2)],
-                    )
+                    ).pvalue < significance
 
-        # combine the results from each component
-        instance_count_drift = scipy.stats.combine_pvalues(
-            [value.pvalue for value in instance_count_drift.values()],
-        )
-        demand_drift = scipy.stats.combine_pvalues(
-            [value.pvalue for value in demand_drift.values()],
-        )
-        arrival_distribution_drift = scipy.stats.combine_pvalues(
-            [value.pvalue for value in arrival_distribution_drift.values()],
-        )
-        complexity_deviation_drift = scipy.stats.combine_pvalues(
-            [value.pvalue for value in complexity_deviation_drift.values()],
-        )
-        co_occurrence_index_drift = scipy.stats.combine_pvalues(
-            [value.pvalue for value in co_occurrence_index_drift.values()],
-        )
-
-        return scipy.stats.combine_pvalues(
-            [
-                instance_count_drift.pvalue,
-                demand_drift.pvalue,
-                arrival_distribution_drift.pvalue,
-                complexity_deviation_drift.pvalue,
-                co_occurrence_index_drift.pvalue,
-            ],
-        )
+        return any([
+            any(instance_count_drift.values()),
+            any(demand_drift.values()),
+            any(arrival_distribution_drift.values()),
+            any(complexity_deviation_drift.values()),
+            any(co_occurrence_index_drift.values()),
+        ])
 
     def asdict(self: typing.Self) -> dict:
         return {
@@ -185,7 +159,7 @@ class ActivityProfile(Profile):
             activity_frequency=defaultdict(lambda: 0),
             demand=defaultdict(lambda: 0.0),
             arrival_distribution=defaultdict(Calendar),
-            complexity_deviation=defaultdict(lambda: 0.0),
+            complexity_deviation=defaultdict(list),
             co_occurrence_index=defaultdict(lambda: 0),
         )
 
@@ -204,9 +178,10 @@ class ActivityProfile(Profile):
             activity_profile.arrival_distribution[activity] = Calendar.discover(activity_instances, lambda event: [event.enabled])
 
             # compute the complexity deviation
-            mean_self_time = sum([event.processing_time.effective.duration for event in activity_instances], timedelta()) / len(activity_instances)
-            mean_time = sum([event.processing_time.effective.duration for event in log], timedelta()) / len(list(log))
-            activity_profile.complexity_deviation[activity] = mean_self_time / mean_time
+            mean_execution_time = sum([event.processing_time.effective.duration for event in log], timedelta()) / len(list(log))
+            # compute the deviation for each activity instance vs the average (the deviation is the factor of event time vs
+            # average time, i.e., <1.0 means over performance, >1.0 means under performance)
+            activity_profile.complexity_deviation[activity] = [event.processing_time.effective.duration / mean_execution_time for event in activity_instances]
 
             # compute the co-occurrence index
             # get the set of own cases
@@ -232,7 +207,7 @@ class ResourceProfile(Profile):
     # preferences
     effort_distribution: typing.MutableMapping[Resource, Calendar]
     # productivity
-    performance_deviation: typing.MutableMapping[Resource, float]
+    performance_deviation: typing.MutableMapping[Resource, typing.MutableMapping[Activity, typing.Iterable[float]]]
     # collaboration
     collaboration_index: typing.MutableMapping[tuple[Resource, Resource], int]
 
@@ -242,7 +217,7 @@ class ResourceProfile(Profile):
             instance_count: typing.MutableMapping[Resource, int],
             utilization_index: typing.MutableMapping[Resource, float],
             effort_distribution: typing.MutableMapping[Resource, Calendar],
-            performance_deviation: typing.MutableMapping[Resource, float],
+            performance_deviation: typing.MutableMapping[Resource, typing.MutableMapping[Activity, typing.Iterable[float]]],
             collaboration_index: typing.MutableMapping[tuple[Resource, Resource], int],
     ) -> None:
         self.resources = resources
@@ -255,7 +230,7 @@ class ResourceProfile(Profile):
     def __str__(self: typing.Self) -> str:
         return str(self.asdict())
 
-    def statistically_equals(self: typing.Self, other: ResourceProfile) -> TestResult:
+    def statistically_equals(self: typing.Self, other: ResourceProfile, significance: float = 0.05) -> bool:
         """TODO docs"""
         # compute the sets of all resources present in any of the profiles
         all_resources = set(itertools.chain(self.resources, other.resources))
@@ -277,7 +252,7 @@ class ResourceProfile(Profile):
                 other.instance_count[resource],
                 # wrt. the total instances in other
                 sum(other.instance_count.values()),
-            )
+            ).pvalue < significance
 
             # check utilization index
             utilization_index_drift[resource] = scipy.stats.poisson_means_test(
@@ -287,20 +262,22 @@ class ResourceProfile(Profile):
                 # the percentage of time the resource is busy in other
                 int(other.utilization_index[resource] * 100),
                 100,
-            )
+            ).pvalue < significance
 
             # check effort distribution
-            effort_distribution_drift[resource] = self.effort_distribution[resource].statistically_equals(other.effort_distribution[resource])
+            effort_distribution_drift[resource] = self.effort_distribution[resource].statistically_equals(
+                other.effort_distribution[resource],
+            )
 
             # check performance deviation
-            performance_deviation_drift[resource] = scipy.stats.poisson_means_test(
-                # check the deviation of one activity (in percentage over the mean) in self, vs
-                int(self.performance_deviation[resource] * 100),
-                100,
-                # the deviation of one activity (in percentage over the mean) in other
-                int(other.performance_deviation[resource] * 100),
-                100,
-            )
+            pvalues = []
+            for activity in set(self.performance_deviation[resource]).union(other.performance_deviation[resource]):
+                if activity not in self.performance_deviation[resource] or activity not in other.performance_deviation[resource]:
+                    pvalue = 1
+                else:
+                    pvalue, _, _ = ttost_ind(self.performance_deviation[resource][activity], other.performance_deviation[resource][activity], 0, 0)
+                pvalues.append(pvalue)
+            performance_deviation_drift[resource] = any(pvalue > significance for pvalue in pvalues)
 
             # check collaboration index
             for resource2 in all_resources:
@@ -325,34 +302,14 @@ class ResourceProfile(Profile):
                         other.collaboration_index[(resource, resource)]
                         + other.collaboration_index[(resource2, resource2)]
                         - other.collaboration_index[(resource, resource2)],
-                    )
+                    ).pvalue < significance
 
-        instance_count_drift = scipy.stats.combine_pvalues([
-            value.pvalue for value in instance_count_drift.values()
-        ])
-
-        utilization_index_drift = scipy.stats.combine_pvalues([
-            value.pvalue for value in utilization_index_drift.values()
-        ])
-
-        effort_distribution_drift = scipy.stats.combine_pvalues([
-            value.pvalue for value in effort_distribution_drift.values()
-        ])
-
-        performance_deviation_drift = scipy.stats.combine_pvalues([
-            value.pvalue for value in performance_deviation_drift.values()
-        ])
-
-        collaboration_index_drift = scipy.stats.combine_pvalues([
-            value.pvalue for value in collaboration_index_drift.values()
-        ])
-
-        return scipy.stats.combine_pvalues([
-            instance_count_drift.pvalue,
-            utilization_index_drift.pvalue,
-            effort_distribution_drift.pvalue,
-            performance_deviation_drift.pvalue,
-            collaboration_index_drift.pvalue,
+        return any([
+            any(instance_count_drift.values()),
+            any(utilization_index_drift.values()),
+            any(effort_distribution_drift.values()),
+            any(performance_deviation_drift.values()),
+            any(collaboration_index_drift.values()),
         ])
 
     def asdict(self: typing.Self) -> dict:
@@ -380,7 +337,7 @@ class ResourceProfile(Profile):
             instance_count=defaultdict(lambda: 0),
             utilization_index=defaultdict(lambda: 0.0),
             effort_distribution=defaultdict(Calendar),
-            performance_deviation=defaultdict(lambda: 0.0),
+            performance_deviation=defaultdict(lambda: defaultdict(list)),
             collaboration_index=defaultdict(lambda: 0),
         )
 
@@ -403,19 +360,18 @@ class ResourceProfile(Profile):
             resource_profile.effort_distribution[resource] = Calendar.discover(events_by_resource)
 
             # compute the performance deviation
-            deviations = []
+            deviations = {}
             for activity in activities:
                 self_events = [event for event in events_by_resource if event.activity == activity]
                 all_events = [event for event in log if event.activity == activity]
+                mean_execution_time = sum([event.processing_time.effective.duration for event in all_events], timedelta()) / len(all_events)
                 # check deviations only when any event is present for the resource
                 if len(self_events) > 0 and len(all_events) > 0:
-                    # compute mean execution time for events executed by anyone and self events
-                    mean_self_time = sum([event.processing_time.effective.duration for event in self_events], timedelta()) / len(self_events)
-                    mean_execution_time = sum([event.processing_time.effective.duration for event in all_events], timedelta()) / len(all_events)
-                    # the deviation is the factor of self time vs total time (<1.0 means over performance, >1.0 means under performance)
-                    deviations.append(mean_self_time / mean_execution_time)
-            # the mean performance deviation for a resource is the mean of the performance deviations for each activity by that resource
-            resource_profile.performance_deviation[resource] = mean(deviations)
+                    # compute the deviation for each event vs the average (the deviation is the factor of event time vs
+                    # average time, i.e., <1.0 means over performance, >1.0 means under performance)
+                    deviations[activity] = [event.processing_time.effective.duration / mean_execution_time for event in self_events]
+
+            resource_profile.performance_deviation[resource] = deviations
 
             # compute the collaboration index
             # get the set of own cases

@@ -3,9 +3,9 @@ name = "dynamik"
 version = "0.1.0"
 description = "A package for analyzing process dynamics from event logs"
 license = "Apache-2.0"
-authors = ["Victor Gallego-Fontenla <victorjose.gallego@usc.gal>"]
+authors = ["Anonymized"]
 readme = "README.md"
-repository = "https://gitlab.citius.usc.es/ProcessMining/explainable-performance-drift.git"
+repository = "https://github.com/anonymized"
 packages = [{ include = "dynamik" }]
 
 [tool.poetry.scripts]

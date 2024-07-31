@@ -7,16 +7,14 @@ import textwrap
 import typing
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from statistics import median, mean, stdev
+from statistics import mean, median, stdev
 
 import numpy as np
 from anytree import NodeMixin
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from statsmodels.stats.weightstats import ttost_ind
 
 from dynamik.model import Event
-
-# from dynamik.utils.bayes import probability_difference_under_threshold
 from dynamik.utils.logger import LOGGER
 from dynamik.utils.model import Pair
 from dynamik.utils.pm.batching import discover_batches
@@ -154,6 +152,7 @@ class Model:
         running_data = [event.cycle_time.total_seconds() for event in other.data]
         t = threshold
 
+        # if given a float as the threshold, consider it a percentage, scaling data to range (0, 1)
         if isinstance(threshold, float):
             scaler = StandardScaler()
             scaler.fit(np.array(reference_data).reshape(-1, 1))
@@ -165,9 +164,6 @@ class Model:
         # only if both models are non-empty, perform the test
         pvalue, _, _ = ttost_ind(reference_data, running_data, -t, t)
 
-        # test, maybe not needed
-        # if pvalue > significance:
-        #     bayes = probability_difference_under_threshold(reference_data, running_data, t)
         LOGGER.verbose(
             "reference time distribution is mean=%s, median=%s, sd=%s",
             mean(reference_data), median(reference_data), stdev(reference_data),
