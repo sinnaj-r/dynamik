@@ -1,0 +1,294 @@
+{
+    "prioritization_rules": [],
+    "case_attributes": [
+        {
+            "name": "client_tier",
+            "type": "discrete",
+            "values": [
+                {
+                    "key": "PREMIUM",
+                    "value": 0.3
+                },
+                {
+                    "key": "REGULAR",
+                    "value": 0.7
+                }
+            ]
+        },
+        {
+            "name": "revenue",
+            "type": "continuous",
+            "values": {
+                "distribution_name": "norm",
+                "distribution_params": [
+                    {
+                        "value": 100
+                    },
+                    {
+                        "value": 10
+                    },
+                    {
+                        "value": 80
+                    },
+                    {
+                        "value": 500
+                    }
+                ]
+            }
+        }
+    ],
+    "batch_processing": [],
+    "event_distribution": [],
+    "gateway_branching_probabilities": [
+        {
+            "gateway_id": "OR_SPLIT",
+            "probabilities": [
+                {
+                    "path_id": "OR_SPLIT_TO_C1",
+                    "value": 0.5
+                },
+                {
+                    "path_id": "OR_SPLIT_TO_C2",
+                    "value": 0.5
+                }
+            ]
+        },
+        {
+            "gateway_id": "LOOP_SPLIT",
+            "probabilities": [
+                {
+                    "path_id": "LOOP_SPLIT_TO_D2",
+                    "value": 0.15
+                },
+                {
+                    "path_id": "LOOP_SPLIT_TO_PARALLEL_JOIN",
+                    "value": 0.85
+                }
+            ]
+        }
+    ],
+    "task_resource_distribution": [
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "A"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "B"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "C1"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "C2"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "D1"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "D2"
+        },
+        {
+            "resources": [
+                {
+                    "distribution_name": "norm",
+                    "distribution_params": [
+                        {
+                            "value": 6000
+                        },
+                        {
+                            "value": 60
+                        },
+                        {
+                            "value": 0
+                        },
+                        {
+                            "value": 12000
+                        }
+                    ],
+                    "resource_id": "Base profile"
+                }
+            ],
+            "task_id": "E"
+        }
+    ],
+    "resource_profiles": [
+        {
+            "resource_list": [
+                {
+                    "calendar": "24/7",
+                    "amount": 50,
+                    "cost_per_hour": 10,
+                    "name": "Base profile",
+                    "id": "Base profile"
+                }
+            ],
+            "name": "Base profile pool",
+            "id": "Base profile pool"
+        }
+    ],
+    "resource_calendars": [
+        {
+            "id": "24/7",
+            "name": "24/7",
+            "time_periods": [
+                {
+                    "from": "MONDAY",
+                    "to": "SUNDAY",
+                    "beginTime": "00:00:00",
+                    "endTime": "23:59:59"
+                }
+            ]
+        }
+    ],
+    "arrival_time_calendar": [
+        {
+            "from": "MONDAY",
+            "to": "SUNDAY",
+            "beginTime": "08:00:00",
+            "endTime": "13:59:59"
+        }
+    ],
+    "arrival_time_distribution": {
+        "distribution_name": "norm",
+        "distribution_params": [
+            {
+                "value": 600
+            },
+            {
+                "value": 60
+            },
+            {
+                "value": 60
+            },
+            {
+                "value": 1140
+            }
+        ]
+    },
+    "start_time": "2020-01-01T00:00",
+    "total_cases": 10000,
+    "granule_size": {
+        "value": 30,
+        "time_unit": "MINUTES"
+    },
+    "model_type": "CRISP"
+}
