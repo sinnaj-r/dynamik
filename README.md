@@ -3,35 +3,6 @@
 ```dynamik``` is an algorithm for analyzing the dynamics of a process execution, detecting changes in the cycle time and,
 if present, providing insights about the causes of the change.
 
-You can find more details about the algorithm in the following article:
-
-<div style="background-color: #EFEFEF; display: flex; flex-direction: column; padding: 1em; position: relative;">
-    <p style="
-        font-weight: 700;
-        font-size: 1.2em;
-        margin: 0;
-    ">
-        Article title
-    </p>
-    <p style="
-        font-style: italic;
-        font-size: .85em;
-        font-weight: 500;
-        color: #A0A0A0;
-        margin: 0;
-    ">
-        Authors
-    </p>
-    <p style="
-        margin: 0;
-        font-size: .85em;
-        font-weight: 400;
-        color: #A0A0A0;
-    ">
-        Publisher
-    </p>
-</div>
-
 # Quickstart
 
 `dynamik` is designed to be executed using an event log as it's input, processing it sequentially, event by event,  
