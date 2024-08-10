@@ -92,8 +92,9 @@ def detect_drift(
                 "first drift warning between %r and %r",
                 drift.first_warning.reference_model, drift.first_warning.running_model,
             )
-            # Yield the drift
-            yield drift
+
+        # Yield the drift
+        yield drift
 
     return drifts
 
@@ -171,13 +172,13 @@ class DriftDetector:
 
         # If models are not equivalent, there is a drift
         if (
-            not self.__reference_model.empty and
-            not self.__running_model.empty and
-            not self.__reference_model.statistically_equivalent(
-                self.__running_model,
-                significance=self.__significance,
-                threshold=self.__threshold,
-            )
+                not self.__reference_model.empty and
+                not self.__running_model.empty and
+                not self.__reference_model.statistically_equivalent(
+                    self.__running_model,
+                    significance=self.__significance,
+                    threshold=self.__threshold,
+                )
         ):
             # At the beginning all drifts are created as warnings
             drift = Drift(
@@ -224,8 +225,14 @@ class DriftDetector:
             "no drift between reference timeframe (%s - %s) and running timeframe (%s, %s)",
             self.__reference_model.start, self.__reference_model.end, self.__running_model.start, self.__running_model.end,
         )
-        self.__drift_warnings.append(NO_DRIFT)
-        return NO_DRIFT
+        drift = Drift(
+            level=DriftLevel.NONE,
+            reference_model=self.__reference_model,
+            running_model=self.__running_model,
+        )
+
+        self.__drift_warnings.append(drift)
+        return drift
 
     def update(self: typing.Self, event: Event) -> Drift:
         """
@@ -244,7 +251,11 @@ class DriftDetector:
         # Drop the event if it is part of the warm-up period
         if event.enabled < self.__reference_model.start:
             LOGGER.spam("dropping warm-up event %r", event)
-            return NO_DRIFT  # drop event, nothing more to do here
+            return Drift(
+                level=DriftLevel.NONE,
+                reference_model=self.__reference_model,
+                running_model=self.__running_model,
+            ) # drop event, nothing more to do here
         # If the event is part of the reference model, update it
         if self.__reference_model.envelopes(event):
             LOGGER.spam("updating reference model (%s - %s) with event %r", self.__reference_model.start, self.__reference_model.end, event)
@@ -269,11 +280,15 @@ class DriftDetector:
                     LOGGER.debug(
                         "updating running model to (%s - %s)",
                         self.__running_model.end - self.__overlap, self.__running_model.end - self.__overlap + self.__timeframe_size,
-                    )
+                        )
                     self.__running_model.update_timeframe(self.__running_model.end - self.__overlap, self.__timeframe_size)
             # Once drifts are checked and timeframes updated, we can recursively call the method with the same event again so it is added
             self.update(event)
 
             return drift
 
-        return NO_DRIFT
+        return Drift(
+            level=DriftLevel.NONE,
+            reference_model=self.__reference_model,
+            running_model=self.__running_model,
+        )  # drop event, nothing more to do here
