@@ -190,7 +190,7 @@ class DriftExplainer:
             # only if both models are non-empty, perform the test
             pvalue, _, _ = ttost_ind(reference_data, running_data, -t, t)
 
-            LOGGER.verbose("test(reference != running) p-value: %.4f", pvalue)
+            LOGGER.verbose('test(reference != running) p-value: %.4f', pvalue)
 
             return pvalue > self.significance
 
@@ -242,9 +242,9 @@ class DriftExplainer:
         running_rates = running_rates.transform(lambda value: value/running_size)
 
         if reference_size == 0 or running_size == 0:
-            LOGGER.warning("can not check rate in models")
-            LOGGER.warning("no cases start or end in this window")
-            LOGGER.warning("try increasing the window size")
+            LOGGER.warning('can not check rate in models')
+            LOGGER.warning('no cases start or end in this window')
+            LOGGER.warning('try increasing the window size')
             return False
 
         pvalue, _, _ = ttost_ind(reference_rates.values, running_rates.values, -0.1, 0.1)
@@ -287,14 +287,14 @@ class DriftExplainer:
 
     def build_time_descriptor(
             self: typing.Self,
-            title: str,
+            what: str,
             time_extractor: typing.Callable[[Event], timedelta],
             parent: DriftCause | None = None,
     ) -> DriftCause:
         """TODO docs"""
         return DriftCause(
-            # what changed? the processing time
-            what=title,
+            # what changed?
+            what=what,
             # how did it change? include the distributions for both pre- and post- drift data
             how=self.__describe_distributions(time_extractor),
             # data contains the raw data used in the test
@@ -305,13 +305,13 @@ class DriftExplainer:
 
     def build_calendar_descriptor(
             self: typing.Self,
-            title: str,
+            what: str,
             parent: DriftCause | None = None,
     ) -> DriftCause:
         """TODO docs"""
         return DriftCause(
             # what changed? the processing time
-            what=title,
+            what=what,
             # how did it change? include the distributions for both pre- and post- drift data
             how=self.__describe_calendars(),
             # data contains the raw data used in the test
@@ -322,7 +322,7 @@ class DriftExplainer:
 
     def build_rate_descriptor(
             self: typing.Self,
-            title: str,
+            what: str,
             parent: DriftCause | None = None,
             *,
             filter_: typing.Callable[[Event], bool],
@@ -331,7 +331,7 @@ class DriftExplainer:
         """TODO docs"""
         return DriftCause(
             # what changed? the processing time
-            what=title,
+            what=what,
             # how did it change? include the distributions for both pre- and post- drift data
             how=self.__describe_rates(filter_, extractor),
             # data contains the raw data used in the test
@@ -342,7 +342,7 @@ class DriftExplainer:
 
     def build_policies_descriptor(
             self: typing.Self,
-            title: str,
+            what: str,
             parent: DriftCause | None = None,
             *,
             feature_extractor: typing.Callable[[Log], pd.DataFrame],
@@ -351,7 +351,7 @@ class DriftExplainer:
         """TODO docs"""
         return DriftCause(
             # what changed? policies
-            what=title,
+            what=what,
             # how did it change? include the policies for both pre- and post- drift data
             how=self.__describe_policies(feature_extractor, filter_),
             # data contains the evaluation of policies for before and after
@@ -361,7 +361,7 @@ class DriftExplainer:
 
     def build_profile_descriptor(
             self: typing.Self,
-            title: str,
+            what: str,
             parent: DriftCause | None = None,
             *,
             profile_builder: typing.Callable[[Log], Profile],
@@ -369,7 +369,7 @@ class DriftExplainer:
         """TODO docs"""
         return DriftCause(
             # what changed? policies
-            what=title,
+            what=what,
             # how did it change? include the policies for both pre- and post- drift data
             how=self.__describe_profiles(profile_builder),
             # data contains the evaluation of policies for before and after
@@ -392,87 +392,87 @@ def explain_drift(
     # a tree accordingly, explaining the changes that occurred to the process
     explainer = DriftExplainer(drift, significance, threshold, calendar_threshold)
     root_cause = explainer.build_time_descriptor(
-        "cycle time changed!",
-        lambda event: event.cycle_time,
+        what='cycle-time',
+        time_extractor=lambda event: event.cycle_time,
     )
 
     # check processing time
-    LOGGER.verbose("checking drifts in total processing time")
+    LOGGER.verbose('checking drifts in total processing time')
     if explainer.has_drift_in_time(lambda event: event.processing_time.total.duration):
         # add a node to the tree reporting the change in the processing times
         processing_time = explainer.build_time_descriptor(
-            "processing time changed!",
-            lambda event: event.processing_time.total.duration,
+            what=f'{root_cause.what}/processing-time',
+            time_extractor=lambda event: event.processing_time.total.duration,
             parent=root_cause,
         )
 
         # check drift in processing time when the resource is available
-        LOGGER.verbose("checking drifts in effective processing time")
+        LOGGER.verbose('checking drifts in effective processing time')
         if explainer.has_drift_in_time(lambda event: event.processing_time.effective.duration):
             effective_time = explainer.build_time_descriptor(
-                "processing time with resources available changed!",
-                lambda event: event.processing_time.effective.duration,
+                what=f'{processing_time.what}/available',
+                time_extractor=lambda event: event.processing_time.effective.duration,
                 parent=processing_time,
             )
 
             # check drifts in the activity profiles
-            LOGGER.verbose("checking drifts in activity profiles")
+            LOGGER.verbose('checking drifts in activity profiles')
             if explainer.has_drift_in_profile(ActivityProfile.discover):
                 explainer.build_profile_descriptor(
-                    "activity profiles changed!",
+                    what=f'{effective_time.what}/activity-profiles',
                     parent=effective_time,
                     profile_builder=ActivityProfile.discover,
                 )
             # check drifts in the resource profiles
-            LOGGER.verbose("checking drifts in resource profiles")
+            LOGGER.verbose('checking drifts in resource profiles')
             if explainer.has_drift_in_profile(ResourceProfile.discover):
                 explainer.build_profile_descriptor(
-                    "resource profiles changed!",
+                    what=f'{effective_time.what}/resource-profiles',
                     parent=effective_time,
                     profile_builder=ResourceProfile.discover,
                 )
 
         # check drift in processing time when the resource is not available
-        LOGGER.verbose("checking drifts in idle processing time")
+        LOGGER.verbose('checking drifts in idle processing time')
         if explainer.has_drift_in_time(lambda event: event.processing_time.idle.duration):
             idle_time = explainer.build_time_descriptor(
-                "processing time with resources unavailable changed!",
-                lambda event: event.processing_time.idle.duration,
+                what=f'{processing_time.what}/unavailable',
+                time_extractor=lambda event: event.processing_time.idle.duration,
                 parent=processing_time,
             )
 
             # check changes in the availability calendars
-            LOGGER.verbose("checking drifts in calendars")
+            LOGGER.verbose('checking drifts in calendars')
             if explainer.has_drift_in_calendar():
                 explainer.build_calendar_descriptor(
-                    "resource availability calendars changed!",
+                    what=f'{idle_time.what}/calendars',
                     parent=idle_time,
                 )
 
     # check waiting time
-    LOGGER.verbose("checking drifts in total waiting time")
+    LOGGER.verbose('checking drifts in total waiting time')
     if explainer.has_drift_in_time(lambda event: event.waiting_time.total.duration):
         # add a node to the tree reporting the change in the waiting times
         waiting_time = explainer.build_time_descriptor(
-            "waiting time changed!",
-            lambda event: event.waiting_time.total.duration,
+            what=f'{root_cause.what}/waiting-time',
+            time_extractor=lambda event: event.waiting_time.total.duration,
             parent=root_cause,
         )
 
         # check waiting time due to batching
-        LOGGER.verbose("checking drifts in batching waiting time")
+        LOGGER.verbose('checking drifts in batching waiting time')
         if explainer.has_drift_in_time(lambda event: event.waiting_time.batching.duration):
             batching_time = explainer.build_time_descriptor(
-                "waiting time due to batching changed!",
-                lambda event: event.waiting_time.batching.duration,
+                what=f'{waiting_time.what}/batching',
+                time_extractor=lambda event: event.waiting_time.batching.duration,
                 parent=waiting_time,
             )
 
             # check changes in the batch creation policies
-            LOGGER.verbose("checking drifts batch creation policies")
+            LOGGER.verbose('checking drifts batch creation policies')
             if explainer.has_drift_in_policies(build_batch_creation_features):
                 explainer.build_policies_descriptor(
-                    "batch creation policies changed!",
+                    what=f'{batching_time.what}/batch-creation',
                     parent=batching_time,
                     feature_extractor=build_batch_creation_features,
                 )
@@ -485,107 +485,107 @@ def explain_drift(
 
             # check changes in the firing policies for each creation policy
             for creation_policy in creation_policies:
-                LOGGER.verbose("checking drifts in batch firing policies")
+                LOGGER.verbose('checking drifts in batch firing policies')
                 if explainer.has_drift_in_policies(build_batch_firing_features, filter_log(creation_policy)):
                     explainer.build_policies_descriptor(
-                        f"batch firing policies for '{creation_policy}' changed!",
+                        what=f'{batching_time.what}/batch-firing',
                         parent=batching_time,
                         feature_extractor=build_batch_firing_features,
                         filter_=filter_log(creation_policy),
                     )
 
         # check waiting time due to contention
-        LOGGER.verbose("checking drifts in contention waiting time")
+        LOGGER.verbose('checking drifts in contention waiting time')
         if explainer.has_drift_in_time(lambda event: event.waiting_time.contention.duration):
             contention_time = explainer.build_time_descriptor(
-                "waiting time due to resource contention changed!",
-                lambda event: event.waiting_time.contention.duration,
+                what=f'{waiting_time.what}/contention',
+                time_extractor=lambda event: event.waiting_time.contention.duration,
                 parent=waiting_time,
             )
 
             # check changes in the arrival rate
-            LOGGER.verbose("checking drifts in arrival rate")
+            LOGGER.verbose('checking drifts in arrival rate')
             if explainer.has_drift_in_rate(
                     filter_=lambda event: event.activity == first_activity,
                     extractor=lambda event: event.enabled,
             ):
                 explainer.build_rate_descriptor(
-                    "arrival rates changed!",
+                    what=f'{contention_time.what}/arrival-rates',
                     parent=contention_time,
                     filter_=lambda event: event.activity == first_activity,
                     extractor=lambda event: event.enabled,
                 )
 
             # check changes in the service rate
-            LOGGER.verbose("checking drifts in service rate")
+            LOGGER.verbose('checking drifts in service rate')
             if explainer.has_drift_in_rate(
                     filter_=lambda event: event.activity == last_activity,
                     extractor=lambda event: event.end,
             ):
                 explainer.build_rate_descriptor(
-                    "service rates changed!",
+                    what=f'{contention_time.what}/service-rates',
                     parent=contention_time,
                     filter_=lambda event: event.activity == last_activity,
                     extractor=lambda event: event.end,
                 )
 
         # check waiting time due to prioritization
-        LOGGER.verbose("checking drifts in prioritization waiting time")
+        LOGGER.verbose('checking drifts in prioritization waiting time')
         if explainer.has_drift_in_time(lambda event: event.waiting_time.prioritization.duration):
             prioritization_time = explainer.build_time_descriptor(
-                "waiting time due to prioritization changed!",
-                lambda event: event.waiting_time.prioritization.duration,
+                what=f'{waiting_time.what}/prioritization',
+                time_extractor=lambda event: event.waiting_time.prioritization.duration,
                 parent=waiting_time,
             )
 
             # check changes in the prioritization policies
-            LOGGER.verbose("checking drifts in prioritization policies")
+            LOGGER.verbose('checking drifts in prioritization policies')
             if explainer.has_drift_in_policies(build_prioritization_features):
                 explainer.build_policies_descriptor(
-                    "prioritization policies changed!",
+                    what=f'{prioritization_time.what}/prioritization-policies',
                     parent=prioritization_time,
                     feature_extractor=build_prioritization_features,
                 )
 
         # check waiting time due to unavailability
-        LOGGER.verbose("checking drifts in unavailability waiting time")
+        LOGGER.verbose('checking drifts in unavailability waiting time')
         if explainer.has_drift_in_time(lambda event: event.waiting_time.availability.duration):
             unavailability_time = explainer.build_time_descriptor(
-                "waiting time due to resource unavailability changed!",
-                lambda event: event.waiting_time.availability.duration,
+                what=f'{waiting_time.what}/unavailability',
+                time_extractor=lambda event: event.waiting_time.availability.duration,
                 parent=waiting_time,
             )
 
             # check changes in the availability calendars
-            LOGGER.verbose("checking drifts in calendars")
+            LOGGER.verbose('checking drifts in calendars')
             if explainer.has_drift_in_calendar():
                 explainer.build_calendar_descriptor(
-                    "resource availability calendars changed!",
+                    what=f'{unavailability_time.what}/calendars',
                     parent=unavailability_time,
                 )
 
         # check waiting time due to extraneous
-        LOGGER.verbose("checking drifts in extraneous waiting time")
+        LOGGER.verbose('checking drifts in extraneous waiting time')
         if explainer.has_drift_in_time(lambda event: event.waiting_time.extraneous.duration):
             extraneous_time = explainer.build_time_descriptor(
-                "waiting time due to extraneous delays changed!",
-                lambda event: event.waiting_time.extraneous.duration,
+                what=f'{waiting_time.what}/extraneous',
+                time_extractor=lambda event: event.waiting_time.extraneous.duration,
                 parent=waiting_time,
             )
 
             # check drifts in the activity profiles
-            LOGGER.verbose("checking drifts in activity profiles")
+            LOGGER.verbose('checking drifts in activity profiles')
             if explainer.has_drift_in_profile(ActivityProfile.discover):
                 explainer.build_profile_descriptor(
-                    "activity profiles changed!",
+                    what=f'{extraneous_time.what}/activity-profiles',
                     parent=extraneous_time,
                     profile_builder=ActivityProfile.discover,
                 )
             # check drifts in the resource profiles
-            LOGGER.verbose("checking drifts in resource profiles")
+            LOGGER.verbose('checking drifts in resource profiles')
             if explainer.has_drift_in_profile(ResourceProfile.discover):
                 explainer.build_profile_descriptor(
-                    "resource profiles changed!",
+                    what=f'{extraneous_time.what}/resource-profiles',
                     parent=extraneous_time,
                     profile_builder=ResourceProfile.discover,
                 )
