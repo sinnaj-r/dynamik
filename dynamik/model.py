@@ -214,7 +214,7 @@ class Event:
                 "second": self.enabled.second,
                 "microsecond": self.enabled.microsecond,
             },
-            "batch": self.batch.asdict(),
+            "batch": self.batch.asdict() if self.batch is not None else {},
             "waiting_time": self.waiting_time.asdict(),
             "processing_time": self.processing_time.asdict(),
             "attributes": self.attributes,

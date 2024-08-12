@@ -153,7 +153,7 @@ class ActivityProfile(Profile):
     @functools.lru_cache
     def discover(log: Log) -> ActivityProfile:
         """TODO docs"""
-        activities = {event.activity for event in log}
+        activities = {event.activity for event in log if not event.activity.startswith('__')}
         activity_profile = ActivityProfile(
             activities=activities,
             activity_frequency=defaultdict(lambda: 0),
@@ -330,7 +330,7 @@ class ResourceProfile(Profile):
     @functools.lru_cache
     def discover(log: Log) -> ResourceProfile:
         """TODO docs"""
-        activities = {event.activity for event in log}
+        activities = {event.activity for event in log if not event.activity.startswith('__')}
         resources = {event.resource for event in log}
         resource_profile = ResourceProfile(
             resources=resources,
