@@ -10,7 +10,6 @@ import scipy
 from intervaltree import Interval, IntervalTree
 
 from dynamik.model import Event, Log, Resource
-from dynamik.utils.model import TestResult
 
 
 class Calendar:
@@ -211,6 +210,7 @@ def discover_calendars(
     # compute the calendar for each resource
     calendars = {}
     for (resource, events) in events_per_resource.items():
-        calendars[resource] = Calendar.discover(events).transform(lambda value: min(value, 1))
+        if resource is not None and resource != 'null':
+            calendars[resource] = Calendar.discover(events).transform(lambda value: min(value, 1))
 
     return calendars
