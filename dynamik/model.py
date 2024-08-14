@@ -1,6 +1,7 @@
 """This module contains the definition of a model for the events from an event log."""
 from __future__ import annotations
 
+import abc
 import typing
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -11,8 +12,13 @@ from intervaltree import Interval
 from dynamik.utils.model import TimeInterval
 
 
+class Serializable(abc.ABC):  # noqa: D101
+    @abc.abstractmethod
+    def asdict(self) -> dict: ...  # noqa: ANN101, D102
+
+
 @dataclass
-class Batch:
+class Batch(Serializable):
     """A batch descriptor"""
 
     activity: str
@@ -89,7 +95,7 @@ class Batch:
 
 
 @dataclass
-class WaitingTime:
+class WaitingTime(Serializable):
     """A representation of the waiting time for an event, with its decomposition"""
 
     batching: TimeInterval = field(default_factory=TimeInterval)
@@ -111,7 +117,7 @@ class WaitingTime:
 
 
 @dataclass
-class ProcessingTime:
+class ProcessingTime(Serializable):
     """An object representing the processing time for an event, with its decomposition"""
 
     effective: TimeInterval = field(default_factory=TimeInterval)
@@ -127,7 +133,7 @@ class ProcessingTime:
 
 
 @dataclass(slots=True)
-class Event:
+class Event(Serializable):
     """
     `Event` provides a standardized representation of an event from a log.
 
