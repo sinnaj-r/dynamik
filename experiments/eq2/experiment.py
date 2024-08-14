@@ -45,7 +45,11 @@ if __name__ == "__main__":
     for _logs in logs:
         print(_logs)
 
-        log = read_and_merge_csv_logs(['Z:\\Projects\\dynamik-frontend\\public\\change.csv'], attribute_mapping=mapping, add_artificial_start_end_events=True)
+        log = read_and_merge_csv_logs(
+            ['Z:\\Projects\\dynamik-demo\\dynamik-frontend\\public\\change.csv'],
+            attribute_mapping=mapping,
+            add_artificial_start_end_events=True,
+        )
         # log = read_and_merge_csv_logs(_logs, attribute_mapping=mapping)
 
         detector = detect_drift(

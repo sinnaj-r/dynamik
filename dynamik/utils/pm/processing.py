@@ -23,8 +23,8 @@ class ProcessingTimeCanvas:
         }
 
         for event in log:
-            # only for events with a duration
-            if event.start != event.end:
+            # only for events with resources assigned and with a duration
+            if event.resource is not None and event.start != event.end:
                 #################################
                 # compute total processing time #
                 #################################

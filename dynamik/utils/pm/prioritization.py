@@ -22,7 +22,7 @@ def __find_prioritized_events(log: Log) -> list[dict]:
     prioritized = []
 
     # create a list of dicts representing the event log
-    events_as_dict = [__event_as_dict(event) for event in log]
+    events_as_dict = [__event_as_dict(event) for event in log if event.resource is not None]
 
     # build two dataframes with "reference" and "prioritized" events
     events = pd.json_normalize(events_as_dict)
@@ -60,7 +60,7 @@ def __find_non_prioritized_events(log: Log) -> list[dict]:
     non_prioritized = []
 
     # create a list of dicts representing the event log
-    events_as_dict = [__event_as_dict(event) for event in log]
+    events_as_dict = [__event_as_dict(event) for event in log if event.resource is not None]
 
     # build two dataframes with "reference" and "prioritized" events
     events = pd.json_normalize(events_as_dict)

@@ -48,12 +48,12 @@ class DriftExplainer:
         return Pair(
             reference=DistributionDescription(
                 scipy.stats.describe(
-                    [extractor(event).total_seconds() for event in self.drift.reference_model.data],
+                    [extractor(event).total_seconds() for event in self.drift.reference_model.data if event.resource is not None],
                 ),
             ),
             running=DistributionDescription(
                 scipy.stats.describe(
-                    [extractor(event).total_seconds() for event in self.drift.running_model.data],
+                    [extractor(event).total_seconds() for event in self.drift.running_model.data if event.resource is not None],
                 ),
             ),
         )
@@ -131,8 +131,8 @@ class DriftExplainer:
     ) -> Pair[typing.Iterable[timedelta]]:
         """TODO docs"""
         return Pair(
-            reference=[time_extractor(event) for event in self.drift.reference_model.data],
-            running=[time_extractor(event) for event in self.drift.running_model.data],
+            reference=[time_extractor(event) for event in self.drift.reference_model.data if event.resource is not None],
+            running=[time_extractor(event) for event in self.drift.running_model.data if event.resource is not None],
         )
 
     def __get_rate_data(

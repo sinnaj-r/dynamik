@@ -153,7 +153,7 @@ class ActivityProfile(Profile):
     @functools.lru_cache
     def discover(log: Log) -> ActivityProfile:
         """TODO docs"""
-        activities = {event.activity for event in log if not event.activity.startswith('__')}
+        activities = {event.activity for event in log if event.resource is not None}
         activity_profile = ActivityProfile(
             activities=activities,
             activity_frequency=defaultdict(lambda: 0),
@@ -187,7 +187,7 @@ class ActivityProfile(Profile):
             # get the set of own cases
             own_cases = {event.case for event in activity_instances}
             # build a map with the activities executed in each of the own cases
-            activities_per_case = {case: {event.activity for event in log if event.case == case} for case in own_cases}
+            activities_per_case = {case: {event.activity for event in log if event.case == case and event.resource is not None} for case in own_cases}
 
             for co_occurrence in activities:
                 common_cases = {case for case in activities_per_case if co_occurrence in activities_per_case[case]}
@@ -330,8 +330,8 @@ class ResourceProfile(Profile):
     @functools.lru_cache
     def discover(log: Log) -> ResourceProfile:
         """TODO docs"""
-        activities = {event.activity for event in log if not event.activity.startswith('__')}
-        resources = {event.resource for event in log}
+        activities = {event.activity for event in log if event.resource is not None}
+        resources = {event.resource for event in log if event.resource is not None}
         resource_profile = ResourceProfile(
             resources=resources,
             instance_count=defaultdict(lambda: 0),

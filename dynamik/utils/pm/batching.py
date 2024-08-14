@@ -99,7 +99,7 @@ def build_batch_firing_features(log: Log) -> pd.DataFrame:
     states = []
 
     # get the events that belong to a batch
-    batched_events = [event for event in log if event.batch is not None and event.batch.size > 1]
+    batched_events = [event for event in log if event.resource is not None and event.batch is not None and event.batch.size > 1]
 
     for event in batched_events:
         # save the already-enabled events
@@ -167,7 +167,7 @@ def build_batch_creation_features(log: Log) -> pd.DataFrame:
 
     for event in log:
         # filter out synthetic events
-        if event.activity not in ("__SYNTHETIC_START_EVENT__", "__SYNTHETIC_END_EVENT__"):
+        if event.resource is not None:
             # add the state of the batch for each event
             states.append(
                 __BatchCreationState(

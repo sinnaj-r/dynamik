@@ -205,7 +205,8 @@ def discover_calendars(
     # build a map with the events executed by each resource
     events_per_resource = defaultdict(list)
     for event in log:
-        events_per_resource[event.resource].append(event)
+        if event.resource is not None:
+            events_per_resource[event.resource].append(event)
 
     # compute the calendar for each resource
     calendars = {}
