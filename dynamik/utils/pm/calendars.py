@@ -9,10 +9,10 @@ from datetime import datetime, time, timedelta
 import scipy
 from intervaltree import Interval, IntervalTree
 
-from dynamik.model import Event, Log, Resource
+from dynamik.model import Event, Log, Resource, Serializable
 
 
-class Calendar:
+class Calendar(Serializable):
     """TODO docs"""
 
     owner: set[str]
