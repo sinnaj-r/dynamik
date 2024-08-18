@@ -14,7 +14,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from imodels import SkopeRulesClassifier
 from sklearn.preprocessing import OneHotEncoder
 
-from dynamik.model import Event, Log
+from dynamik.model import Event, Log, Serializable
 from dynamik.utils.model import HashableDF
 
 _operators = {
@@ -33,7 +33,7 @@ _operators = {
 
 
 @dataclass(frozen=True)
-class ConfusionMatrix:
+class ConfusionMatrix(Serializable):
     """A confusion matrix"""
 
     true_positives: int
@@ -78,7 +78,7 @@ class ConfusionMatrix:
 
 
 @dataclass(frozen=True)
-class Clause:
+class Clause(Serializable):
     """TODO"""
 
     feature: str
@@ -129,7 +129,7 @@ class Clause:
 
 
 @dataclass(frozen=True)
-class Rule:
+class Rule(Serializable):
     """TODO"""
 
     clauses: typing.Iterable[Clause | typing.Self]

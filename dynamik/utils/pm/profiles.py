@@ -11,11 +11,11 @@ import scipy
 from intervaltree import Interval
 from statsmodels.stats.weightstats import ttost_ind
 
-from dynamik.model import Activity, Log, Resource
+from dynamik.model import Activity, Log, Resource, Serializable
 from dynamik.utils.pm.calendars import Calendar
 
 
-class Profile(abc.ABC):
+class Profile(abc.ABC, Serializable):
     """TODO docs"""
 
     @abc.abstractmethod

@@ -15,42 +15,37 @@ if __name__ == "__main__":
     mapping = EventMapping.parse("./mappings/prosimos.mapping.json")
 
     logs = (
-        (
-            # 14 days, 3, 30 min
-            "./logs/scenario10.log.csv",
-            "./logs/scenario11.log.csv",
-        ),
-        # (
-        #     # 14 days, 1, 5 min
-        #     "./logs/scenario20.log.csv",
-        #     "./logs/scenario21.log.csv",
-        # ),
-        # (
-        #     # 14 days, 3, 30 min
-        #     "./logs/scenario30.log.csv",
-        #     "./logs/scenario31.log.csv",
-        # ),
-        # (
-        #     # 14 days, 3, 30 min
-        #     "./logs/scenario40.log.csv",
-        #     "./logs/scenario41.log.csv",
-        # ),
-        # (
-        #     # 7 days, 1, 5 min
-        #     "./logs/scenario50.log.csv",
-        #     "./logs/scenario51.log.csv",
-        # ),
+            (
+                # 14 days, 3, 30 min
+                "./logs/scenario10.log.csv",
+                "./logs/scenario11.log.csv",
+            ),
+            (
+                # 14 days, 1, 5 min
+                "./logs/scenario20.log.csv",
+                "./logs/scenario21.log.csv",
+            ),
+            (
+                # 14 days, 3, 30 min
+                "./logs/scenario30.log.csv",
+                "./logs/scenario31.log.csv",
+            ),
+            (
+                # 14 days, 3, 30 min
+                "./logs/scenario40.log.csv",
+                "./logs/scenario41.log.csv",
+            ),
+            (
+                # 7 days, 1, 5 min
+                "./logs/scenario50.log.csv",
+                "./logs/scenario51.log.csv",
+            ),
     )
 
     for _logs in logs:
         print(_logs)
 
-        log = read_and_merge_csv_logs(
-            ['Z:\\Projects\\dynamik-demo\\dynamik-frontend\\public\\change.csv'],
-            attribute_mapping=mapping,
-            add_artificial_start_end_events=True,
-        )
-        # log = read_and_merge_csv_logs(_logs, attribute_mapping=mapping)
+        log = read_and_merge_csv_logs(_logs, attribute_mapping=mapping)
 
         detector = detect_drift(
             log=log,

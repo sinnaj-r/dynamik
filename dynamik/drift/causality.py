@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import typing
 from datetime import datetime, timedelta
+from statistics import mean
 
 import numpy as np
 import pandas as pd
@@ -121,8 +122,12 @@ class DriftExplainer:
 
     def __get_calendars(self: typing.Self) -> Pair[typing.Mapping[Resource, Calendar]]:
         return Pair(
-            reference=discover_calendars(self.drift.reference_model.data),
-            running=discover_calendars(self.drift.running_model.data),
+            reference={
+                owner: calendar.asdict() for (owner, calendar) in discover_calendars(self.drift.reference_model.data).items()
+            },
+            running={
+                owner: calendar.asdict() for (owner, calendar) in discover_calendars(self.drift.running_model.data).items()
+            },
         )
 
     def __get_time_data(
@@ -140,24 +145,19 @@ class DriftExplainer:
             filter_: typing.Callable[[Event], bool],
             extractor: typing.Callable[[Event], datetime],
     ) -> Pair[Calendar]:
+        # get the timestamps
+        ref_times: list[datetime] = sorted([extractor(event) for event in self.drift.reference_model.data if filter_(event)])
+        run_times: list[datetime] = sorted([extractor(event) for event in self.drift.running_model.data if filter_(event)])
+        # compute inter-rate times
+        ref_inter_times = [(t2 - t1).total_seconds() for (t1, t2) in itertools.pairwise(ref_times)]
+        run_inter_times = [(t2 - t1).total_seconds() for (t1, t2) in itertools.pairwise(run_times)]
+        # compute mean inter-rate times
+        avg_ref_inter_time = mean(ref_inter_times)
+        avg_run_inter_time = mean(run_inter_times)
+        # rates are 1/inter-rate-time. inter-rate-time is in seconds, so we multiply by 3600 for translating to instances/hour
         return Pair(
-            reference=Calendar.discover(
-                [event for event in self.drift.reference_model.data if filter_(event)],
-                lambda event: [extractor(event)],
-            ),
-            running=Calendar.discover(
-                [event for event in self.drift.running_model.data if filter_(event)],
-                lambda event: [extractor(event)],
-            ),
-        )
-
-    def __get_policies_data(
-            self: typing.Self,
-            filter_: typing.Callable[[Log], Log] = lambda _: _,
-    ) -> Pair[Log]:
-        return Pair(
-            reference=filter_(self.drift.reference_model.data),
-            running=filter_(self.drift.running_model.data),
+            reference=3600/avg_ref_inter_time,
+            running=3600/avg_run_inter_time,
         )
 
     def __get_profiles(
@@ -355,7 +355,7 @@ class DriftExplainer:
             # how did it change? include the policies for both pre- and post- drift data
             how=self.__describe_policies(feature_extractor, filter_),
             # data contains the evaluation of policies for before and after
-            data=self.__get_policies_data(filter_),
+            data=self.__describe_policies(feature_extractor, filter_),
             parent=parent,
         )
 
