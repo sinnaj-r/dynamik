@@ -103,8 +103,8 @@ class DriftExplainer:
         results = Pair(reference={}, running={})
         # evaluate each rule and add the score to the results pair
         for rule in itertools.chain(reference_policies, running_policies):
-            results.reference[repr(rule)] = compute_rule_score(rule, HashableDF(reference_features))
-            results.running[repr(rule)] = compute_rule_score(rule, HashableDF(running_features))
+            results.reference[rule] = compute_rule_score(rule, HashableDF(reference_features))
+            results.running[rule] = compute_rule_score(rule, HashableDF(running_features))
 
         return results
 
@@ -119,6 +119,26 @@ class DriftExplainer:
             reference=reference_profile,
             running=running_profile,
         )
+
+    def __get_policies(
+            self: typing.Self,
+            feature_extractor: typing.Callable[[Log], pd.DataFrame],
+            filter_: typing.Callable[[Log], Log] = lambda _: _,
+    ) -> Pair[typing.Mapping[Rule, ConfusionMatrix]]:
+        # extract features for pre- and post-drift
+        reference_features = feature_extractor(filter_(self.drift.reference_model.data))
+        running_features = feature_extractor(filter_(self.drift.running_model.data))
+        # discover rules for pre- and post-drift
+        reference_policies = discover_rules(HashableDF(reference_features))
+        running_policies = discover_rules(HashableDF(running_features))
+
+        results = Pair(reference={}, running={})
+        # evaluate each rule and add the score to the results pair
+        for rule in itertools.chain(reference_policies, running_policies):
+            results.reference[repr(rule)] = compute_rule_score(rule, HashableDF(reference_features))
+            results.running[repr(rule)] = compute_rule_score(rule, HashableDF(running_features))
+
+        return results
 
     def __get_calendars(self: typing.Self) -> Pair[typing.Mapping[Resource, Calendar]]:
         return Pair(
@@ -355,7 +375,7 @@ class DriftExplainer:
             # how did it change? include the policies for both pre- and post- drift data
             how=self.__describe_policies(feature_extractor, filter_),
             # data contains the evaluation of policies for before and after
-            data=self.__describe_policies(feature_extractor, filter_),
+            data=self.__get_policies(feature_extractor, filter_),
             parent=parent,
         )
 
