@@ -103,8 +103,8 @@ class DriftExplainer:
         results = Pair(reference={}, running={})
         # evaluate each rule and add the score to the results pair
         for rule in itertools.chain(reference_policies, running_policies):
-            results.reference[rule] = compute_rule_score(rule, HashableDF(reference_features))
-            results.running[rule] = compute_rule_score(rule, HashableDF(running_features))
+            results.reference[repr(rule)] = compute_rule_score(rule, HashableDF(reference_features))
+            results.running[repr(rule)] = compute_rule_score(rule, HashableDF(running_features))
 
         return results
 
