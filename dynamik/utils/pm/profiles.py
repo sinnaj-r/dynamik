@@ -15,7 +15,7 @@ from dynamik.model import Activity, Log, Resource, Serializable
 from dynamik.utils.pm.calendars import Calendar
 
 
-class Profile(abc.ABC, Serializable):
+class Profile(Serializable):
     """TODO docs"""
 
     @abc.abstractmethod
