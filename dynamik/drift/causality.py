@@ -508,7 +508,7 @@ def explain_drift(
                 LOGGER.verbose('checking drifts in batch firing policies')
                 if explainer.has_drift_in_policies(build_batch_firing_features, filter_log(creation_policy)):
                     explainer.build_policies_descriptor(
-                        what=f'{batching_time.what}/batch-firing',
+                        what=f'{batching_time.what}/batch-firing?for={creation_policy!r}',
                         parent=batching_time,
                         feature_extractor=build_batch_firing_features,
                         filter_=filter_log(creation_policy),
