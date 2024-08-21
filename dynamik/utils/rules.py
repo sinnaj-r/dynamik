@@ -72,6 +72,8 @@ class ConfusionMatrix(Serializable):
             "true_negatives": self.true_negatives,
             "false_positives": self.false_positives,
             "false_negatives": self.false_negatives,
+            "precision": self.precision,
+            "recall": self.recall,
             "f1_score": self.f1_score,
             "classification_accuracy": self.classification_accuracy,
         }
