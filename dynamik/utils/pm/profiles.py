@@ -191,7 +191,8 @@ class ActivityProfile(Profile):
 
             for co_occurrence in activities:
                 common_cases = {case for case in activities_per_case if co_occurrence in activities_per_case[case]}
-                activity_profile.co_occurrence_index[(activity, co_occurrence)] = len(common_cases)
+                total_cases = len(activities_per_case.keys())
+                activity_profile.co_occurrence_index[(activity, co_occurrence)] = int((len(common_cases) / total_cases) * 100)
 
         return activity_profile
 
