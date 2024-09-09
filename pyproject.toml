@@ -12,11 +12,11 @@ packages = [{ include = "dynamik" }]
 expert = "dynamik.cli:run"
 
 [tool.poetry.dependencies]
-python = "~3.11"
+python = ">=3.10,<=3.11"
 verboselogs = "1.7"
 coloredlogs = "15.0.1"
 pyyaml = "6.0.1"
-pandas = {extras = ["performance"], version = "2.1.4"}
+pandas = { extras = ["performance"], version = "2.1.4" }
 numpy = "1.26.4"
 scipy = "1.13.0"
 intervaltree = { git = "https://github.com/chaimleib/intervaltree.git" }
@@ -51,13 +51,63 @@ help = "serve documentation in a live server and recompile it if a change is det
 
 [tool.ruff]
 select = [
-    "F", "E", "W", "C90", "I", "N", "D", "UP", "ANN", "FBT", "B", "A", "COM", "C4", "DTZ", "EXE",
-    "ISC", "ICN", "G", "INP", "PIE", "Q003", "RET", "SLF", "SIM", "TID", "ARG", "ERA", "PD", "PL",
-    "PLE", "PLR", "PLW", "NPY", "RUF"
+    "F",
+    "E",
+    "W",
+    "C90",
+    "I",
+    "N",
+    "D",
+    "UP",
+    "ANN",
+    "FBT",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "DTZ",
+    "EXE",
+    "ISC",
+    "ICN",
+    "G",
+    "INP",
+    "PIE",
+    "Q003",
+    "RET",
+    "SLF",
+    "SIM",
+    "TID",
+    "ARG",
+    "ERA",
+    "PD",
+    "PL",
+    "PLE",
+    "PLR",
+    "PLW",
+    "NPY",
+    "RUF",
 ]
 ignore = [
-    "PLE1205", "PLR0913", "PLR0915", "PLR2004", "B008", "B024", "D105", "D400", "D401", "D404", "N801",
-    "ERA001", "F841", "PLW2901", "C901", "RUF012", "ANN401",  "PLR0911", "PLR0912", "RUF015"
+    "PLE1205",
+    "PLR0913",
+    "PLR0915",
+    "PLR2004",
+    "B008",
+    "B024",
+    "D105",
+    "D400",
+    "D401",
+    "D404",
+    "N801",
+    "ERA001",
+    "F841",
+    "PLW2901",
+    "C901",
+    "RUF012",
+    "ANN401",
+    "PLR0911",
+    "PLR0912",
+    "RUF015",
 ]
 line-length = 150
 target-version = "py311"
